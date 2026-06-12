@@ -249,7 +249,7 @@ export async function saveStageRule(rule) {
     if (error) throw error;
   }
   await loadStageRules({ force: true });
-  try { window.dispatchEvent(new CustomEvent('glide:stage-rules-updated')); } catch {}
+  try { window.dispatchEvent(new CustomEvent('cirene:stage-rules-updated')); } catch {}
 }
 
 export async function deleteStageRule(id) {
@@ -258,5 +258,5 @@ export async function deleteStageRule(id) {
   const { error } = await supa.from('stage_rules').delete().eq('id', id);
   if (error) throw error;
   await loadStageRules({ force: true });
-  try { window.dispatchEvent(new CustomEvent('glide:stage-rules-updated')); } catch {}
+  try { window.dispatchEvent(new CustomEvent('cirene:stage-rules-updated')); } catch {}
 }

@@ -4,8 +4,7 @@ ERP de **Emprendimientos De Cirene** (herrería social). Cotizador paramétrico,
 CRM, producción (kanban), ventas y contabilidad/caja. SPA en JavaScript puro
 (sin build), datos en **Supabase**, deploy en **Netlify**. PDFs con jsPDF.
 
-> Clonado de la estructura de la app de Glide y adaptado a herrería. Datos 100%
-> separados (proyecto Supabase propio). Estética blanco/negro premium.
+> ERP propio de De Cirene (proyecto Supabase propio). Estética blanco/negro premium.
 
 ## Módulos
 - **CRM / Leads** (`intake.html`) — consultas, medidas, seguimiento (pipeline comercial).

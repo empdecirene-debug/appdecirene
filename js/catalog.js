@@ -13,7 +13,7 @@ import { loadCatalog, saveCatalog, flushCatalogToSupabase, hasPendingSync, boots
 import { pushProductFull, archiveAllProducts, listAllProducts, upsertProductFromCatalog } from './odoo-client.js';
 
 // saveCatalog empuja a Supabase con debounce (catalog-store.js).
-// Los eventos glide:catalog-sync-* actualizan el indicador de estado en el header.
+// Los eventos cirene:catalog-sync-* actualizan el indicador de estado en el header.
 
 const $ = id => document.getElementById(id);
 const esc = s => (s || '').toString().replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -70,9 +70,9 @@ function _setSaveIndicator(state) {
 }
 
 function _installSaveGuard() {
-  window.addEventListener('glide:catalog-sync-pending', () => _setSaveIndicator('pending'));
-  window.addEventListener('glide:catalog-sync-done',    () => _setSaveIndicator('saved'));
-  window.addEventListener('glide:catalog-sync-error',   () => {
+  window.addEventListener('cirene:catalog-sync-pending', () => _setSaveIndicator('pending'));
+  window.addEventListener('cirene:catalog-sync-done',    () => _setSaveIndicator('saved'));
+  window.addEventListener('cirene:catalog-sync-error',   () => {
     _setSaveIndicator('error');
     // Toast si el navegador tiene la función (catalog.html tiene su propio toast)
     const t = document.getElementById('toast');
@@ -126,7 +126,7 @@ async function renderProductos() {
     : state.productos;
 
   if (!list.length) {
-    grid.innerHTML = `<div class="glide-alert info">No hay productos${q ? ' que matcheen "' + esc(q) + '"' : ''}. Crea uno con <b>+ Nuevo producto</b>.</div>`;
+    grid.innerHTML = `<div class="cirene-alert info">No hay productos${q ? ' que matcheen "' + esc(q) + '"' : ''}. Crea uno con <b>+ Nuevo producto</b>.</div>`;
     return;
   }
 
@@ -209,70 +209,70 @@ function renderEditor() {
       <div class="modal" id="modal">
         <div class="modal-hdr">
           <h2>${state.editIdx === -1 ? 'Nuevo producto' : 'Editar producto'}</h2>
-          <button class="glide-btn glide-btn-ghost glide-btn-sm" id="btnClose">✕</button>
+          <button class="cirene-btn cirene-btn-ghost cirene-btn-sm" id="btnClose">✕</button>
         </div>
 
         <div class="modal-body">
-          <div class="glide-row2">
-            <div class="glide-fg">
-              <label class="glide-label">Nombre</label>
-              <input class="glide-input" id="f_n" value="${esc(p.n)}" placeholder="Ej: Chomba piqué"/>
+          <div class="cirene-row2">
+            <div class="cirene-fg">
+              <label class="cirene-label">Nombre</label>
+              <input class="cirene-input" id="f_n" value="${esc(p.n)}" placeholder="Ej: Chomba piqué"/>
             </div>
-            <div class="glide-row2" style="display:grid">
-              <div class="glide-fg">
-                <label class="glide-label">Categoría</label>
-                <input class="glide-input" id="f_k" value="${esc(p.k)}" placeholder="Ej: Chombas"/>
+            <div class="cirene-row2" style="display:grid">
+              <div class="cirene-fg">
+                <label class="cirene-label">Categoría</label>
+                <input class="cirene-input" id="f_k" value="${esc(p.k)}" placeholder="Ej: Chombas"/>
               </div>
-              <div class="glide-fg">
-                <label class="glide-label">Precio (UYU)</label>
-                <input class="glide-input" id="f_precio" type="number" value="${Number(p.precio) || 0}"/>
+              <div class="cirene-fg">
+                <label class="cirene-label">Precio (UYU)</label>
+                <input class="cirene-input" id="f_precio" type="number" value="${Number(p.precio) || 0}"/>
               </div>
             </div>
           </div>
 
-          <div class="glide-fg">
-            <label class="glide-label">Imágenes del producto</label>
+          <div class="cirene-fg">
+            <label class="cirene-label">Imágenes del producto</label>
             <div class="img-row" id="imgRow"></div>
             <input type="file" id="imgInput" accept="image/*" multiple style="display:none"/>
-            <div class="glide-hint">Hacé click en el cuadrado punteado para agregar imágenes. La primera se usa como principal en Odoo.</div>
+            <div class="cirene-hint">Hacé click en el cuadrado punteado para agregar imágenes. La primera se usa como principal en Odoo.</div>
           </div>
 
-          <div class="glide-fg">
-            <label class="glide-label">Guía de talles</label>
+          <div class="cirene-fg">
+            <label class="cirene-label">Guía de talles</label>
             <div id="sizeGuideRow"></div>
             <input type="file" id="sizeGuideInput" accept="image/*" style="display:none"/>
           </div>
 
-          <div class="glide-fg">
-            <label class="glide-label">Colores disponibles</label>
+          <div class="cirene-fg">
+            <label class="cirene-label">Colores disponibles</label>
             <div id="colorList"></div>
             <div style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-              <input class="glide-input" id="newColorName" placeholder="Nombre (ej: Rojo)" style="flex:1"/>
+              <input class="cirene-input" id="newColorName" placeholder="Nombre (ej: Rojo)" style="flex:1"/>
               <input type="color" id="newColorHex" value="#0A0A0A" style="width:36px; height:36px; border:1px solid var(--border); border-radius:var(--r); cursor:pointer"/>
-              <button class="glide-btn glide-btn-sm" id="btnAddColor">+ Agregar</button>
+              <button class="cirene-btn cirene-btn-sm" id="btnAddColor">+ Agregar</button>
             </div>
           </div>
 
-          <div class="glide-fg">
-            <label class="glide-label">Características</label>
+          <div class="cirene-fg">
+            <label class="cirene-label">Características</label>
             <div class="tag-list" id="prosList"></div>
             <div style="display:flex; gap:6px; margin-top:6px;">
-              <input class="glide-input" id="newPro" placeholder="Ej: 100% algodón" style="flex:1"/>
-              <button class="glide-btn glide-btn-sm" id="btnAddPro">+ Agregar</button>
+              <input class="cirene-input" id="newPro" placeholder="Ej: 100% algodón" style="flex:1"/>
+              <button class="cirene-btn cirene-btn-sm" id="btnAddPro">+ Agregar</button>
             </div>
           </div>
 
-          <div class="glide-fg">
-            <label class="glide-label">Notas / Descripción larga</label>
-            <textarea class="glide-textarea" id="f_notes" rows="5" placeholder="Detalles, certificaciones, etc.">${esc(p.notes)}</textarea>
+          <div class="cirene-fg">
+            <label class="cirene-label">Notas / Descripción larga</label>
+            <textarea class="cirene-textarea" id="f_notes" rows="5" placeholder="Detalles, certificaciones, etc.">${esc(p.notes)}</textarea>
           </div>
         </div>
 
         <div class="modal-ftr">
-          ${state.editIdx !== -1 ? '<button class="glide-btn glide-btn-danger" id="btnDelete">Eliminar producto</button>' : ''}
-          <div class="glide-spacer"></div>
-          <button class="glide-btn glide-btn-ghost" id="btnCancel">Cancelar</button>
-          <button class="glide-btn glide-btn-primary" id="btnSave">Guardar</button>
+          ${state.editIdx !== -1 ? '<button class="cirene-btn cirene-btn-danger" id="btnDelete">Eliminar producto</button>' : ''}
+          <div class="cirene-spacer"></div>
+          <button class="cirene-btn cirene-btn-ghost" id="btnCancel">Cancelar</button>
+          <button class="cirene-btn cirene-btn-primary" id="btnSave">Guardar</button>
         </div>
       </div>
     </div>
@@ -414,7 +414,7 @@ async function renderSizeGuide() {
   let statusBlock = '';
   // Guía de talles como IMAGEN (Famet): preview + se muestra al cliente en el PDF.
   if (sgImg) {
-    statusBlock += `<div class="glide-alert" style="background:#e8f7ee;border:1px solid #aadcbb;color:#1a7a3a;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
+    statusBlock += `<div class="cirene-alert" style="background:#e8f7ee;border:1px solid #aadcbb;color:#1a7a3a;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
       ✓ Guía de talles (imagen del proveedor) — se muestra al cliente en el PDF.
     </div>
     <img src="${esc(sgImg)}" alt="guía de talles" loading="lazy" referrerpolicy="no-referrer"
@@ -423,13 +423,13 @@ async function renderSizeGuide() {
   }
   if (sg && (sg.headers || []).length) {
     if (sg.needsReview) {
-      statusBlock = `<div class="glide-alert" style="background:#fff8e1;border:1px solid #f0d48a;color:#7a5b00;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
+      statusBlock = `<div class="cirene-alert" style="background:#fff8e1;border:1px solid #f0d48a;color:#7a5b00;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
         ⚠ Guía extraída por OCR / no cuadró — <b>NO se muestra al cliente</b> hasta que la apruebes.
         Revisá los valores abajo, corregí si hace falta y dale <b>Aprobar guía</b>.
-        <button class="glide-btn glide-btn-sm" id="btnSGApprove" style="margin-left:8px">✓ Aprobar guía</button>
+        <button class="cirene-btn cirene-btn-sm" id="btnSGApprove" style="margin-left:8px">✓ Aprobar guía</button>
       </div>`;
     } else {
-      statusBlock = `<div class="glide-alert" style="background:#e8f7ee;border:1px solid #aadcbb;color:#1a7a3a;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
+      statusBlock = `<div class="cirene-alert" style="background:#e8f7ee;border:1px solid #aadcbb;color:#1a7a3a;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-size:12px">
         ✓ Guía lista — se muestra al cliente en el PDF cuando se tilda "Guía de talles".
       </div>`;
     }
@@ -439,18 +439,18 @@ async function renderSizeGuide() {
   // Textarea editable + botón para regenerar la tabla desde el texto.
   const nrows = (txt.match(/\n/g) || []).length + 1;
   const textBlock = statusBlock + `
-    <textarea class="glide-textarea" id="f_sizeGuideText" rows="${Math.min(Math.max(nrows + 1, 4), 12)}"
+    <textarea class="cirene-textarea" id="f_sizeGuideText" rows="${Math.min(Math.max(nrows + 1, 4), 12)}"
       placeholder="Tabla de talles (Talle: XS S M L … / Pecho: 100 104 … / Largo: …)"
       style="font-family:monospace; font-size:12px; white-space:pre; overflow-x:auto; margin-bottom:6px">${esc(txt)}</textarea>
-    <button class="glide-btn glide-btn-ghost glide-btn-sm" id="btnSGRebuild" style="margin-bottom:8px">↻ Reconstruir tabla desde el texto</button>`;
+    <button class="cirene-btn cirene-btn-ghost cirene-btn-sm" id="btnSGRebuild" style="margin-bottom:8px">↻ Reconstruir tabla desde el texto</button>`;
   if (key) {
     const dataUrl = await getImage(key).catch(() => null);
     row.innerHTML = textBlock + `<div style="display:flex; gap:10px; align-items:center;">
       <div class="img-thumb" style="width:90px;height:90px">
         ${dataUrl ? `<img src="${dataUrl}" alt="guía">` : '…'}
       </div>
-      <button class="glide-btn glide-btn-sm" id="btnSGChange">Cambiar imagen</button>
-      <button class="glide-btn glide-btn-ghost glide-btn-sm" id="btnSGRemove">Quitar imagen</button>
+      <button class="cirene-btn cirene-btn-sm" id="btnSGChange">Cambiar imagen</button>
+      <button class="cirene-btn cirene-btn-ghost cirene-btn-sm" id="btnSGRemove">Quitar imagen</button>
     </div>`;
     $('btnSGChange').onclick = () => $('sizeGuideInput').click();
     $('btnSGRemove').onclick = async () => {
@@ -459,7 +459,7 @@ async function renderSizeGuide() {
       renderSizeGuide();
     };
   } else {
-    row.innerHTML = textBlock + `<button class="glide-btn glide-btn-sm" id="btnSGAdd">+ Subir guía de talles (imagen)</button>`;
+    row.innerHTML = textBlock + `<button class="cirene-btn cirene-btn-sm" id="btnSGAdd">+ Subir guía de talles (imagen)</button>`;
     $('btnSGAdd').onclick = () => $('sizeGuideInput').click();
   }
 
@@ -505,7 +505,7 @@ function renderColors() {
       <div class="color-row">
         <span class="color-swatch" style="background:${esc(c.hex || '#999')}"></span>
         <span style="flex:1; font-size:13px">${esc(c.name)}${urls.length ? ` <span style="color:var(--tinta-3); font-size:11px">(${urls.length} img)</span>` : ''}</span>
-        <button class="glide-btn glide-btn-ghost glide-btn-xs" data-rmcolor="${i}">×</button>
+        <button class="cirene-btn cirene-btn-ghost cirene-btn-xs" data-rmcolor="${i}">×</button>
       </div>
       ${thumbs}
     </div>`;
@@ -565,26 +565,26 @@ async function deleteEditor() {
 function renderTarifas() {
   const wrap = $('tarifaList'); if (!wrap) return;
   if (!state.tarifas.length) {
-    wrap.innerHTML = '<div class="glide-alert info">Sin técnicas. Agregá una con el botón de abajo.</div>';
+    wrap.innerHTML = '<div class="cirene-alert info">Sin técnicas. Agregá una con el botón de abajo.</div>';
     return;
   }
   wrap.innerHTML = state.tarifas.map((t, i) => `
     <div class="tarifa-card">
       <div class="tarifa-hdr">
-        <input class="glide-input" style="max-width:240px; font-weight:600" value="${esc(t.tecnica || '')}" data-tname="${i}"/>
-        <button class="glide-btn glide-btn-ghost glide-btn-xs" data-rmtarifa="${i}">Eliminar</button>
+        <input class="cirene-input" style="max-width:240px; font-weight:600" value="${esc(t.tecnica || '')}" data-tname="${i}"/>
+        <button class="cirene-btn cirene-btn-ghost cirene-btn-xs" data-rmtarifa="${i}">Eliminar</button>
       </div>
       <div style="font-size:11px; color: var(--tinta-2); margin-bottom:6px">Tiers por cantidad — desde / hasta / precio unit. / setup</div>
       ${(t.tiers || []).map((tier, j) => `
         <div class="tier-row">
-          <input class="glide-input" type="number" value="${tier.min || 0}" data-tier="${i}-${j}-min" placeholder="Desde"/>
-          <input class="glide-input" type="number" value="${tier.max || 0}" data-tier="${i}-${j}-max" placeholder="Hasta"/>
-          <input class="glide-input" type="number" value="${tier.precio || 0}" data-tier="${i}-${j}-precio" placeholder="Precio"/>
-          <input class="glide-input" type="number" value="${tier.setup || 0}" data-tier="${i}-${j}-setup" placeholder="Setup"/>
-          <button class="glide-btn glide-btn-ghost glide-btn-xs" data-rmtier="${i}-${j}">×</button>
+          <input class="cirene-input" type="number" value="${tier.min || 0}" data-tier="${i}-${j}-min" placeholder="Desde"/>
+          <input class="cirene-input" type="number" value="${tier.max || 0}" data-tier="${i}-${j}-max" placeholder="Hasta"/>
+          <input class="cirene-input" type="number" value="${tier.precio || 0}" data-tier="${i}-${j}-precio" placeholder="Precio"/>
+          <input class="cirene-input" type="number" value="${tier.setup || 0}" data-tier="${i}-${j}-setup" placeholder="Setup"/>
+          <button class="cirene-btn cirene-btn-ghost cirene-btn-xs" data-rmtier="${i}-${j}">×</button>
         </div>
       `).join('')}
-      <button class="glide-btn glide-btn-ghost glide-btn-xs" data-addtier="${i}" style="margin-top:6px">+ Tier</button>
+      <button class="cirene-btn cirene-btn-ghost cirene-btn-xs" data-addtier="${i}" style="margin-top:6px">+ Tier</button>
     </div>
   `).join('');
 

@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/glide-theme.css">
+<link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -890,7 +890,7 @@ a:hover{text-decoration:underline}
    también sticky al navbar global, los dos compiten por el mismo top:0 y
    uno tapa al otro. Acá hacemos que el navbar global sea un header normal
    (no sticky) y el nav interno sigue siendo el sticky principal. */
-.glide-nav { position: static !important; }
+.cirene-nav { position: static !important; }
 </style>
 </head>
 <body>
@@ -1407,7 +1407,7 @@ a:hover{text-decoration:underline}
         <div class="ie-card">
           <h3>📤 Exportar catálogo</h3>
           <p>Descargá un archivo JSON con todos los precios, tarifas, imágenes y configuración. Útil para hacer un backup o para enviárselo a otro vendedor.</p>
-          <button class="btn-mini outline" onclick="exportCatalog()">Descargar catalogo-glide.json</button>
+          <button class="btn-mini outline" onclick="exportCatalog()">Descargar catalogo-cirene.json</button>
         </div>
         <div class="ie-card">
           <h3>📥 Importar catálogo</h3>
@@ -2514,7 +2514,7 @@ let state = {
 // Envuelvo TODO en try/catch + log de pasos visibles para que cuando el cotizador
 // quede estático sepamos exactamente en qué línea murió. Mostramos un banner rojo
 // arriba con el mensaje real (sin necesidad de DevTools).
-function _glideShowFatal(step, e){
+function _cireneShowFatal(step, e){
   const msg = `[De Cirene INIT][${step}] ${e && e.message ? e.message : e}`;
   console.error(msg, e && e.stack);
   try {
@@ -2627,7 +2627,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     step = STEP('updateCatStatus');    updateCatStatus(false);
     step = STEP('DONE');
   } catch (e) {
-    _glideShowFatal(step, e);
+    _cireneShowFatal(step, e);
   }
 });
 
@@ -4761,7 +4761,7 @@ function exportCatalogLinksCsv(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'links-productos-glide-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'links-productos-cirene-' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
   toast(`CSV con ${PRODUCTOS.length} productos descargado ✓`);
@@ -4850,7 +4850,7 @@ async function exportCatalog(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'catalogo-glide-'+new Date().toISOString().slice(0,10)+'.json';
+  a.download = 'catalogo-cirene-'+new Date().toISOString().slice(0,10)+'.json';
   a.click();
   URL.revokeObjectURL(url);
   toast('Catálogo exportado ✓');
@@ -5110,7 +5110,7 @@ function drawFooter(doc, pageW, pageH, pageNum, totalPages){
   doc.setFont('PublicSans', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('De Cirene · Hacemos que tu marca se vea tan bien como trabaja · www.glide.uy', 14, pageH - 4);
+  doc.text('De Cirene · Hacemos que tu marca se vea tan bien como trabaja · www.cirene.uy', 14, pageH - 4);
   doc.text(`Página ${pageNum}${totalPages?' de '+totalPages:''}`, pageW - 14, pageH - 4, {align:'right'});
 }
 
@@ -5415,7 +5415,7 @@ async function generarPDF(){
     doc.setFont('PublicSans', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(0x8F, 0xB0, 0xC2);
-    doc.text('contacto@glide.uy · www.glide.uy', vx + 4, y + 22.5);
+    doc.text('contacto@cirene.uy · www.cirene.uy', vx + 4, y + 22.5);
   }
   y += cardH + 8;
 
@@ -5714,7 +5714,7 @@ async function generarPDF(){
     await drawGridPages(doc, pageW, pageH, M, headerOpts, linesWithGrids, {showTotals: true});
   }
 
-  const fname = `cotizacion-glide-${(c.empresa||'cliente').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}-N${numero}.pdf`;
+  const fname = `cotizacion-cirene-${(c.empresa||'cliente').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}-N${numero}.pdf`;
   savePdfWithEmbeddedQuote(doc, fname, numero);
   toast('PDF generado ✓');
 }
@@ -5818,7 +5818,7 @@ async function generarPdfSoloPrecios(doc, pageW, pageH, M, numero, headerOpts, c
     doc.text('De Cirene · Equipo comercial', vx + 4 + avR*2 + 4, y + 18);
     doc.setFontSize(7);
     doc.setTextColor(0x8F, 0xB0, 0xC2);
-    doc.text('contacto@glide.uy · www.glide.uy', vx + 4, y + 22.5);
+    doc.text('contacto@cirene.uy · www.cirene.uy', vx + 4, y + 22.5);
   }
   y += cardH + 8;
 
@@ -5972,7 +5972,7 @@ async function generarPdfSoloPrecios(doc, pageW, pageH, M, numero, headerOpts, c
     }
   }
 
-  const fname = `precios-glide-${(c.empresa||'cliente').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}-N${numero}.pdf`;
+  const fname = `precios-cirene-${(c.empresa||'cliente').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}-N${numero}.pdf`;
   savePdfWithEmbeddedQuote(doc, fname, numero);
   toast('PDF de precios generado ✓');
 }
@@ -6533,7 +6533,7 @@ async function comparadorIA(){
     await drawBigProductPages(doc, pageW, pageH, M, headerOpts, productImgData, productImgDims);
     await drawProductSheetsPages(doc, pageW, pageH, M, headerOpts);
 
-    doc.save(`comparador-glide-${Date.now()}.pdf`);
+    doc.save(`comparador-cirene-${Date.now()}.pdf`);
     toast('PDF comparador generado ✓');
   }catch(e){
     console.error('[comparadorIA]', e);
@@ -8576,7 +8576,7 @@ async function renderComparePdf(products, clientName){
 
   drawFooter(doc, pageW, pageH, doc.getNumberOfPages());
 
-  const fname = `comparativo-glide-${(clientName||'').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30) || 'productos'}.pdf`;
+  const fname = `comparativo-cirene-${(clientName||'').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30) || 'productos'}.pdf`;
   doc.save(fname);
   toast('PDF comparativo generado ✓');
 }

@@ -23,7 +23,7 @@
 // (#T8.d) Tamaños subidos para legibilidad a distancia / impreso.
 
 const SLOT_MINUTES = 15;
-const GLIDE_AZUL = '#0A0A0A';
+const Cirene_AZUL = '#0A0A0A';
 
 // Paleta para tipos de estampe — tonos diferenciables, alineados a la marca.
 export const ESTAMPE_PALETTE = [
@@ -102,7 +102,7 @@ export function generateGanttPdf({ fecha, startHour = 8, endHour = 18, dias = 1,
   };
 
   // ── Header ──────────────────────────────────────────────────────────────
-  const [ar, ag, ab] = hexToRgb(GLIDE_AZUL);
+  const [ar, ag, ab] = hexToRgb(Cirene_AZUL);
   doc.setFillColor(ar, ag, ab);
   doc.rect(0, 0, PAGE_W, headerH - 4, 'F');
   doc.setTextColor(255, 255, 255);
@@ -227,7 +227,7 @@ export function generateGanttPdf({ fecha, startHour = 8, endHour = 18, dias = 1,
       remaining -= len;
     }
     if (!segments.length) continue;
-    const color = t.color || GLIDE_AZUL;
+    const color = t.color || Cirene_AZUL;
     const [r, g, b] = hexToRgb(color);
     const [tr, tg, tb] = textOn(color);
     const y = chartTop + opIdx * rowH + 1.8;

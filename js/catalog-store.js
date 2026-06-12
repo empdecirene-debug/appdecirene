@@ -66,13 +66,13 @@ export function hasPendingSync() { return _pendingSync; }
 
 function _scheduleSupabasePush(productos, tarifas) {
   _pendingSync = true;
-  window.dispatchEvent(new CustomEvent('glide:catalog-sync-pending'));
+  window.dispatchEvent(new CustomEvent('cirene:catalog-sync-pending'));
   if (_supaPushTimer) clearTimeout(_supaPushTimer);
   _supaPushTimer = setTimeout(async () => {
     _supaPushTimer = null;
     const ok = await syncCatalogToSupabase(productos, tarifas);
     _pendingSync = false;
-    window.dispatchEvent(new CustomEvent(ok ? 'glide:catalog-sync-done' : 'glide:catalog-sync-error'));
+    window.dispatchEvent(new CustomEvent(ok ? 'cirene:catalog-sync-done' : 'cirene:catalog-sync-error'));
   }, 1500);
 }
 
@@ -80,7 +80,7 @@ export function saveCatalog(productos, tarifas) {
   try {
     localStorage.setItem(CATALOG_KEY, JSON.stringify({ productos, tarifas }));
     localStorage.setItem(CATALOG_TS_KEY, new Date().toISOString());
-    window.dispatchEvent(new CustomEvent('glide:catalog-saved', {
+    window.dispatchEvent(new CustomEvent('cirene:catalog-saved', {
       detail: { productos, tarifas },
     }));
     _scheduleSupabasePush(productos, tarifas);

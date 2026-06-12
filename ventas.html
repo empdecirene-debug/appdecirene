@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/glide-theme.css">
+<link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
 main { padding: 18px 22px; max-width: 1100px; margin: 0 auto; }
 @media (max-width: 720px) { main { padding: 12px 14px; } }
@@ -82,14 +82,14 @@ main { padding: 18px 22px; max-width: 1100px; margin: 0 auto; }
 
 <div id="navbar-mount"></div>
 
-<div class="glide-page-hdr">
+<div class="cirene-page-hdr">
   <h1>Ventas</h1>
-  <div class="glide-subtabs" id="tabs">
+  <div class="cirene-subtabs" id="tabs">
     <button class="active" data-tab="mio">Mi panel</button>
     <button data-tab="todos" id="tabTodos" style="display:none">Consolidado</button>
   </div>
   <div class="hdr-actions">
-    <select id="period" class="glide-select" style="max-width: 200px;">
+    <select id="period" class="cirene-select" style="max-width: 200px;">
       <option value="1m" selected>Este mes</option>
       <option value="6m">Últimos 6 meses</option>
       <option value="12m">Últimos 12 meses</option>
@@ -100,7 +100,7 @@ main { padding: 18px 22px; max-width: 1100px; margin: 0 auto; }
 </div>
 
 <main id="app">
-  <div class="loading-row"><span class="glide-spinner"></span> Cargando datos…</div>
+  <div class="loading-row"><span class="cirene-spinner"></span> Cargando datos…</div>
 </main>
 
 <script type="module">
@@ -490,7 +490,7 @@ function render() {
   state.selectedProduct = null;
   const app = $('app');
   if (state.loading) {
-    app.innerHTML = `<div class="loading-row"><span class="glide-spinner"></span> Cargando datos…</div>`;
+    app.innerHTML = `<div class="loading-row"><span class="cirene-spinner"></span> Cargando datos…</div>`;
     return;
   }
   if (state.tab === 'mio') renderMine(app);
@@ -693,7 +693,7 @@ function renderDetailTable(containerId, vendorFilter) {
         <h2>Detalle del mes — <b>${grandTotal ? fmt(grandTotal) + ' UYU' : 'sin ventas'}</b></h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button id="detail-sort-btn" class="cm-btn" style="padding:6px 12px;font-size:12px">${sortLabel}</button>
-          <input type="month" id="detail-month-input" value="${esc(dm)}" class="glide-select" style="max-width:180px">
+          <input type="month" id="detail-month-input" value="${esc(dm)}" class="cirene-select" style="max-width:180px">
         </div>
       </div>
       ${cards.length ? `

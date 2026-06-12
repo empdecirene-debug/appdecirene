@@ -51,7 +51,7 @@ exports.handler = async (event) => {
   try {
     const resp = await fetch(target.href, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; GlideImgProxy/1.0; +https://glide.uy)',
+        'User-Agent': 'Mozilla/5.0 (compatible; CireneImgProxy/1.0; +https://cirene.uy)',
         'Accept': 'image/*',
         'Referer': REFERER_BY_HOST[target.hostname] || (target.origin + '/'),
       },

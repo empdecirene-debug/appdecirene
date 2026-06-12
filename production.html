@@ -8,14 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/glide-theme.css">
+<link rel="stylesheet" href="/css/cirene-theme.css">
 <link rel="stylesheet" href="/css/save-pill.css">
 <!-- jsPDF UMD para generar PDFs de OC y Ficha de Producción -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
-/* Paleta y reset vienen de css/glide-theme.css. Acá solo lo específico de Producción. */
+/* Paleta y reset vienen de css/cirene-theme.css. Acá solo lo específico de Producción. */
 
-/* Page header: el resto viene de .glide-page-hdr. Solo overrides del view-toggle y filtros. */
+/* Page header: el resto viene de .cirene-page-hdr. Solo overrides del view-toggle y filtros. */
 .view-toggle { display: inline-flex; background: var(--surface-3); border-radius: var(--r-md); padding: 3px; }
 .view-toggle button { padding: 6px 14px; border: none; background: transparent; font-family: inherit;
   font-size: 13px; font-weight: 600; color: var(--tinta-2); border-radius: 7px; cursor: pointer; transition: all .15s; }
@@ -348,7 +348,7 @@
 
 <div id="navbar-mount"></div>
 
-<div class="glide-page-hdr">
+<div class="cirene-page-hdr">
   <h1>Producción</h1>
   <div class="view-toggle" id="viewToggle" style="flex-wrap:wrap">
     <button data-view="kanban" class="sel">Kanban</button>
@@ -3615,7 +3615,7 @@ async function openPOHistory() {
   $('bigmodal-mount').innerHTML = `<div class="bigmodal-bg" id="poHBg"><div class="bigmodal" onclick="event.stopPropagation()">
     <button class="bm-close" id="poHClose">✕</button>
     <h2>Historial de compras</h2>
-    <div id="poHBody" style="margin-top:10px"><div class="loading-row"><span class="glide-spinner"></span> Cargando…</div></div>
+    <div id="poHBody" style="margin-top:10px"><div class="loading-row"><span class="cirene-spinner"></span> Cargando…</div></div>
   </div></div>`;
   $('poHBg').onclick = (e) => { if (e.target === e.currentTarget) $('bigmodal-mount').innerHTML = ''; };
   $('poHClose').onclick = () => { $('bigmodal-mount').innerHTML = ''; };
@@ -3987,7 +3987,7 @@ async function onGeneratePOPdfs() {
 
   const grouped = {};
   for (const l of drawLines) (grouped[l.supplier] ||= []).push(l);
-  const logo = await getGlideLogo();
+  const logo = await getCireneLogo();
 
   let generated = 0;
   const poRecords = [];
@@ -4385,20 +4385,20 @@ function renderSheetModal() {
 // Cache del logo De Cirene (blanco, PNG) para embedar en PDFs.
 // jsPDF con Helvetica WinAnsi no soporta el lockup tipográfico exacto, así que en
 // vez de dibujar "De Cirene" como texto inserto la imagen oficial /assets/logo.png.
-let _glideLogoDataUrl = null;
-async function getGlideLogo() {
-  if (_glideLogoDataUrl) return _glideLogoDataUrl;
+let _cireneLogoDataUrl = null;
+async function getCireneLogo() {
+  if (_cireneLogoDataUrl) return _cireneLogoDataUrl;
   try {
     const resp = await fetch('/assets/logo.png');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const blob = await resp.blob();
-    _glideLogoDataUrl = await new Promise((res, rej) => {
+    _cireneLogoDataUrl = await new Promise((res, rej) => {
       const r = new FileReader();
       r.onload = () => res(r.result);
       r.onerror = rej;
       r.readAsDataURL(blob);
     });
-    return _glideLogoDataUrl;
+    return _cireneLogoDataUrl;
   } catch (e) {
     console.warn('No se pudo cargar /assets/logo.png:', e.message);
     return null;
@@ -4471,7 +4471,7 @@ async function generateSheetPdf() {
 
   // Logo De Cirene como imagen (no como texto: jsPDF/Helvetica no respeta el lockup
   // con la E reflejada). Fallback a texto si fetch falla.
-  const logo = await getGlideLogo();
+  const logo = await getCireneLogo();
   if (logo) {
     await addImageFitted(doc, logo, 'PNG', 14, 13, 46, 22);
   } else {

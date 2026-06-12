@@ -1,6 +1,6 @@
 # Setup de Supabase (proyecto nuevo para De Cirene)
 
-Esto crea la base de datos del ERP. Es un proyecto **aparte** del de Glide → datos separados. Plan **Free** ($0).
+Esto crea la base de datos del ERP de De Cirene. Plan **Free** ($0).
 
 ## 1. Crear el proyecto
 1. Entrar a https://supabase.com → **New project**.

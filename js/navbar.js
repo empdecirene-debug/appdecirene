@@ -13,44 +13,44 @@ const PAGES = [
   { id: 'admin',            href: '/admin.html',             label: 'Admin',      roles: 'admin' },
 ];
 
-// Lockup de marca en texto (line-art premium blanco/negro). Sin PNG: el wordmark se
-// renderiza con tipografía para nitidez en cualquier densidad.
-const LOGO_DESKTOP = `<span class="gn-logo gn-logo-desktop">De&nbsp;C&#x0268;rene</span>`;
-const LOGO_MOBILE  = `<span class="gn-logo gn-logo-mobile">DC</span>`;
+// Lockup de marca: isotipo (mano+brote, blanco) + wordmark. El isotipo queda
+// siempre visible; el wordmark se oculta en mobile.
+const LOGO_DESKTOP = `<img class="gn-mark" src="/assets/logo-mark.png" alt="De Cirene"><span class="gn-logo gn-logo-desktop">De&nbsp;C&#x0268;rene</span>`;
+const LOGO_MOBILE  = ``;
 
 const STYLE = `
-.glide-nav { position: sticky; top: 0; z-index: 90; background: #0A0A0A;
+.cirene-nav { position: sticky; top: 0; z-index: 90; background: #0A0A0A;
   padding: 10px 18px; display: flex; gap: 12px; align-items: center; box-shadow: 0 2px 12px rgba(0, 0, 0,.22);
   font-family: 'Public Sans', system-ui, sans-serif; }
-.glide-nav .gn-brand { color: #fff; margin-right: 14px; display: inline-flex; align-items: center; text-decoration: none; }
-.glide-nav .gn-logo { display: block; color: #fff; font-family: 'Raleway','Public Sans',system-ui,sans-serif;
-  font-weight: 700; font-size: 18px; letter-spacing: .14em; text-transform: uppercase; line-height: 28px; }
-.glide-nav .gn-logo-mobile { display: none; letter-spacing: .08em; }
-.glide-nav .gn-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.14); padding: 3px; border-radius: 10px; }
-.glide-nav .gn-tab { padding: 6px 14px; border-radius: 7px; color: #fff; font-weight: 600; font-size: 13px;
+.cirene-nav .gn-brand { color: #fff; margin-right: 14px; display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
+.cirene-nav .gn-mark { height: 28px; width: 28px; display: block; }
+.cirene-nav .gn-logo { display: block; color: #fff; font-family: 'Raleway','Public Sans',system-ui,sans-serif;
+  font-weight: 700; font-size: 17px; letter-spacing: .14em; text-transform: uppercase; line-height: 28px; }
+.cirene-nav .gn-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.14); padding: 3px; border-radius: 10px; }
+.cirene-nav .gn-tab { padding: 6px 14px; border-radius: 7px; color: #fff; font-weight: 600; font-size: 13px;
   text-decoration: none; transition: all .15s; }
-.glide-nav .gn-tab.active { background: #fff; color: #0A0A0A; }
-.glide-nav .gn-tab:not(.active):hover { background: rgba(255,255,255,.12); }
-.glide-nav .gn-spacer { flex: 1; }
-.glide-nav .gn-user { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 12px; }
-.glide-nav .gn-user .gn-dot { width: 8px; height: 8px; border-radius: 50%; background: #888888; }
-.glide-nav .gn-out { background: rgba(255,255,255,.18); color: #fff; border: none; padding: 5px 10px;
+.cirene-nav .gn-tab.active { background: #fff; color: #0A0A0A; }
+.cirene-nav .gn-tab:not(.active):hover { background: rgba(255,255,255,.12); }
+.cirene-nav .gn-spacer { flex: 1; }
+.cirene-nav .gn-user { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 12px; }
+.cirene-nav .gn-user .gn-dot { width: 8px; height: 8px; border-radius: 50%; background: #888888; }
+.cirene-nav .gn-out { background: rgba(255,255,255,.18); color: #fff; border: none; padding: 5px 10px;
   border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
-.glide-nav .gn-out:hover { background: rgba(255,255,255,.28); }
+.cirene-nav .gn-out:hover { background: rgba(255,255,255,.28); }
 @media (max-width: 640px) {
-  .glide-nav { padding: 8px 10px; gap: 6px; flex-wrap: wrap; }
-  .glide-nav .gn-tab { padding: 5px 9px; font-size: 11px; }
-  .glide-nav .gn-user { font-size: 11px; }
-  .glide-nav .gn-user .gn-name { display: none; }
-  .glide-nav .gn-logo-desktop { display: none; }
-  .glide-nav .gn-logo-mobile  { display: block; height: 26px; }
+  .cirene-nav { padding: 8px 10px; gap: 6px; flex-wrap: wrap; }
+  .cirene-nav .gn-tab { padding: 5px 9px; font-size: 11px; }
+  .cirene-nav .gn-user { font-size: 11px; }
+  .cirene-nav .gn-user .gn-name { display: none; }
+  .cirene-nav .gn-logo-desktop { display: none; }
+  .cirene-nav .gn-logo-mobile  { display: block; height: 26px; }
 }
 `;
 
 function injectStyle() {
-  if (document.getElementById('glide-nav-style')) return;
+  if (document.getElementById('cirene-nav-style')) return;
   const s = document.createElement('style');
-  s.id = 'glide-nav-style';
+  s.id = 'cirene-nav-style';
   s.textContent = STYLE;
   document.head.appendChild(s);
 }
@@ -73,7 +73,7 @@ export async function renderNavbar(activeId) {
   const visiblePages = PAGES.filter(p => p.roles === 'all' || (p.roles === 'admin' && admin));
 
   const html = `
-    <nav class="glide-nav">
+    <nav class="cirene-nav">
       <a class="gn-brand" href="/" title="De Cirene">${LOGO_DESKTOP}${LOGO_MOBILE}</a>
       <div class="gn-tabs">
         ${visiblePages.map(p => `<a class="gn-tab ${p.id === activeId ? 'active' : ''}" href="${p.href}">${p.label}</a>`).join('')}
@@ -92,7 +92,7 @@ export async function renderNavbar(activeId) {
   `;
 
   // Limpieza defensiva: si por carrera previa quedaron 2+ navbars en el DOM, los matamos a todos.
-  document.querySelectorAll('.glide-nav').forEach(e => e.remove());
+  document.querySelectorAll('.cirene-nav').forEach(e => e.remove());
 
   const mount = document.getElementById('navbar-mount');
   if (mount) {

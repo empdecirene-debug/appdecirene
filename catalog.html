@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/glide-theme.css">
+<link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
 /* Estilos específicos del catálogo */
 .cat-search { max-width: 320px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r);
@@ -99,16 +99,16 @@ main { padding: 16px 22px; }
 
 <div id="navbar-mount"></div>
 
-<div class="glide-page-hdr">
+<div class="cirene-page-hdr">
   <h1>Catálogo <span id="saveStatus" style="font-size:13px;font-weight:400"></span></h1>
-  <div class="glide-subtabs" id="subtabs">
+  <div class="cirene-subtabs" id="subtabs">
     <button class="active" data-subtab="prods">Productos</button>
     <button data-subtab="tarifas">Tarifas</button>
     <button data-subtab="sync">Sync Odoo</button>
   </div>
   <div class="hdr-actions">
     <input type="search" id="search" class="cat-search" placeholder="Buscar producto…" />
-    <button class="glide-btn glide-btn-primary" id="btnNew">+ Nuevo producto</button>
+    <button class="cirene-btn cirene-btn-primary" id="btnNew">+ Nuevo producto</button>
   </div>
 </div>
 
@@ -117,18 +117,18 @@ main { padding: 16px 22px; }
 
   <!-- Productos -->
   <section id="paneProds">
-    <div class="prod-grid" id="prodGrid"><div class="glide-hint">Cargando catálogo…</div></div>
+    <div class="prod-grid" id="prodGrid"><div class="cirene-hint">Cargando catálogo…</div></div>
   </section>
 
   <!-- Tarifas -->
   <section id="paneTarifas" style="display:none">
     <div id="tarifaList"></div>
-    <button class="glide-btn glide-btn-ghost" id="btnAddTarifa" style="margin-top:8px">+ Nueva técnica</button>
+    <button class="cirene-btn cirene-btn-ghost" id="btnAddTarifa" style="margin-top:8px">+ Nueva técnica</button>
   </section>
 
   <!-- Sync Odoo -->
   <section id="paneSync" style="display:none">
-    <div class="glide-card glide-mb-2">
+    <div class="cirene-card cirene-mb-2">
       <h2 style="margin-bottom:10px">Estado del sync</h2>
       <div>
         <div class="sync-stat"><div class="val" id="statLocal">—</div><div class="lbl">En el catálogo</div></div>
@@ -136,22 +136,22 @@ main { padding: 16px 22px; }
         <div class="sync-stat"><div class="val" id="statOdoo">—</div><div class="lbl">En Odoo</div></div>
       </div>
       <div style="display:flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
-        <button class="glide-btn glide-btn-primary" id="btnPushAll">↑ Subir todo a Odoo (con imágenes y guías)</button>
-        <button class="glide-btn" id="btnRefreshOdoo">Refrescar estado</button>
-        <button class="glide-btn glide-btn-ghost" id="btnImportOdoo">↓ Importar desde Odoo</button>
+        <button class="cirene-btn cirene-btn-primary" id="btnPushAll">↑ Subir todo a Odoo (con imágenes y guías)</button>
+        <button class="cirene-btn" id="btnRefreshOdoo">Refrescar estado</button>
+        <button class="cirene-btn cirene-btn-ghost" id="btnImportOdoo">↓ Importar desde Odoo</button>
       </div>
-      <div class="glide-hint glide-mt-1">
+      <div class="cirene-hint cirene-mt-1">
         El push sube nombre, precio, categoría, notas, características, colores (como atributos), imagen principal y guía de talles.
         Es idempotente: ya mapeados se actualizan en vez de duplicar.
       </div>
-      <div class="glide-progress" id="syncProg" style="display:none"><div class="glide-progress-fill" id="syncProgFill" style="width:0%"></div></div>
+      <div class="cirene-progress" id="syncProg" style="display:none"><div class="cirene-progress-fill" id="syncProgFill" style="width:0%"></div></div>
       <div class="sync-log" id="syncLog" style="display:none"></div>
     </div>
 
     <div class="danger-zone">
       <h3>⚠ Zona peligrosa: Wipe Odoo + Push completo</h3>
       <p>Archiva (no borra) <b>todos</b> los productos activos en Odoo y sube los del catálogo desde cero. Reversible desde Odoo (Aplicaciones → Productos → Archivado). Usalo solo para limpiar duplicados de pruebas previas.</p>
-      <button class="glide-btn glide-btn-danger" id="btnWipePush">Archivar Odoo y subir todo el catálogo</button>
+      <button class="cirene-btn cirene-btn-danger" id="btnWipePush">Archivar Odoo y subir todo el catálogo</button>
     </div>
   </section>
 </main>

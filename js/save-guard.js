@@ -27,9 +27,9 @@
 //   });
 //
 // La página puede escuchar los eventos para actualizar pills:
-//   window.addEventListener('glide:save-pending', e => updatePill('saving', e.detail.key));
-//   window.addEventListener('glide:save-done',    e => updatePill('saved',   e.detail.key));
-//   window.addEventListener('glide:save-error',   e => updatePill('error',   e.detail.key));
+//   window.addEventListener('cirene:save-pending', e => updatePill('saving', e.detail.key));
+//   window.addEventListener('cirene:save-done',    e => updatePill('saved',   e.detail.key));
+//   window.addEventListener('cirene:save-error',   e => updatePill('error',   e.detail.key));
 //
 // El módulo atacha el listener beforeunload una sola vez (idempotente).
 
@@ -43,17 +43,17 @@ function _emit(name, detail) {
 export const saveGuard = {
   markPending(key) {
     _pending.add(key);
-    _emit('glide:save-pending', { key });
+    _emit('cirene:save-pending', { key });
   },
   markDone(key) {
     _pending.delete(key);
-    _emit('glide:save-done', { key });
+    _emit('cirene:save-done', { key });
   },
   markError(key, err) {
     // No removemos de _pending: si falla, sigue habiendo un cambio sin guardar
     // (la guardia debe seguir avisando). El llamador decide cuándo limpiarlo
     // (típicamente: tras un retry exitoso → markDone).
-    _emit('glide:save-error', { key, error: err && (err.message || String(err)) });
+    _emit('cirene:save-error', { key, error: err && (err.message || String(err)) });
   },
   registerFlush(key, fn) {
     if (typeof fn !== 'function') throw new Error('registerFlush expects a function');

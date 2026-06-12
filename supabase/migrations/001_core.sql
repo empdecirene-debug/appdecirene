@@ -1,7 +1,7 @@
 -- =====================================================================
 -- De Cirene ERP — 001 núcleo
--- Tablas operativas base. Adaptado del schema de Glide, sin Odoo ni
--- indumentaria. Ejecutar en el SQL Editor del proyecto Supabase de Cirene.
+-- Tablas operativas base del ERP de De Cirene (herrería).
+-- Ejecutar en el SQL Editor del proyecto Supabase de De Cirene.
 -- =====================================================================
 
 -- ── USER PROFILES (extiende auth.users con rol) ──────────────────────
