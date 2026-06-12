@@ -2,929 +2,154 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>De Cirene · Ventas</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/png" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
-main { padding: 18px 22px; max-width: 1100px; margin: 0 auto; }
-@media (max-width: 720px) { main { padding: 12px 14px; } }
-
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
-@media (max-width: 720px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
-.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 16px 18px; box-shadow: var(--shadow-sm); }
-.kpi .lbl { font-size: 11px; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
-.kpi .val { font-size: 28px; font-weight: 700; color: var(--azul); font-family: 'Raleway', sans-serif; margin-top: 6px; }
-.kpi .sub { font-size: 11px; color: var(--tinta-3); margin-top: 4px; }
-
-.chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 18px 20px; margin-bottom: 18px; }
-.chart-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.chart-hdr h2 { font-size: 15px; font-weight: 700; }
-.chart-svg { width: 100%; height: 300px; display: block; }
-
-.charts-2up { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-@media (max-width: 820px) { .charts-2up { grid-template-columns: 1fr; } }
-
-.vendor-tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 18px 20px; overflow-x: auto; }
-.vendor-tbl-wrap h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-.v-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.v-tbl th { text-align: left; padding: 9px 10px; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.04em; color: var(--tinta-2);
-  background: var(--surface-2); border-bottom: 1px solid var(--border); }
-.v-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
-.v-tbl tr:hover td { background: var(--surface-2); cursor: pointer; }
-.v-tbl tbody tr.selected td { background: var(--surface-3); }
-.v-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.v-tbl td.azul { color: var(--azul); }
-
-.star { color: var(--azul); font-weight: 600; }
-.muted { color: var(--tinta-3); }
-
-.empty { padding: 40px 20px; text-align: center; color: var(--tinta-3); font-size: 14px; }
-
-.loading-row { padding: 20px; text-align: center; color: var(--tinta-2); }
-
-/* Fila de producto clickeable (drill-down a tarjetas) */
-.v-tbl tr.prod-row td { cursor: pointer; }
-.v-tbl tr.prod-row.open td { background: var(--surface-3); font-weight: 600; }
-.prod-row .chev { color: var(--tinta-3); font-size: 11px; margin-right: 6px; transition: transform .15s; display: inline-block; }
-.prod-row.open .chev { transform: rotate(90deg); color: var(--azul); }
-
-/* Panel drill de tarjetas que contienen un producto */
-.drill-wrap { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--r-md, 8px);
-  background: var(--surface-2); padding: 12px 14px; }
-.drill-wrap h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-.drill-wrap .empty { padding: 16px; }
-
-/* Modal de info de tarjeta */
-.card-modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 9000;
-  display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
-.card-modal { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.25));
-  width: 100%; max-width: 560px; padding: 22px 24px; }
-.card-modal-hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
-.card-modal-hdr h2 { font-size: 18px; font-weight: 700; }
-.card-modal .cm-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--tinta-3); padding: 0 4px; }
-.card-modal .cm-meta { font-size: 12px; color: var(--tinta-2); margin-bottom: 14px; }
-.card-modal .cm-meta b { color: var(--tinta-1); }
-.cm-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; background: var(--surface-3); font-size: 11px; font-weight: 600; margin-right: 4px; }
-.card-modal .cm-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.cm-btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--tinta-1); text-decoration: none; display: inline-flex; align-items: center; }
-.cm-btn.primary { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 80px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; }
+  .seg button { border: none; background: transparent; padding: 6px 12px; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg button.active { background: #0A0A0A; color: #fff; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .kpi span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); }
+  .kpi b { font-size: 23px; font-family: 'Raleway'; }
+  .kpi.dark { background: #0A0A0A; color: #fff; } .kpi.dark span { color: rgba(255,255,255,.7); }
+  .grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; margin-bottom: 12px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th { text-align: left; padding: 6px 8px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 6px 8px; border-bottom: 1px solid var(--surface-3); }
+  td.num, th.num { text-align: right; }
+  .bar { height: 9px; background: #0A0A0A; border-radius: 5px; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
 </style>
 </head>
 <body>
-
 <div id="navbar-mount"></div>
-
-<div class="cirene-page-hdr">
-  <h1>Ventas</h1>
-  <div class="cirene-subtabs" id="tabs">
-    <button class="active" data-tab="mio">Mi panel</button>
-    <button data-tab="todos" id="tabTodos" style="display:none">Consolidado</button>
+<div class="wrap">
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">Ventas</h1>
+    <div class="seg" id="period">
+      <button data-p="1m" class="active">Este mes</button>
+      <button data-p="3m">3 meses</button>
+      <button data-p="6m">6 meses</button>
+      <button data-p="ytd">Año</button>
+      <button data-p="all">Todo</button>
+    </div>
   </div>
-  <div class="hdr-actions">
-    <select id="period" class="cirene-select" style="max-width: 200px;">
-      <option value="1m" selected>Este mes</option>
-      <option value="6m">Últimos 6 meses</option>
-      <option value="12m">Últimos 12 meses</option>
-      <option value="ytd">Año en curso (YTD)</option>
-      <option value="all">Histórico completo</option>
-    </select>
-  </div>
+  <div id="dash"><div class="card">Cargando…</div></div>
 </div>
-
-<main id="app">
-  <div class="loading-row"><span class="cirene-spinner"></span> Cargando datos…</div>
-</main>
 
 <script type="module">
 import { renderNavbar } from './js/navbar.js';
-import { requireAuth, isAdmin, getProfile, getCurrentUser } from './js/auth.js';
-import { getSupa } from './js/supa.js';
+import { requireAuth } from './js/auth.js';
+import * as data from './js/cirene-data.js';
+import { money, pct, n } from './js/quote-engine.js';
 
-const $ = id => document.getElementById(id);
-const esc = s => (s || '').toString().replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const fmt = n => (Number(n) || 0).toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const NOW_MONTH = new Date().toISOString().slice(0, 7);
+let cards = [], quotes = [], payments = [], leads = [], stages = [];
+let period = '1m';
 
-const state = {
-  tab: 'mio',
-  period: '1m',
-  cards: [],
-  vendors: [],     // [{name, totalAmount, totalQty, starProduct, ordersCount, monthly: {YYYY-MM: amount}}]
-  consolidated: null, // {totalAmount, totalQty, starProduct, ordersCount, monthly}
-  meVendor: '',
-  isAdmin: false,
-  loading: true,
-  detailMonth: NOW_MONTH,
-  detailSort: 'desc',      // orden del detalle del mes por total: 'desc' | 'asc'
-  newClients: { byVendor: new Map(), total: 0 },  // (#18) clientes cuyo 1er pedido cae en el período
-  selectedProduct: null,   // producto expandido en "productos más vendidos"
-  vendorFilter: null,      // vendedor activo del panel (me.name en 'mio', null en consolidado)
-};
+await requireAuth();
+renderNavbar('ventas');
+[cards, quotes, payments, leads, stages] = await Promise.all([
+  data.listProductionCards().catch(() => []), data.listQuotes().catch(() => []), data.listPayments().catch(() => []),
+  data.listIntakeCards().catch(() => []), data.listStages('comercial').catch(() => [])
+]);
+document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#period button').forEach(x => x.classList.toggle('active', x === b));
+  period = b.dataset.p; render();
+});
+render();
 
-// ─── INIT ────────────────────────────────────────────────
-(async function init() {
-  await requireAuth();
-  renderNavbar('ventas');
-  state.isAdmin = await isAdmin();
-  if (state.isAdmin) $('tabTodos').style.display = '';
-  const profile = await getProfile();
-  state.meVendor = profile?.vendor_name || profile?.full_name || '';
-
-  bindUI();
-  await loadData();
-  render();
-})();
-
-function bindUI() {
-  document.querySelectorAll('#tabs button').forEach(b => {
-    b.onclick = () => {
-      if (b.style.display === 'none') return;
-      state.tab = b.dataset.tab;
-      document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      render();
-    };
-  });
-  $('period').onchange = async (e) => {
-    state.period = e.target.value;
-    await loadData();
-    render();
-  };
-  // Click delegado en el panel: fila de producto → drill; fila con data-card-id → modal.
-  $('app').addEventListener('click', onAppClick);
+function lastMonths(k) { const arr = []; const d = new Date(); for (let i = k - 1; i >= 0; i--) { const dd = new Date(d.getFullYear(), d.getMonth() - i, 1); arr.push(dd.toISOString().slice(0, 7)); } return arr; }
+function periodMonths(p) {
+  const now = new Date(); const cur = now.toISOString().slice(0, 7);
+  if (p === '1m') return [cur];
+  if (p === '3m') return lastMonths(3);
+  if (p === '6m') return lastMonths(6);
+  if (p === 'ytd') { const y = now.getFullYear(), arr = []; for (let m = 0; m <= now.getMonth(); m++) arr.push(`${y}-${String(m + 1).padStart(2, '0')}`); return arr; }
+  return null; // all
 }
+const cardMonth = c => c.billing_month || (c.created_at || '').slice(0, 7);
+const monthOf = d => (d || '').slice(0, 7);
 
-function onAppClick(e) {
-  const prodRow = e.target.closest('tr.prod-row');
-  if (prodRow) { toggleProductDrill(prodRow.dataset.product); return; }
-  const cardRow = e.target.closest('[data-card-id]');
-  if (cardRow) { openCardModal(cardRow.dataset.cardId); return; }
-}
-
-// ─── DRILL: tarjetas que contienen un producto ───────────
-function toggleProductDrill(name) {
-  state.selectedProduct = (state.selectedProduct === name) ? null : name;
-  document.querySelectorAll('tr.prod-row').forEach(r =>
-    r.classList.toggle('open', r.dataset.product === state.selectedProduct));
-  renderProductDrill();
-}
-
-function renderProductDrill() {
-  const wrap = document.getElementById('product-drill');
-  if (!wrap) return;
-  const name = state.selectedProduct;
-  if (!name) { wrap.innerHTML = ''; return; }
-  const vf = state.vendorFilter;
-  const cards = state.cards.filter(c => {
-    if (!cardInPeriod(c)) return false;
-    if (vf && (c.vendor || '').trim().toLowerCase() !== vf.toLowerCase()) return false;
-    const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-    return lines.some(l => (l.producto || 'Sin producto').trim() === name);
-  }).map(c => {
-    const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-    const qty = lines.filter(l => (l.producto || 'Sin producto').trim() === name)
-      .reduce((s, l) => s + (Number(l.cantidad) || 0), 0);
-    return { c, qty, total: cardTotal(c) };
-  }).sort((a, b) => b.total - a.total);
-
-  const rows = cards.map(({ c, qty, total }) => `
-    <tr data-card-id="${esc(c.id)}">
-      <td><b>${esc(c.client_name || '—')}</b></td>
-      ${vf ? '' : `<td style="font-size:12px">${esc(c.vendor || '—')}</td>`}
-      <td class="num">${fmt(qty)}</td>
-      <td class="num azul">${total ? fmt(total) : '—'}</td>
-    </tr>`).join('');
-
-  wrap.innerHTML = `
-    <div class="drill-wrap">
-      <h3>Tarjetas con “<span style="color:var(--azul)">${esc(name)}</span>” — ${cards.length}</h3>
-      ${cards.length ? `
-        <table class="v-tbl">
-          <thead><tr><th>Cliente</th>${vf ? '' : '<th>Vendedor</th>'}<th style="text-align:right">Cant.</th><th style="text-align:right">Total tarjeta</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      ` : `<div class="empty">Sin tarjetas con este producto en el período.</div>`}
-    </div>`;
-}
-
-// ─── MODAL: info de una tarjeta ──────────────────────────
-let _cardModalEl = null;
-function _escClose(e) { if (e.key === 'Escape') closeCardModal(); }
-function closeCardModal() {
-  if (_cardModalEl) { _cardModalEl.remove(); _cardModalEl = null; document.removeEventListener('keydown', _escClose); }
-}
-function openCardModal(id) {
-  const c = state.cards.find(x => String(x.id) === String(id));
-  if (!c) return;
-  closeCardModal();
-  const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-  const linesRows = lines.map(l => {
-    const qty = Number(l.cantidad) || 0, price = Number(l.precio || l.precio_unit) || 0;
-    const sub = qty * price;
-    return `<tr>
-      <td>${esc(l.producto || '—')}</td>
-      <td>${esc(l.color || '')}</td>
-      <td>${esc(l.talle || '')}</td>
-      <td class="num">${qty || ''}</td>
-      <td class="num">${price ? fmt(price) : ''}</td>
-      <td class="num azul">${sub ? fmt(sub) : '—'}</td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="6" class="empty">Sin líneas de producto</td></tr>`;
-  const total = cardTotal(c);
-
-  const bg = document.createElement('div');
-  bg.className = 'card-modal-bg';
-  bg.innerHTML = `
-    <div class="card-modal">
-      <div class="card-modal-hdr">
-        <h2>${esc(c.client_name || '(sin cliente)')}</h2>
-        <button class="cm-close" aria-label="Cerrar">×</button>
-      </div>
-      <div class="cm-meta">
-        ${c.vendor ? `<span class="cm-tag">${esc(c.vendor)}</span>` : ''}
-        ${c.stage_key ? `<span class="cm-tag">${esc(c.stage_key)}</span>` : ''}
-        ${c.estado_stock ? `<span class="cm-tag">${esc(c.estado_stock)}</span>` : ''}
-        ${c.descripcion_pedido ? `<div style="margin-top:10px;color:var(--tinta-1)">${esc(c.descripcion_pedido)}</div>` : ''}
-        <div style="margin-top:10px">
-          <b>Facturación:</b> ${esc(cardMonth(c) || '—')}
-          · <b>Creada:</b> ${esc((c.created_at || '').slice(0, 10) || '—')}${c.due_date ? ` · <b>Entrega:</b> ${esc(c.due_date.slice(0, 10))}` : ''}
-        </div>
-      </div>
-      <table class="v-tbl">
-        <thead><tr><th>Producto</th><th>Color</th><th>Talle</th><th style="text-align:right">Cant.</th><th style="text-align:right">P.Unit</th><th style="text-align:right">Subtotal</th></tr></thead>
-        <tbody>${linesRows}</tbody>
-      </table>
-      <div style="text-align:right;margin-top:10px;font-weight:700;font-size:15px">Total: <span style="color:var(--azul)">${fmt(total)} UYU</span></div>
-      <div class="cm-foot">
-        <a class="cm-btn primary" href="production.html?card=${encodeURIComponent(c.id)}">Abrir y editar en Producción →</a>
-        <button class="cm-btn cm-close-btn">Cerrar</button>
-      </div>
-    </div>`;
-  bg.addEventListener('click', e => { if (e.target === bg) closeCardModal(); });
-  bg.querySelector('.cm-close').onclick = closeCardModal;
-  bg.querySelector('.cm-close-btn').onclick = closeCardModal;
-  document.addEventListener('keydown', _escClose);
-  document.body.appendChild(bg);
-  _cardModalEl = bg;
-}
-
-// ─── DATA ────────────────────────────────────────────────
-function periodFilter() {
-  const now = new Date();
-  if (state.period === '1m') {
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  }
-  if (state.period === '6m') {
-    const d = new Date(now); d.setMonth(d.getMonth() - 6);
-    return d.toISOString().slice(0, 10);
-  }
-  if (state.period === '12m') {
-    const d = new Date(now); d.setMonth(d.getMonth() - 12);
-    return d.toISOString().slice(0, 10);
-  }
-  if (state.period === 'ytd') {
-    return `${now.getFullYear()}-01-01`;
-  }
-  return '2000-01-01';
-}
-
-// (nuevo) Ventana del período por MES DE FACTURACIÓN (billing_month). La
-// facturación/KPIs se calculan sobre estos meses, así el número de arriba a la
-// izquierda se actualiza según el filtro de arriba a la derecha.
-function periodBounds() {
-  const now = new Date();
-  const cm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthsAgo = (n) => { const d = new Date(now); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
-  if (state.period === '1m')  return { min: cm, max: cm };
-  if (state.period === '6m')  return { min: monthsAgo(5), max: null };   // 6 meses incl. el actual
-  if (state.period === '12m') return { min: monthsAgo(11), max: null };
-  if (state.period === 'ytd') return { min: `${now.getFullYear()}-01`, max: null };
-  return { min: null, max: null };  // 'all'
-}
-function periodLabel() {
-  return ({ '1m':'este mes', '6m':'últimos 6 meses', '12m':'últimos 12 meses', 'ytd':'año en curso', 'all':'histórico' })[state.period] || '';
-}
-
-// Mes de facturación de una tarjeta (billing_month con fallback a due_date/created_at).
-function cardMonth(c) {
-  return c.billing_month || (c.due_date || c.created_at || '').slice(0, 7);  // 'YYYY-MM'
-}
-// True si la tarjeta cae dentro del período elegido (filtro de KPIs/tablas).
-function cardInPeriod(c) {
-  const pb = periodBounds();
-  const m = cardMonth(c);
-  return (!pb.min || m >= pb.min) && (!pb.max || m <= pb.max);
-}
-// Total facturado de una tarjeta (Σ cantidad × precio de sus líneas).
-function cardTotal(c) {
-  const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-  return lines.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio || l.precio_unit) || 0), 0);
-}
-
-async function loadData() {
-  state.loading = true;
-  render();
-  try {
-    const supa = getSupa();
-    // `since` (por created_at) se sigue usando para "nuevos clientes".
-    const since = periodFilter();
-    // La query se trae una ventana MÁS ANCHA por created_at (2 meses antes del
-    // corte) para no perder tarjetas cuyo billing_month cae en el período pero
-    // se crearon antes (ej: creada en abril, facturada en mayo). El recorte
-    // fino por billing_month se hace en aggregate().
-    const qd = new Date((since || '2000-01-01') + 'T00:00:00');
-    qd.setMonth(qd.getMonth() - 2);
-    let querySince = qd.toISOString().slice(0, 10);
-    // El gráfico de evolución muestra SIEMPRE los últimos ~13 meses (independiente
-    // del filtro de KPIs), así "este mes" no deja la curva con un solo punto.
-    // Traemos esa ventana más ancha aunque el período elegido sea más corto.
-    const chartStart = new Date(); chartStart.setMonth(chartStart.getMonth() - 13);
-    const chartSince = chartStart.toISOString().slice(0, 10);
-    if (chartSince < querySince) querySince = chartSince;
-    const { data, error } = await supa.from('production_cards')
-      .select('id, vendor, client_name, descripcion_pedido, product_lines, stage_key, estado_stock, created_at, completed_at, is_sample, billing_month, due_date')
-      .gte('created_at', querySince + 'T00:00:00')
-      .order('created_at', { ascending: false })
-      .limit(5000);
-    if (error) throw error;
-
-    // (#8) Solo cuentan VENTAS REALES concretadas. Excluimos:
-    //  - muestras (is_sample)
-    //  - cotizaciones no concretadas (stage_key 'borrador')
-    //  - pedidos cancelados (stage_key 'cancelado' o estado_stock 'Cancelado')
-    //  - pedidos en pausa (estado_stock 'En Pausa')
-    // Antes se contaban todos → inflaba la facturación (ej: Santiago/mayo 90k vs 70k real).
-    // Filtro centralizado y fácil de tunear si cambia la definición de "venta real".
-    const EXCLUDED_STAGES = new Set(['borrador', 'cancelado']);
-    const EXCLUDED_ESTADO_STOCK = new Set(['Cancelado', 'En Pausa']);
-    state.cards = (data || []).filter(c =>
-      !c.is_sample &&
-      !EXCLUDED_STAGES.has(c.stage_key) &&
-      !EXCLUDED_ESTADO_STOCK.has(c.estado_stock));
-    aggregate();
-
-    // (#18) "Nuevos clientes generados": un cliente es nuevo cuando su PRIMER
-    // pedido histórico (mín. created_at) cae dentro del período elegido. Hay que
-    // mirar TODO el historial (sin filtro de período) para saber el primer-visto.
-    try {
-      const { data: allRows } = await supa.from('production_cards')
-        .select('client_name, odoo_partner_id, vendor, created_at, is_sample')
-        .limit(20000);
-      state.newClients = computeNewClients(allRows || [], since);
-    } catch (e2) {
-      console.warn('No se pudo calcular nuevos clientes:', e2.message);
-      state.newClients = { byVendor: new Map(), total: 0 };
-    }
-  } catch (e) {
-    console.error('No se pudieron cargar tarjetas:', e.message);
-    state.cards = [];
-  }
-  state.loading = false;
-}
-
-// Cliente identificado por odoo_partner_id (preferido) o client_name normalizado.
-// "Generado por" = vendedor del primer pedido histórico de ese cliente.
-function computeNewClients(rows, sinceISO) {
-  const firstByClient = new Map();  // key → { vendor, created_at }
-  for (const r of rows) {
-    if (r.is_sample) continue;
-    const key = r.odoo_partner_id
-      ? 'p:' + r.odoo_partner_id
-      : 'n:' + (r.client_name || '').trim().toLowerCase();
-    if (key === 'n:') continue;  // sin cliente
-    const prev = firstByClient.get(key);
-    if (!prev || (r.created_at || '') < (prev.created_at || '')) {
-      firstByClient.set(key, { vendor: (r.vendor || 'Sin vendedor').trim(), created_at: r.created_at || '' });
-    }
-  }
-  const byVendor = new Map();
-  let total = 0;
-  for (const { vendor, created_at } of firstByClient.values()) {
-    if (created_at && created_at.slice(0, 10) >= sinceISO) {
-      byVendor.set(vendor, (byVendor.get(vendor) || 0) + 1);
-      total++;
-    }
-  }
-  return { byVendor, total };
-}
-
-// Agrega cards por vendedor y arma estructuras para render.
-//
-// IMPORTANTE: dos ventanas distintas conviven acá:
-//  - KPIs/tablas (totalAmount, totalQty, products, ordersCount) → SOLO período elegido.
-//  - `monthly` (serie del gráfico de evolución) → TODA la ventana cargada (~13 meses),
-//    así "este mes" no deja la curva con un único punto. El gráfico no depende del filtro.
-function aggregate() {
-  const byVendor = new Map();
-  const consolidated = { totalAmount: 0, totalQty: 0, products: new Map(), monthly: new Map(), ordersCount: 0 };
-
-  const ensureVendor = (v) => {
-    if (!byVendor.has(v)) byVendor.set(v, {
-      name: v, totalAmount: 0, totalQty: 0, products: new Map(), monthly: new Map(), ordersCount: 0,
-    });
-    return byVendor.get(v);
-  };
-
-  for (const c of state.cards) {
-    const month = cardMonth(c);
-    const within = cardInPeriod(c);
-    const v = (c.vendor || 'Sin vendedor').trim();
-    const vd = ensureVendor(v);
-    if (within) { vd.ordersCount += 1; consolidated.ordersCount += 1; }
-
-    const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-    for (const l of lines) {
-      const qty = Number(l.cantidad) || 0;
-      const price = Number(l.precio || l.precio_unit || 0);
-      const amount = qty * price;
-      // KPIs/tablas: solo dentro del período.
-      if (within) {
-        vd.totalAmount += amount;
-        vd.totalQty += qty;
-        consolidated.totalAmount += amount;
-        consolidated.totalQty += qty;
-        const pname = (l.producto || 'Sin producto').trim();
-        vd.products.set(pname, (vd.products.get(pname) || 0) + qty);
-        consolidated.products.set(pname, (consolidated.products.get(pname) || 0) + qty);
-      }
-      // Serie del gráfico: SIEMPRE (toda la ventana cargada).
-      if (month) {
-        vd.monthly.set(month, (vd.monthly.get(month) || 0) + amount);
-        consolidated.monthly.set(month, (consolidated.monthly.get(month) || 0) + amount);
-      }
-    }
-  }
-
-  // Reducir products map → star product
-  function starProduct(map) {
-    let best = '—', bestQty = 0;
-    for (const [n, q] of map.entries()) {
-      if (q > bestQty) { best = n; bestQty = q; }
-    }
-    return { name: best, qty: bestQty };
-  }
-
-  // El ranking solo lista vendedores con actividad EN EL PERÍODO (los que solo
-  // tienen meses fuera de rango existen para la serie del gráfico, pero no en la tabla).
-  state.vendors = [...byVendor.values()]
-    .filter(v => v.ordersCount > 0 || v.totalAmount > 0)
-    .map(v => ({ ...v, star: starProduct(v.products) }))
-    .sort((a, b) => b.totalAmount - a.totalAmount);
-
-  state.consolidated = { ...consolidated, star: starProduct(consolidated.products) };
-}
-
-// ─── RENDER ──────────────────────────────────────────────
 function render() {
-  // Cada render completo colapsa el drill de productos (evita estado viejo al
-  // cambiar de período/tab). El detalle mensual re-renderiza aparte sin tocar esto.
-  state.selectedProduct = null;
-  const app = $('app');
-  if (state.loading) {
-    app.innerHTML = `<div class="loading-row"><span class="cirene-spinner"></span> Cargando datos…</div>`;
-    return;
-  }
-  if (state.tab === 'mio') renderMine(app);
-  else renderConsolidated(app);
-}
+  const months = periodMonths(period);
+  const inP = m => months === null || months.includes(m);
+  const pcards = cards.filter(c => inP(cardMonth(c)));
+  const facturado = pcards.reduce((s, c) => s + n(c.total_venta), 0);
+  const cobrado = payments.filter(p => inP(monthOf(p.fecha))).reduce((s, p) => s + n(p.monto), 0);
+  const pquotes = quotes.filter(q => inP(monthOf(q.created_at)));
+  const aceptadas = pquotes.filter(q => q.estado === 'aceptado').length;
+  const conv = pquotes.length ? aceptadas / pquotes.length : 0;
 
-function renderMine(app) {
-  // Buscar el vendor del usuario actual
-  const me = state.vendors.find(v => v.name.toLowerCase() === (state.meVendor || '').toLowerCase());
-  state.vendorFilter = me ? me.name : (state.meVendor || null);
-  if (!me) {
-    app.innerHTML = `
-      <div class="empty">
-        No hay ventas a tu nombre en este período.<br>
-        <small>Tu nombre de vendedor: <b>${esc(state.meVendor || '(sin nombre)')}</b> · cambiá el período arriba o creá una tarea con tu nombre.</small>
+  // evolución 12 meses (independiente del filtro)
+  const m12 = lastMonths(12);
+  const serie = m12.map(m => cards.filter(c => cardMonth(c) === m).reduce((s, c) => s + n(c.total_venta), 0));
+
+  // por vendedor (período)
+  const vend = {}; pcards.forEach(c => { const v = c.vendor || '—'; vend[v] = (vend[v] || 0) + n(c.total_venta); });
+  const vendArr = Object.entries(vend).sort((a, b) => b[1] - a[1]);
+
+  // productos más vendidos (período, por unidades)
+  const prod = {}; pcards.forEach(c => (c.product_lines || []).forEach(l => { if (!l.producto) return; prod[l.producto] = (prod[l.producto] || 0) + (n(l.cantidad) || 1); }));
+  const prodArr = Object.entries(prod).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  // pipeline (leads activos por etapa)
+  const pipe = stages.map(st => ({ label: st.label, count: leads.filter(l => l.status !== 'aceptada' && (l.stage_key || 'mensaje_entrante') === st.key).length }));
+
+  $('#dash').innerHTML = `
+    <div class="kpis">
+      <div class="kpi dark"><span>Facturado</span><b>${money(facturado)}</b></div>
+      <div class="kpi"><span>Cobrado</span><b>${money(cobrado)}</b></div>
+      <div class="kpi"><span>Por cobrar</span><b>${money(Math.max(0, facturado - cobrado))}</b></div>
+      <div class="kpi"><span>Trabajos</span><b>${pcards.length}</b></div>
+      <div class="kpi"><span>Cotizaciones</span><b>${pquotes.length}</b></div>
+      <div class="kpi"><span>Conversión</span><b>${pct(conv)}</b></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="card"><h2>Evolución de ventas (12 meses)</h2>${lineChart(m12, serie)}</div>
+        <div class="card"><h2>Ventas por vendedor</h2>${barList(vendArr, money)}</div>
       </div>
-    `;
-    return;
-  }
-  app.innerHTML = vendorView(me);
-  drawChart('chartSVG', me.monthly);
-  drawPie('pieSVG', 'pieLegend', me.products);
-  drawPareto('paretoSVG', periodCards(me.name));
-  renderDetailTable('detail-section', me.name);
-}
-
-function renderConsolidated(app) {
-  if (!state.isAdmin) {
-    app.innerHTML = `<div class="empty">Solo admin/director/ceo puede ver el consolidado.</div>`;
-    return;
-  }
-  state.vendorFilter = null;
-  app.innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="lbl">Facturación · ${esc(periodLabel())}</div><div class="val">${fmt(state.consolidated.totalAmount)}</div><div class="sub">UYU · ${state.consolidated.ordersCount} tarjeta${state.consolidated.ordersCount !== 1 ? 's' : ''}</div></div>
-      <div class="kpi"><div class="lbl">Unidades vendidas</div><div class="val">${fmt(state.consolidated.totalQty)}</div></div>
-      <div class="kpi"><div class="lbl">Producto estrella</div><div class="val" style="font-size:16px;line-height:1.3">${esc(state.consolidated.star.name)}</div><div class="sub">${fmt(state.consolidated.star.qty)} unidad${state.consolidated.star.qty !== 1 ? 'es' : ''}</div></div>
-      <div class="kpi"><div class="lbl">Vendedores activos</div><div class="val">${state.vendors.length}</div></div>
-      <div class="kpi"><div class="lbl">Nuevos clientes generados</div><div class="val">${fmt(state.newClients.total)}</div><div class="sub">1er pedido en el período</div></div>
-    </div>
-
-    <div class="chart-wrap">
-      <div class="chart-hdr"><h2>Facturación mensual — Consolidado</h2><span class="muted">UYU · últimos 12 meses</span></div>
-      <svg id="chartSVG" class="chart-svg" viewBox="0 0 800 300" preserveAspectRatio="none"></svg>
-    </div>
-
-    <div class="vendor-tbl-wrap">
-      <h2>Ranking de vendedores</h2>
-      <table class="v-tbl">
-        <thead>
-          <tr>
-            <th>Vendedor</th>
-            <th>Tarjetas</th>
-            <th>Unidades</th>
-            <th>Producto estrella</th>
-            <th style="text-align:right">Facturación</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${state.vendors.map((v, i) => `
-            <tr>
-              <td><b>${i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : ''}${esc(v.name)}</b></td>
-              <td class="num">${v.ordersCount}</td>
-              <td class="num">${fmt(v.totalQty)}</td>
-              <td><span class="star">${esc(v.star.name)}</span> <small class="muted">(${v.star.qty})</small></td>
-              <td class="num azul">${fmt(v.totalAmount)}</td>
-            </tr>
-          `).join('') || `<tr><td colspan="5" class="empty">Sin datos</td></tr>`}
-        </tbody>
-      </table>
-    </div>
-
-    ${extraChartsBlock()}
-
-    ${productsBlock(state.consolidated.products, 'Productos más vendidos')}
-
-    <div id="detail-section"></div>
-  `;
-  drawChart('chartSVG', state.consolidated.monthly);
-  drawPie('pieSVG', 'pieLegend', state.consolidated.products);
-  drawPareto('paretoSVG', periodCards(null));
-  renderDetailTable('detail-section', null);
-}
-
-function vendorView(v) {
-  return `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="lbl">Facturación · ${esc(periodLabel())}</div><div class="val">${fmt(v.totalAmount)}</div><div class="sub">UYU · ${v.ordersCount} tarjeta${v.ordersCount !== 1 ? 's' : ''}</div></div>
-      <div class="kpi"><div class="lbl">Unidades vendidas</div><div class="val">${fmt(v.totalQty)}</div></div>
-      <div class="kpi"><div class="lbl">Producto estrella</div><div class="val" style="font-size:16px;line-height:1.3">${esc(v.star.name)}</div><div class="sub">${fmt(v.star.qty)} unidad${v.star.qty !== 1 ? 'es' : ''}</div></div>
-      <div class="kpi"><div class="lbl">Ticket promedio</div><div class="val">${fmt(v.ordersCount ? v.totalAmount / v.ordersCount : 0)}</div></div>
-      <div class="kpi"><div class="lbl">Nuevos clientes generados</div><div class="val">${fmt(state.newClients.byVendor.get(v.name) || 0)}</div><div class="sub">1er pedido en el período</div></div>
-    </div>
-
-    <div class="chart-wrap">
-      <div class="chart-hdr"><h2>Tu facturación mes a mes</h2><span class="muted">UYU · últimos 12 meses</span></div>
-      <svg id="chartSVG" class="chart-svg" viewBox="0 0 800 300" preserveAspectRatio="none"></svg>
-    </div>
-
-    ${extraChartsBlock()}
-
-    ${productsBlock(v.products, 'Tus productos más vendidos')}
-
-    <div id="detail-section"></div>
-  `;
-}
-
-// Tarjetas del período (filtro de KPIs) opcionalmente acotadas a un vendedor.
-function periodCards(vendorFilter) {
-  return state.cards.filter(c => {
-    if (!cardInPeriod(c)) return false;
-    if (vendorFilter) return (c.vendor || '').trim().toLowerCase() === vendorFilter.toLowerCase();
-    return true;
-  });
-}
-
-// Bloque con los 2 gráficos analíticos: torta de % de productos (#6) + Pareto de
-// ingresos por tarjeta (#7). Los <svg> los pinta drawPie/drawPareto tras el render.
-function extraChartsBlock() {
-  return `
-    <div class="charts-2up">
-      <div class="chart-wrap" style="margin-bottom:0">
-        <div class="chart-hdr"><h2>Productos vendidos — %</h2><span class="muted">por unidades · ${esc(periodLabel())}</span></div>
-        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-          <svg id="pieSVG" viewBox="0 0 220 220" style="width:220px;height:220px;flex:none"></svg>
-          <div id="pieLegend" style="flex:1;min-width:160px"></div>
-        </div>
+      <div>
+        <div class="card"><h2>Pipeline comercial</h2>
+          <table class="grid"><tbody>${pipe.map(p => `<tr><td>${esc(p.label)}</td><td class="num">${p.count}</td></tr>`).join('')}</tbody></table></div>
+        <div class="card"><h2>Productos más vendidos</h2>
+          <table class="grid"><thead><tr><th>Producto</th><th class="num">Unid.</th></tr></thead>
+          <tbody>${prodArr.map(([p, q]) => `<tr><td>${esc(p)}</td><td class="num">${q}</td></tr>`).join('') || '<tr><td class="muted">Sin datos.</td></tr>'}</tbody></table></div>
       </div>
-      <div class="chart-wrap" style="margin-bottom:0">
-        <div class="chart-hdr"><h2>Pareto de ingresos por tarjeta</h2><span class="muted">¿pocas grandes o muchas chicas?</span></div>
-        <svg id="paretoSVG" class="chart-svg"></svg>
-      </div>
-    </div>
-  `;
+    </div>`;
 }
 
-// Bloque "productos más vendidos" reutilizable (mio + consolidado). Filas
-// clickeables → drill de tarjetas que contienen ese producto (#3).
-function productsBlock(productsMap, title) {
-  const rows = [...productsMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-  return `
-    <div class="vendor-tbl-wrap">
-      <h2>${esc(title)} <small class="muted" style="font-weight:400;font-size:11px">— clic para ver las tarjetas</small></h2>
-      <table class="v-tbl">
-        <thead><tr><th>Producto</th><th style="text-align:right">Unidades</th></tr></thead>
-        <tbody>
-          ${rows.map(([name, qty]) => `
-            <tr class="prod-row" data-product="${esc(name)}"><td><span class="chev">▶</span>${esc(name)}</td><td class="num">${fmt(qty)}</td></tr>
-          `).join('') || `<tr><td colspan="2" class="empty">Sin productos cargados</td></tr>`}
-        </tbody>
-      </table>
-      <div id="product-drill"></div>
-    </div>
-  `;
+function lineChart(labels, vals) {
+  const W = 560, H = 180, pad = 28; const max = Math.max(1, ...vals);
+  const x = i => pad + i * (W - 2 * pad) / (labels.length - 1);
+  const y = v => H - pad - v / max * (H - 2 * pad);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const dots = vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="#0A0A0A"/>`).join('');
+  const xlabels = labels.map((m, i) => i % 2 === 0 ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="9" text-anchor="middle" fill="#9AA0A6">${m.slice(5)}</text>` : '').join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}" stroke="#E2E2E0"/>
+    <polyline points="${pts}" fill="none" stroke="#0A0A0A" stroke-width="2"/>${dots}${xlabels}
+    <text x="${pad}" y="16" font-size="10" fill="#9AA0A6">máx ${money(max)}</text></svg>`;
 }
-
-// ─── DETALLE MENSUAL ─────────────────────────────────────
-// Muestra todas las órdenes del mes seleccionado (filtradas por vendedor si se pasa).
-// vendorFilter: string o null (null = todos los vendedores, para admin consolidado).
-function renderDetailTable(containerId, vendorFilter) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-
-  const dm = state.detailMonth;
-  const cards = state.cards.filter(c => {
-    if (cardMonth(c) !== dm) return false;
-    if (vendorFilter) return (c.vendor || '').trim().toLowerCase() === vendorFilter.toLowerCase();
-    return true;
-  });
-
-  const grandTotal = cards.reduce((s, c) => s + cardTotal(c), 0);
-
-  // (#5) Orden por total de la tarjeta: 'desc' (mayor→menor) | 'asc' (menor→mayor).
-  const sortDir = state.detailSort === 'asc' ? 1 : -1;
-  const enriched = cards.map(c => {
-    const lines = Array.isArray(c.product_lines) ? c.product_lines : [];
-    const qty = lines.reduce((s, l) => s + (Number(l.cantidad) || 0), 0);
-    return { c, total: cardTotal(c), qty };
-  }).sort((a, b) => (a.total - b.total) * sortDir);
-
-  // (#4) Solo cliente + descripción del pedido + cantidad + total. La fila es
-  // clickeable → abre el modal de info (y desde ahí "Abrir y editar en Producción").
-  const rows = enriched.map(({ c, total, qty }) => {
-    const vendor = vendorFilter ? '' : `<td style="font-size:12px">${esc(c.vendor || '—')}</td>`;
-    return `<tr data-card-id="${esc(c.id)}">
-      <td><b>${esc(c.client_name || '—')}</b></td>
-      <td class="muted" style="font-size:12px">${esc(c.descripcion_pedido || '—')}</td>
-      ${vendor}
-      <td class="num">${fmt(qty)}</td>
-      <td class="num azul">${total ? fmt(total) : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  const vendorHeader = vendorFilter ? '' : '<th>Vendedor</th>';
-  const sortLabel = state.detailSort === 'asc' ? 'Total: menor → mayor' : 'Total: mayor → menor';
-
-  el.innerHTML = `
-    <div class="vendor-tbl-wrap" style="margin-top:18px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <h2>Detalle del mes — <b>${grandTotal ? fmt(grandTotal) + ' UYU' : 'sin ventas'}</b></h2>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button id="detail-sort-btn" class="cm-btn" style="padding:6px 12px;font-size:12px">${sortLabel}</button>
-          <input type="month" id="detail-month-input" value="${esc(dm)}" class="cirene-select" style="max-width:180px">
-        </div>
-      </div>
-      ${cards.length ? `
-        <table class="v-tbl">
-          <thead><tr>
-            <th>Cliente</th>
-            <th>Descripción del pedido</th>
-            ${vendorHeader}
-            <th style="text-align:right">Cant.</th>
-            <th style="text-align:right">Total</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="muted" style="font-size:11px;margin-top:8px">Clic en una fila para ver la tarjeta y editarla.</div>
-      ` : `<div class="empty">Sin órdenes para <b>${esc(dm)}</b>${vendorFilter ? ' a tu nombre' : ''}.</div>`}
-    </div>
-  `;
-
-  document.getElementById('detail-month-input').onchange = e => {
-    state.detailMonth = e.target.value;
-    renderDetailTable(containerId, vendorFilter);
-  };
-  const sortBtn = document.getElementById('detail-sort-btn');
-  if (sortBtn) sortBtn.onclick = () => {
-    state.detailSort = state.detailSort === 'asc' ? 'desc' : 'asc';
-    renderDetailTable(containerId, vendorFilter);
-  };
-}
-
-// Enumera meses 'YYYY-MM' inclusive entre first y last (para rellenar huecos).
-function enumerateMonths(first, last) {
-  const out = [];
-  let [y, m] = first.split('-').map(Number);
-  const [ly, lm] = last.split('-').map(Number);
-  while (y < ly || (y === ly && m <= lm)) {
-    out.push(`${y}-${String(m).padStart(2, '0')}`);
-    m++; if (m > 12) { m = 1; y++; }
-  }
-  return out;
-}
-
-// ─── CHART SVG (línea de evolución) ──────────────────────
-// Dibuja un line chart en el <svg id=...> usando un Map de YYYY-MM → amount.
-// FIX: usa el ancho REAL en píxeles como sistema de coordenadas (antes el viewBox
-// 800×300 con preserveAspectRatio="none" se estiraba al ancho del contenedor y la
-// curva se veía "achatada/estirada"). Además rellena los meses sin ventas con 0
-// para que la línea sea continua en el tiempo, y centra el caso de un solo punto.
-function drawChart(svgId, monthlyMap) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-  const W = Math.max(320, Math.round(svg.getBoundingClientRect().width) || 800);
-  const H = 300, PAD_L = 56, PAD_R = 20, PAD_T = 24, PAD_B = 40;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  const innerW = W - PAD_L - PAD_R;
-  const innerH = H - PAD_T - PAD_B;
-
-  let months = [...monthlyMap.keys()].sort();
-  if (!months.length) {
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#9CA3AF" font-size="13">Sin datos para graficar</text>`;
-    return;
-  }
-  // Recortar meses cero al INICIO (la curva no arranca pegada al piso).
-  const _firstNZ = months.findIndex(m => (monthlyMap.get(m) || 0) > 0);
-  if (_firstNZ > 0) months = months.slice(_firstNZ);
-  // Rellenar huecos intermedios con 0 → timeline continuo.
-  if (months.length > 1) months = enumerateMonths(months[0], months[months.length - 1]);
-
-  const values = months.map(m => monthlyMap.get(m) || 0);
-  const maxVal = Math.max(...values, 1) * 1.15;  // headroom 15%
-  const single = months.length === 1;
-  const stepX = single ? 0 : innerW / (months.length - 1);
-
-  const points = months.map((m, i) => ({
-    x: single ? PAD_L + innerW / 2 : PAD_L + i * stepX,
-    y: PAD_T + innerH - (values[i] / maxVal) * innerH,
-    m, v: values[i],
-  }));
-
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(r => {
-    const y = PAD_T + innerH * (1 - r);
-    return `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#E5E7EB" stroke-width="1"/>
-      <text x="${PAD_L - 8}" y="${y + 3}" text-anchor="end" fill="#6B7280" font-size="10">${fmt(maxVal * r)}</text>`;
-  }).join('');
-
-  const xStep = Math.max(1, Math.ceil(months.length / 8));
-  const xLabels = months.map((m, i) => {
-    if (!single && i % xStep !== 0 && i !== months.length - 1) return '';
-    return `<text x="${points[i].x}" y="${H - PAD_B + 16}" text-anchor="middle" fill="#6B7280" font-size="10">${m.slice(2)}</text>`;
-  }).join('');
-
-  // Etiquetas de valor sobre los puntos cuando son pocos (≤14 meses).
-  const valLabels = months.length <= 14 ? points.map(p =>
-    p.v > 0 ? `<text x="${p.x}" y="${p.y - 9}" text-anchor="middle" fill="#0A0A0A" font-size="9.5" font-weight="600">${fmt(p.v)}</text>` : '').join('') : '';
-
-  const dots = points.map(p =>
-    `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#0A0A0A" stroke="#fff" stroke-width="2"><title>${p.m}: ${fmt(p.v)} UYU</title></circle>`).join('');
-
-  if (single) {
-    svg.innerHTML = `${gridLines}${dots}${valLabels}${xLabels}`;
-    return;
-  }
-
-  const linePath = points.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(' ');
-  const areaPath = linePath + ` L${points[points.length - 1].x},${PAD_T + innerH} L${points[0].x},${PAD_T + innerH} Z`;
-  svg.innerHTML = `
-    <defs>
-      <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#0A0A0A" stop-opacity="0.25"/>
-        <stop offset="100%" stop-color="#0A0A0A" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    ${gridLines}
-    <path d="${areaPath}" fill="url(#grad)"/>
-    <path d="${linePath}" stroke="#0A0A0A" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    ${dots}${valLabels}${xLabels}
-  `;
-}
-
-// ─── CHART: torta de % de productos vendidos (#6) ────────
-// productsMap: Map nombre → unidades. Muestra top-8 + "Otros".
-const PIE_COLORS = ['#0A0A0A','#2E86DE','#54A0FF','#10AC84','#F6B93B','#E58E26','#EB4D4B','#8854D0','#A5B1C2'];
-function drawPie(svgId, legendId, productsMap) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-  const entries = [...productsMap.entries()].filter(([, q]) => q > 0).sort((a, b) => b[1] - a[1]);
-  const legend = legendId ? document.getElementById(legendId) : null;
-  if (!entries.length) {
-    svg.innerHTML = `<text x="110" y="110" text-anchor="middle" fill="#9CA3AF" font-size="13">Sin productos</text>`;
-    if (legend) legend.innerHTML = '';
-    return;
-  }
-  // Top 8 + agrupar el resto en "Otros".
-  const TOP = 8;
-  let slices = entries.slice(0, TOP).map(([name, q]) => ({ name, q }));
-  const restQty = entries.slice(TOP).reduce((s, [, q]) => s + q, 0);
-  if (restQty > 0) slices.push({ name: 'Otros', q: restQty });
-  const total = slices.reduce((s, x) => s + x.q, 0);
-
-  const CX = 110, CY = 110, R = 96;
-  let angle = -Math.PI / 2;  // arranca arriba
-  const arcs = slices.map((s, i) => {
-    const frac = s.q / total;
-    const a0 = angle, a1 = angle + frac * Math.PI * 2;
-    angle = a1;
-    const large = (a1 - a0) > Math.PI ? 1 : 0;
-    const x0 = CX + R * Math.cos(a0), y0 = CY + R * Math.sin(a0);
-    const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
-    const color = PIE_COLORS[i % PIE_COLORS.length];
-    const title = `<title>${esc(s.name)}: ${fmt(s.q)} (${(frac * 100).toFixed(1)}%)</title>`;
-    // Caso un solo producto (frac=1): círculo completo.
-    const shape = (frac >= 0.999)
-      ? `<circle cx="${CX}" cy="${CY}" r="${R}" fill="${color}">${title}</circle>`
-      : `<path d="M${CX},${CY} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${color}">${title}</path>`;
-    return { shape, color, name: s.name, q: s.q, pct: frac * 100 };
-  });
-
-  svg.setAttribute('viewBox', '0 0 220 220');
-  svg.innerHTML = arcs.map(a => a.shape).join('');
-  if (legend) {
-    legend.innerHTML = arcs.map(a => `
-      <div style="display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:5px">
-        <span style="width:11px;height:11px;border-radius:3px;background:${a.color};flex:none"></span>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</span>
-        <b style="font-variant-numeric:tabular-nums">${a.pct.toFixed(1)}%</b>
-      </div>`).join('');
-  }
-}
-
-// ─── CHART: Pareto de ingresos por tarjeta (#7) ──────────
-// cards: array de tarjetas (ya filtradas por período/vendedor). Barras = total de
-// cada tarjeta ordenadas de mayor a menor; línea = % acumulado de facturación.
-// Sirve para ver si la facturación viene de pocas tarjetas grandes o de muchas chicas.
-function drawPareto(svgId, cards) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-  const W = Math.max(320, Math.round(svg.getBoundingClientRect().width) || 800);
-  const H = 300, PAD_L = 56, PAD_R = 44, PAD_T = 24, PAD_B = 52;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  const innerW = W - PAD_L - PAD_R;
-  const innerH = H - PAD_T - PAD_B;
-
-  const items = cards.map(c => ({ id: c.id, label: c.client_name || '—', total: cardTotal(c) }))
-    .filter(x => x.total > 0).sort((a, b) => b.total - a.total);
-  if (!items.length) {
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#9CA3AF" font-size="13">Sin facturación para graficar</text>`;
-    return;
-  }
-  const grand = items.reduce((s, x) => s + x.total, 0);
-  const maxVal = items[0].total * 1.05;
-  const n = items.length;
-  const gap = n > 1 ? innerW / n * 0.18 : 0;
-  const bw = (innerW / n) - gap;
-
-  // % acumulado
-  let acc = 0;
-  const cum = items.map(x => { acc += x.total; return acc / grand; });
-
-  const bars = items.map((x, i) => {
-    const bx = PAD_L + i * (innerW / n) + gap / 2;
-    const bh = (x.total / maxVal) * innerH;
-    const by = PAD_T + innerH - bh;
-    return `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${Math.max(1, bw).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="#54A0FF"><title>${esc(x.label)}: ${fmt(x.total)} UYU</title></rect>`;
-  }).join('');
-
-  // grid + eje izq (UYU)
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(r => {
-    const y = PAD_T + innerH * (1 - r);
-    return `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#E5E7EB" stroke-width="1"/>
-      <text x="${PAD_L - 8}" y="${y + 3}" text-anchor="end" fill="#6B7280" font-size="10">${fmt(maxVal * r)}</text>
-      <text x="${W - PAD_R + 6}" y="${y + 3}" text-anchor="start" fill="#10AC84" font-size="10">${Math.round(r * 100)}%</text>`;
-  }).join('');
-
-  // línea de % acumulado (eje derecho 0–100%)
-  const lpts = cum.map((c, i) => {
-    const x = PAD_L + i * (innerW / n) + (innerW / n) / 2;
-    const y = PAD_T + innerH - c * innerH;
-    return { x, y, c };
-  });
-  const linePath = lpts.map((p, i) => (i === 0 ? `M${p.x.toFixed(1)},${p.y.toFixed(1)}` : `L${p.x.toFixed(1)},${p.y.toFixed(1)}`)).join(' ');
-  const dots = lpts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#10AC84"><title>${(p.c * 100).toFixed(1)}% acumulado</title></circle>`).join('');
-
-  // marca del 80%
-  const y80 = PAD_T + innerH - 0.8 * innerH;
-  const ref80 = `<line x1="${PAD_L}" y1="${y80}" x2="${W - PAD_R}" y2="${y80}" stroke="#EB4D4B" stroke-width="1" stroke-dasharray="4 3"/>
-    <text x="${PAD_L + 4}" y="${y80 - 4}" fill="#EB4D4B" font-size="9.5" font-weight="600">80%</text>`;
-
-  const xCaption = `<text x="${PAD_L + innerW / 2}" y="${H - 10}" text-anchor="middle" fill="#6B7280" font-size="10">${n} tarjeta${n !== 1 ? 's' : ''} · ordenadas de mayor a menor</text>`;
-
-  svg.innerHTML = `${gridLines}${ref80}${bars}<path d="${linePath}" stroke="#10AC84" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xCaption}`;
+function barList(arr, fmt) {
+  if (!arr.length) return '<p class="muted">Sin datos en el período.</p>';
+  const max = Math.max(...arr.map(a => a[1]));
+  return arr.map(([k, v]) => `<div style="margin-bottom:9px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${esc(k)}</span><b>${fmt(v)}</b></div>
+    <div class="bar" style="width:${Math.max(4, v / max * 100)}%"></div></div>`).join('');
 }
 </script>
 </body>

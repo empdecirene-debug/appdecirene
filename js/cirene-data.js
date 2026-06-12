@@ -289,6 +289,13 @@ export async function registerJobPayment({ card, tipo, monto, metodo, fecha }) {
   await sb.from('production_cards').update({ estado_pago: bal.estado, contabilidad: 'Agregado' }).eq('id', card.id);
   return { pay, bal };
 }
+export async function listPayments({ from, to } = {}) {
+  let q = db().from('job_payments').select('monto,fecha,production_card_id').order('fecha', { ascending: false });
+  if (from) q = q.gte('fecha', from);
+  if (to) q = q.lte('fecha', to);
+  const { data } = await q;
+  return data || [];
+}
 export async function cashReport({ from, to } = {}) {
   const movs = await listCashMovements({ from, to });
   let ingresos = 0, egresos = 0; const porCat = {};
