@@ -64,9 +64,15 @@ const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let stages = [], cards = [];
+$('#board').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando consultas…</div>';
 await requireAuth();
 renderNavbar('intake');
-[stages, cards] = await Promise.all([data.listStages('comercial'), data.listIntakeCards()]);
+try {
+  [stages, cards] = await Promise.all([data.listStages('comercial'), data.listIntakeCards()]);
+} catch (e) {
+  $('#board').innerHTML = `<div style="color:#A33A3A;padding:18px">No se pudo cargar el CRM.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
 // el lead aceptado sale del board (pasó a producción)
 stages = stages.filter(s => s.key !== 'aceptado');
 render();

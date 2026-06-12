@@ -93,16 +93,23 @@ let stages = [], cards = [], commentCounts = {};
 let view = 'kanban', calMode = 'entrega', calDate = new Date();
 let listSort = { k: 'client_name', dir: 1 };
 
-await requireAuth();
-renderNavbar('production');
-[stages, cards, commentCounts] = await Promise.all([data.listStages(), data.listProductionCards(), data.countCommentsByCard().catch(() => ({}))]);
-stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
-
+$('#view').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando producción…</div>';
 document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#viewSeg button').forEach(x => x.classList.toggle('active', x === b));
   view = b.dataset.v; render();
 });
+await requireAuth();
+renderNavbar('production');
+try {
+  [stages, cards] = await Promise.all([data.listStages(), data.listProductionCards()]);
+  stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
+} catch (e) {
+  $('#view').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Producción.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
 render();
+// conteo de comentarios en segundo plano (no bloquea el tablero)
+data.countCommentsByCard().then(m => { commentCounts = m; render(); }).catch(() => {});
 const cid = new URLSearchParams(location.search).get('card');
 if (cid && cards.find(c => c.id === cid)) openCard(cid);
 
