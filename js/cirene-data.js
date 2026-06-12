@@ -1,7 +1,7 @@
 // Capa de datos del ERP De Cirene sobre Supabase.
 // Materiales, tarifas de mano de obra, plantillas de producto (BOM) y cotizaciones.
 
-import { getSupa } from './supa.js';
+import { getSupa } from './supa.js?v=2';
 
 const db = () => getSupa();
 
@@ -207,6 +207,21 @@ export async function countCommentsByCard() {
   const map = {};
   (data || []).forEach(r => { map[r.card_id] = (map[r.card_id] || 0) + 1; });
   return map;
+}
+
+/* ───────────── Adjuntos (Supabase Storage, bucket 'adjuntos') ───────────── */
+export async function uploadAttachment(file, cardId) {
+  const sb = db();
+  const safe = (file.name || 'archivo').replace(/[^\w.\-]+/g, '_');
+  const path = `${cardId}/${Date.now()}_${safe}`;
+  const { error } = await sb.storage.from('adjuntos').upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (error) throw error;
+  const { data } = sb.storage.from('adjuntos').getPublicUrl(path);
+  return { name: file.name, url: data.publicUrl, type: file.type || '', path, size: file.size };
+}
+export async function deleteAttachment(path) {
+  if (!path) return;
+  try { await db().storage.from('adjuntos').remove([path]); } catch {}
 }
 // Crea una tarjeta de producción a partir de un lead aceptado (con su cotización si hay).
 export async function createProductionFromIntake(intake, quote) {

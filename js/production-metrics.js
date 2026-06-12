@@ -14,7 +14,7 @@
 // Devuelve por tarjeta un objeto rico (con vendor, supplier, totales) y un
 // resumen agregado (avg, mediana, p95).
 
-import { getSupa } from './supa.js';
+import { getSupa } from './supa.js?v=2';
 
 function diffDays(a, b) {
   if (!a || !b) return null;

@@ -48,10 +48,10 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js';
-import { requireAuth } from './js/auth.js';
-import * as data from './js/cirene-data.js';
-import { money, pct, n } from './js/quote-engine.js';
+import { renderNavbar } from './js/navbar.js?v=2';
+import { requireAuth } from './js/auth.js?v=2';
+import * as data from './js/cirene-data.js?v=2';
+import { money, pct, n } from './js/quote-engine.js?v=2';
 
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -61,14 +61,20 @@ let period = '1m';
 
 await requireAuth();
 renderNavbar('ventas');
-[cards, quotes, payments, leads, stages] = await Promise.all([
-  data.listProductionCards().catch(() => []), data.listQuotes().catch(() => []), data.listPayments().catch(() => []),
-  data.listIntakeCards().catch(() => []), data.listStages('comercial').catch(() => [])
-]);
 document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#period button').forEach(x => x.classList.toggle('active', x === b));
   period = b.dataset.p; render();
 });
+try {
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout).')), 15000));
+  [cards, quotes, payments, leads, stages] = await Promise.race([Promise.all([
+    data.listProductionCards().catch(() => []), data.listQuotes().catch(() => []), data.listPayments().catch(() => []),
+    data.listIntakeCards().catch(() => []), data.listStages('comercial').catch(() => [])
+  ]), timeout]);
+} catch (e) {
+  $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Ventas.<br>${esc(e.message || e)}<br><button onclick="location.reload()" style="margin-top:8px;padding:7px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer">Reintentar</button></div>`;
+  throw e;
+}
 render();
 
 function lastMonths(k) { const arr = []; const d = new Date(); for (let i = k - 1; i >= 0; i--) { const dd = new Date(d.getFullYear(), d.getMonth() - i, 1); arr.push(dd.toISOString().slice(0, 7)); } return arr; }
@@ -84,6 +90,7 @@ const cardMonth = c => c.billing_month || (c.created_at || '').slice(0, 7);
 const monthOf = d => (d || '').slice(0, 7);
 
 function render() {
+ try {
   const months = periodMonths(period);
   const inP = m => months === null || months.includes(m);
   const pcards = cards.filter(c => inP(cardMonth(c)));
@@ -130,6 +137,7 @@ function render() {
           <tbody>${prodArr.map(([p, q]) => `<tr><td>${esc(p)}</td><td class="num">${q}</td></tr>`).join('') || '<tr><td class="muted">Sin datos.</td></tr>'}</tbody></table></div>
       </div>
     </div>`;
+ } catch (e) { $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">Error al mostrar Ventas: ${esc(e.message || e)}</div>`; console.error(e); }
 }
 
 function lineChart(labels, vals) {

@@ -55,9 +55,9 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js';
-import { requireAuth, isAdmin, getProfile } from './js/auth.js';
-import { icon } from './js/icons.js';
+import { renderNavbar } from './js/navbar.js?v=2';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=2';
+import { icon } from './js/icons.js?v=2';
 
 const TILES = [
   { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },

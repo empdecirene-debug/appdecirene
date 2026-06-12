@@ -1,7 +1,7 @@
 // Top navbar compartida entre las páginas de la app (intake, production, admin, etc.).
 // Llamar `renderNavbar('intake')` desde cada página al iniciar.
 
-import { getCurrentUser, getProfile, signOut } from './auth.js';
+import { getCurrentUser, getProfile, signOut } from './auth.js?v=2';
 
 const PAGES = [
   { id: 'home',             href: '/home.html',              label: 'Inicio',     roles: 'all' },

@@ -1,9 +1,9 @@
 // CRUD de talleres.
 
-import { getSupa } from './supa.js';
-import { isAdmin } from './auth.js';
-import { odooExec } from './odoo-client.js';
-import { logAudit } from './audit.js';
+import { getSupa } from './supa.js?v=2';
+import { isAdmin } from './auth.js?v=2';
+import { odooExec } from './odoo-client.js?v=2';
+import { logAudit } from './audit.js?v=2';
 
 export async function listWorkshops({ activeOnly = false } = {}) {
   const supa = getSupa();

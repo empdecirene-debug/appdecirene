@@ -20,8 +20,8 @@
 // o con la X / Escape / click fuera. No requiere que la página tenga ningún
 // elemento previo.
 
-import { loadCatalog } from './catalog-store.js';
-import { getImage } from './image-store.js';
+import { loadCatalog } from './catalog-store.js?v=2';
+import { getImage } from './image-store.js?v=2';
 
 const STATE = {
   open: false,

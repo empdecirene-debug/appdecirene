@@ -45,6 +45,16 @@
   .cal .day.today { border-color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A; }
   .cal .ev { background: #0A0A0A; color: #fff; border-radius: 5px; padding: 2px 5px; font-size: 10px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cal .ev.np { background: #A33A3A; }
+  /* lista por secciones (Asana) */
+  .sect { margin-bottom: 18px; }
+  .sect-h { font-weight: 700; font-size: 13px; padding: 6px 2px; display: flex; gap: 8px; align-items: center; border-bottom: 2px solid #0A0A0A; margin-bottom: 6px; }
+  .sect-h .cnt { background: var(--surface-3); color: var(--tinta-2); border-radius: 999px; padding: 0 8px; font-size: 11px; }
+  /* adjuntos */
+  .att { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .att .a { position: relative; }
+  .att img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .att .file { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; text-decoration: none; color: var(--tinta); background: #fff; }
+  .att .x { position: absolute; top: -6px; right: -6px; background: #A33A3A; color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; line-height: 16px; padding: 0; }
   .btn { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
@@ -80,10 +90,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js';
-import { requireAuth } from './js/auth.js';
-import * as data from './js/cirene-data.js';
-import { money, n } from './js/quote-engine.js';
+import { renderNavbar } from './js/navbar.js?v=2';
+import { requireAuth } from './js/auth.js?v=2';
+import * as data from './js/cirene-data.js?v=2';
+import { money, n } from './js/quote-engine.js?v=2';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
@@ -156,25 +166,22 @@ function bindKanban() {
 
 /* ── LISTA ── */
 function renderLista() {
-  const stLabel = k => (stages.find(s => s.key === k) || {}).label || k;
-  const rows = [...cards].sort((a, b) => {
-    let va = a[listSort.k], vb = b[listSort.k];
-    if (listSort.k === 'total_venta') { va = n(va); vb = n(vb); }
-    return (va > vb ? 1 : va < vb ? -1 : 0) * listSort.dir;
-  });
-  const th = (k, l, cls = '') => `<th data-k="${k}" class="${cls}">${l}${listSort.k === k ? (listSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-  $('#view').innerHTML = `<table class="grid"><thead><tr>
-    ${th('client_name', 'Cliente')}${th('description', 'Producto')}${th('stage_key', 'Etapa')}
-    ${th('total_venta', 'Total', 'num')}<th>Pago</th>${th('due_date', 'Entrega')}<th>Coment.</th></tr></thead>
-    <tbody>${rows.map(c => `<tr data-id="${c.id}">
-      <td><b>${esc(c.client_name || '—')}</b></td>
-      <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
-      <td>${esc(stLabel(c.stage_key))}</td>
-      <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
-      <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
-      <td>${c.due_date || ''} ${esc(c.entrega || '')}</td>
-      <td>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</td></tr>`).join('')}</tbody></table>`;
-  $('#view').querySelectorAll('th[data-k]').forEach(t => t.onclick = () => { const k = t.dataset.k; listSort = { k, dir: listSort.k === k ? -listSort.dir : 1 }; renderLista(); });
+  const rowHtml = c => `<tr data-id="${c.id}">
+    <td><b>${esc(c.client_name || '—')}</b></td>
+    <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
+    <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
+    <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
+    <td>${c.due_date || ''} ${esc(c.entrega || '')}</td>
+    <td>${(c.attachments || []).length ? '📎' + (c.attachments || []).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td></tr>`;
+  let html = '';
+  for (const st of stages) {
+    const cs = cards.filter(c => (c.stage_key || 'procesar') === st.key);
+    if (!cs.length) continue;
+    html += `<div class="sect"><div class="sect-h">${esc(st.label)} <span class="cnt">${cs.length}</span></div>
+      <table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Pago</th><th>Entrega</th><th></th></tr></thead>
+      <tbody>${cs.map(rowHtml).join('')}</tbody></table></div>`;
+  }
+  $('#view').innerHTML = html || '<p class="muted">Sin trabajos.</p>';
   $('#view').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
 }
 
@@ -239,6 +246,12 @@ function openCard(id) {
     </div>
     <div class="mact"><button class="btn primary" id="e-save">Guardar</button><button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>
     <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+      <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--tinta-2)">Adjuntos</label>
+      <div class="att" id="attList"></div>
+      <input type="file" id="attInput" multiple style="display:none">
+      <button class="btn sm" id="attAdd">📎 Adjuntar archivo</button>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
       <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--tinta-2)">Comentarios</label>
       <div id="comments" class="muted" style="margin:8px 0">Cargando…</div>
       <div style="display:flex;gap:8px"><input id="cmt-input" placeholder="Escribir un comentario…" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font:inherit"><button class="btn" id="cmt-add">Enviar</button></div>
@@ -254,6 +267,31 @@ function openCard(id) {
   $('#cmt-add').onclick = async () => {
     const txt = $('#cmt-input').value.trim(); if (!txt) return;
     try { await data.addComment(id, txt); $('#cmt-input').value = ''; commentCounts[id] = (commentCounts[id] || 0) + 1; loadComments(id); } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
+  // adjuntos
+  const attHtml = () => (c.attachments || []).map((f, i) => {
+    const isImg = (f.type || '').startsWith('image/');
+    const inner = isImg ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt=""></a>` : `<a class="file" href="${esc(f.url)}" target="_blank">📄 ${esc((f.name || 'archivo').slice(0, 16))}</a>`;
+    return `<div class="a">${inner}<button class="x" data-att="${i}" title="Quitar">×</button></div>`;
+  }).join('') || '<span class="muted" style="font-size:12px">Sin adjuntos.</span>';
+  const paintAtt = () => {
+    $('#attList').innerHTML = attHtml();
+    $('#attList').querySelectorAll('[data-att]').forEach(b => b.onclick = async () => {
+      const i = +b.dataset.att, f = c.attachments[i];
+      c.attachments.splice(i, 1);
+      try { await data.saveProductionCard({ id, attachments: c.attachments }); if (f?.path) data.deleteAttachment(f.path); paintAtt(); render(); } catch (e) { toast('Error: ' + (e.message || e)); }
+    });
+  };
+  paintAtt();
+  $('#attAdd').onclick = () => $('#attInput').click();
+  $('#attInput').onchange = async e => {
+    const files = [...e.target.files]; if (!files.length) return;
+    toast('Subiendo…');
+    try {
+      for (const f of files) { const meta = await data.uploadAttachment(f, id); c.attachments = [...(c.attachments || []), meta]; }
+      await data.saveProductionCard({ id, attachments: c.attachments });
+      paintAtt(); render(); toast('Adjuntado');
+    } catch (err) { toast('Error: ' + (err.message || err)); }
   };
 }
 async function loadComments(id) {

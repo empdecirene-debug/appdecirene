@@ -106,10 +106,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js';
-import { requireAuth } from './js/auth.js';
-import * as data from './js/cirene-data.js';
-import { calcLine, calcQuoteTotals, money, pct, n } from './js/quote-engine.js';
+import { renderNavbar } from './js/navbar.js?v=2';
+import { requireAuth } from './js/auth.js?v=2';
+import * as data from './js/cirene-data.js?v=2';
+import { calcLine, calcQuoteTotals, money, pct, n } from './js/quote-engine.js?v=2';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
@@ -281,7 +281,7 @@ async function guardar() {
   try {
     const t = calcQuoteTotals(state);
     if (!state.numero) { state.numero = await data.nextQuoteNumber(); state.id = data.quoteId(state.numero); }
-    const { data: { user } } = await (await import('./js/supa.js')).getSupa().auth.getUser();
+    const { data: { user } } = await (await import('./js/supa.js?v=2')).getSupa().auth.getUser();
     const quote = {
       id: state.id, numero: state.numero, estado: 'presupuestado',
       cliente_nombre: state.cliente.nombre || null, cliente_contacto: state.cliente.contacto || null,

@@ -80,10 +80,10 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js';
-import { requireAdmin } from './js/auth.js';
-import { getSupa } from './js/supa.js';
-import { listWorkshops, createWorkshop, updateWorkshop, deactivateWorkshop } from './js/workshops.js';
+import { renderNavbar } from './js/navbar.js?v=2';
+import { requireAdmin } from './js/auth.js?v=2';
+import { getSupa } from './js/supa.js?v=2';
+import { listWorkshops, createWorkshop, updateWorkshop, deactivateWorkshop } from './js/workshops.js?v=2';
 
 const $ = id => document.getElementById(id);
 const esc = s => (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

@@ -1,12 +1,12 @@
 // Lógica del Kanban de producción.
 
-import { getSupa } from './supa.js';
-import { getCurrentUser, getProfile, isAdmin, getOdooUserIdForCurrentUser } from './auth.js';
-import { productionCardId } from './ids.js';
-import { logAudit } from './audit.js';
+import { getSupa } from './supa.js?v=2';
+import { getCurrentUser, getProfile, isAdmin, getOdooUserIdForCurrentUser } from './auth.js?v=2';
+import { productionCardId } from './ids.js?v=2';
+import { logAudit } from './audit.js?v=2';
 import { createCustomerInvoiceDraft, createSaleOrderDraft, updateSaleOrder, cancelSaleOrder,
-         findVatSaleTaxId, findAccountByCode, createPostedInvoiceFromCard } from './odoo-client.js';
-import { computeTargetStage } from './stage-rules.js';
+         findVatSaleTaxId, findAccountByCode, createPostedInvoiceFromCard } from './odoo-client.js?v=2';
+import { computeTargetStage } from './stage-rules.js?v=2';
 
 export async function loadStages() {
   const supa = getSupa();
