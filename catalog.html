@@ -2,163 +2,302 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>De Cirene · Catálogo</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/png" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
-/* Estilos específicos del catálogo */
-.cat-search { max-width: 320px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r);
-  font-size: 13px; background: var(--surface); color: var(--tinta); font-family: inherit; }
-.cat-search:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
-
-.prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-.prod-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 12px; cursor: pointer; transition: all .15s; display: flex; flex-direction: column; gap: 8px; }
-.prod-card:hover { border-color: var(--azul-l); box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.prod-thumb { width: 100%; aspect-ratio: 1; background: var(--surface-3); border-radius: var(--r);
-  display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.prod-thumb img { width: 100%; height: 100%; object-fit: contain; }
-.prod-thumb-placeholder { color: var(--tinta-3); font-size: 28px; }
-.prod-name { font-weight: 600; font-size: 13px; line-height: 1.3; color: var(--tinta); }
-.prod-meta { font-size: 11px; color: var(--tinta-2); display: flex; justify-content: space-between; align-items: center; }
-.prod-price { color: var(--azul); font-weight: 700; }
-.prod-odoo-badge { background: var(--ok-bg); color: var(--ok-text); padding: 2px 6px; border-radius: 999px;
-  font-size: 10px; font-weight: 600; }
-
-/* Modal de edición */
-.modal-bg { position: fixed; inset: 0; background: rgba(0, 0, 0,0.55); z-index: 1000;
-  display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal { background: var(--surface); border-radius: var(--r-xl); width: 100%; max-width: 720px;
-  max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
-.modal-hdr { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex;
-  justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 2; }
-.modal-hdr h2 { font-size: 17px; }
-.modal-body { padding: 20px 22px; }
-.modal-ftr { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 8px;
-  justify-content: flex-end; position: sticky; bottom: 0; background: var(--surface); }
-
-.img-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.img-thumb { position: relative; width: 80px; height: 80px; border-radius: var(--r); overflow: hidden;
-  border: 1px solid var(--border); background: var(--surface-2); }
-.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.img-thumb-del { position: absolute; top: 2px; right: 2px; background: var(--rojo); color: #fff;
-  border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; line-height: 1; }
-.img-thumb-add { width: 80px; height: 80px; border-radius: var(--r); border: 2px dashed var(--border-2);
-  display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--tinta-3);
-  background: var(--surface-2); transition: all .15s; }
-.img-thumb-add:hover { border-color: var(--azul); color: var(--azul); background: var(--surface-3); }
-
-.color-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-.color-swatch { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
-
-.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-.tag-pill { background: var(--surface-3); color: var(--tinta); padding: 4px 10px; border-radius: 999px;
-  font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
-.tag-pill button { background: none; border: none; color: var(--tinta-2); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
-.tag-pill button:hover { color: var(--rojo); }
-
-/* Sync tab */
-.sync-stat { display: inline-block; padding: 14px 20px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); margin-right: 10px; margin-bottom: 10px; min-width: 130px; }
-.sync-stat .val { font-size: 28px; font-weight: 700; color: var(--azul); font-family: 'Raleway', sans-serif; }
-.sync-stat .lbl { font-size: 11px; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
-
-.sync-log { background: #f8f9fb; border: 1px solid var(--border); border-radius: var(--r);
-  padding: 12px; font-family: 'SF Mono', Consolas, monospace; font-size: 11px; line-height: 1.5;
-  max-height: 280px; overflow-y: auto; margin-top: 12px; color: var(--tinta-2); white-space: pre-wrap; }
-.sync-log .ok  { color: var(--ok-text); }
-.sync-log .err { color: var(--err-text); }
-.sync-log .info { color: var(--azul); }
-
-.danger-zone { background: var(--err-bg); border: 1px solid var(--err-border); border-radius: var(--r-lg);
-  padding: 16px; margin-top: 20px; }
-.danger-zone h3 { color: var(--err-text); margin-bottom: 6px; font-size: 14px; }
-.danger-zone p { color: var(--err-text); font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
-
-.tarifa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 14px 18px; margin-bottom: 10px; }
-.tarifa-hdr { font-weight: 600; color: var(--azul); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-.tier-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 40px; gap: 8px; margin-bottom: 6px; }
-
-main { padding: 16px 22px; }
-@media (max-width: 720px) { main { padding: 12px 14px; } }
-
-/* Indicador de guardado en el header */
-.saved-pill{background:#D6F5E5;color:#1A7A4A;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.saving-pill{background:#E8F0FE;color:#1A73E8;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;animation:saving-pulse 1s ease-in-out infinite}
-.save-error-pill{background:#FDECEA;color:#C62828;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-@keyframes saving-pulse{0%,100%{opacity:1}50%{opacity:.55}}
-#saveStatus { margin-left: auto; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 80px; }
+  .tabbar { display: inline-flex; gap: 4px; background: var(--surface-3); padding: 3px; border-radius: 10px; margin-bottom: 18px; }
+  .tabbar button { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: inherit;
+    font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .tabbar button.active { background: #0A0A0A; color: #fff; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.grid input, table.grid select { width: 100%; border: 1px solid transparent; background: transparent; padding: 5px 6px;
+    border-radius: 6px; font: inherit; font-size: 13px; color: var(--tinta); }
+  table.grid input:focus, table.grid select:focus { outline: none; border-color: #0A0A0A; background: #fff; }
+  table.grid td.num input { text-align: right; }
+  .row-actions button { background: none; border: none; cursor: pointer; color: var(--tinta-3); font-size: 15px; padding: 2px 6px; }
+  .row-actions button:hover { color: #A33A3A; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input[type=search] { flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .tpl-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; }
+  .tpl-card:hover { border-color: #0A0A0A; }
+  .tpl-card .t-name { font-weight: 700; }
+  .pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  /* editor */
+  .editor { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .editor h3 { margin-bottom: 12px; }
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; margin-bottom: 16px; }
+  .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin: 14px 0 6px; }
+  .costbox { display: flex; gap: 20px; flex-wrap: wrap; background: #0A0A0A; color: #fff; border-radius: 10px; padding: 12px 16px; margin-top: 14px; }
+  .costbox div span { display: block; font-size: 11px; opacity: .7; text-transform: uppercase; letter-spacing: .04em; }
+  .costbox div b { font-size: 17px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-
 <div id="navbar-mount"></div>
-
-<div class="cirene-page-hdr">
-  <h1>Catálogo <span id="saveStatus" style="font-size:13px;font-weight:400"></span></h1>
-  <div class="cirene-subtabs" id="subtabs">
-    <button class="active" data-subtab="prods">Productos</button>
-    <button data-subtab="tarifas">Tarifas</button>
-    <button data-subtab="sync">Sync Odoo</button>
+<div class="wrap">
+  <h1 style="font-family:'Raleway';margin-bottom:14px;">Catálogo</h1>
+  <div class="tabbar">
+    <button data-tab="materiales" class="active">Materiales</button>
+    <button data-tab="plantillas">Plantillas de producto</button>
+    <button data-tab="mo">Mano de obra</button>
   </div>
-  <div class="hdr-actions">
-    <input type="search" id="search" class="cat-search" placeholder="Buscar producto…" />
-    <button class="cirene-btn cirene-btn-primary" id="btnNew">+ Nuevo producto</button>
-  </div>
+  <div id="pane"></div>
 </div>
+<div id="toast"></div>
 
-<main>
-  <div id="msg"></div>
+<script type="module">
+import { renderNavbar } from './js/navbar.js';
+import { requireAuth } from './js/auth.js';
+import * as data from './js/cirene-data.js';
+import { money, pct, n, calcLine } from './js/quote-engine.js';
 
-  <!-- Productos -->
-  <section id="paneProds">
-    <div class="prod-grid" id="prodGrid"><div class="cirene-hint">Cargando catálogo…</div></div>
-  </section>
+const $ = s => document.querySelector(s);
+const pane = $('#pane');
+const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  <!-- Tarifas -->
-  <section id="paneTarifas" style="display:none">
-    <div id="tarifaList"></div>
-    <button class="cirene-btn cirene-btn-ghost" id="btnAddTarifa" style="margin-top:8px">+ Nueva técnica</button>
-  </section>
+let materials = [], laborRates = [], templates = [];
 
-  <!-- Sync Odoo -->
-  <section id="paneSync" style="display:none">
-    <div class="cirene-card cirene-mb-2">
-      <h2 style="margin-bottom:10px">Estado del sync</h2>
-      <div>
-        <div class="sync-stat"><div class="val" id="statLocal">—</div><div class="lbl">En el catálogo</div></div>
-        <div class="sync-stat"><div class="val" id="statMapped">—</div><div class="lbl">Mapeados a Odoo</div></div>
-        <div class="sync-stat"><div class="val" id="statOdoo">—</div><div class="lbl">En Odoo</div></div>
-      </div>
-      <div style="display:flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
-        <button class="cirene-btn cirene-btn-primary" id="btnPushAll">↑ Subir todo a Odoo (con imágenes y guías)</button>
-        <button class="cirene-btn" id="btnRefreshOdoo">Refrescar estado</button>
-        <button class="cirene-btn cirene-btn-ghost" id="btnImportOdoo">↓ Importar desde Odoo</button>
-      </div>
-      <div class="cirene-hint cirene-mt-1">
-        El push sube nombre, precio, categoría, notas, características, colores (como atributos), imagen principal y guía de talles.
-        Es idempotente: ya mapeados se actualizan en vez de duplicar.
-      </div>
-      <div class="cirene-progress" id="syncProg" style="display:none"><div class="cirene-progress-fill" id="syncProgFill" style="width:0%"></div></div>
-      <div class="sync-log" id="syncLog" style="display:none"></div>
+await requireAuth();
+renderNavbar('catalog');
+[materials, laborRates, templates] = await Promise.all([data.listMaterials(), data.listLaborRates(), data.listTemplates()]);
+
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b));
+  render(b.dataset.tab);
+});
+render('materiales');
+
+function render(tab) {
+  if (tab === 'materiales') renderMateriales();
+  else if (tab === 'mo') renderMO();
+  else renderTemplates();
+}
+
+/* ───────── Materiales ───────── */
+function renderMateriales(filter = '') {
+  const rows = materials.filter(m => !filter || (m.nombre + ' ' + (m.tipo||'') + ' ' + (m.proveedor||'')).toLowerCase().includes(filter.toLowerCase()));
+  pane.innerHTML = `
+    <div class="toolbar">
+      <input type="search" id="mSearch" placeholder="Buscar material…" value="${esc(filter)}">
+      <span class="muted">${rows.length} materiales</span>
+      <button class="btn primary" id="mAdd">+ Material</button>
     </div>
+    <table class="grid"><thead><tr>
+      <th style="width:28%">Material</th><th>Tipo</th><th>Unidad</th>
+      <th style="width:13%" class="num">Precio/unidad</th><th>Proveedor</th><th></th>
+    </tr></thead><tbody id="mBody">
+      ${rows.map(m => matRow(m)).join('')}
+    </tbody></table>`;
+  $('#mSearch').oninput = e => renderMateriales(e.target.value);
+  $('#mAdd').onclick = async () => {
+    const m = await data.upsertMaterial({ nombre: 'Nuevo material', tipo: '', unidad: 'mt', precio_unit: 0, activo: true });
+    materials.unshift(m); renderMateriales(filter);
+  };
+  bindMatRows();
+}
+function matRow(m) {
+  return `<tr data-id="${m.id}">
+    <td><input data-f="nombre" value="${esc(m.nombre)}"></td>
+    <td><input data-f="tipo" value="${esc(m.tipo)}"></td>
+    <td><input data-f="unidad" value="${esc(m.unidad)}" style="max-width:70px"></td>
+    <td class="num"><input data-f="precio_unit" type="number" step="0.01" value="${n(m.precio_unit)}"></td>
+    <td><input data-f="proveedor" value="${esc(m.proveedor)}"></td>
+    <td class="row-actions"><button data-del title="Eliminar">✕</button></td>
+  </tr>`;
+}
+function bindMatRows() {
+  $('#mBody')?.querySelectorAll('tr').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('input').forEach(inp => inp.onchange = async () => {
+      const m = materials.find(x => x.id === id);
+      m[inp.dataset.f] = inp.dataset.f === 'precio_unit' ? n(inp.value) : inp.value;
+      await data.upsertMaterial({ id, nombre: m.nombre, tipo: m.tipo, unidad: m.unidad, precio_unit: m.precio_unit, proveedor: m.proveedor, activo: true });
+      toast('Guardado');
+    });
+    tr.querySelector('[data-del]').onclick = async () => {
+      if (!confirm('¿Eliminar material?')) return;
+      await data.deleteMaterial(id);
+      materials = materials.filter(x => x.id !== id); tr.remove(); toast('Eliminado');
+    };
+  });
+}
 
-    <div class="danger-zone">
-      <h3>⚠ Zona peligrosa: Wipe Odoo + Push completo</h3>
-      <p>Archiva (no borra) <b>todos</b> los productos activos en Odoo y sube los del catálogo desde cero. Reversible desde Odoo (Aplicaciones → Productos → Archivado). Usalo solo para limpiar duplicados de pruebas previas.</p>
-      <button class="cirene-btn cirene-btn-danger" id="btnWipePush">Archivar Odoo y subir todo el catálogo</button>
+/* ───────── Mano de obra ───────── */
+function renderMO() {
+  pane.innerHTML = `
+    <p class="muted" style="margin-bottom:12px">Costo por hora de cada rol. El cotizador usa estos valores.</p>
+    <table class="grid"><thead><tr><th>Rol</th><th class="num" style="width:160px">Costo/hora</th><th style="width:120px">Por viaje</th></tr></thead>
+    <tbody>${laborRates.map(r => `<tr data-id="${r.id}">
+      <td><input data-f="rol" value="${esc(r.rol)}"></td>
+      <td class="num"><input data-f="costo_hora" type="number" step="1" value="${n(r.costo_hora)}"></td>
+      <td style="text-align:center"><input type="checkbox" data-f="es_transporte" ${r.es_transporte ? 'checked' : ''}></td>
+    </tr>`).join('')}</tbody></table>
+    <button class="btn sm" id="moAdd" style="margin-top:12px">+ Rol</button>`;
+  pane.querySelectorAll('tbody tr').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('input').forEach(inp => inp.onchange = async () => {
+      const r = laborRates.find(x => x.id === id);
+      r.rol = tr.querySelector('[data-f=rol]').value;
+      r.costo_hora = n(tr.querySelector('[data-f=costo_hora]').value);
+      r.es_transporte = tr.querySelector('[data-f=es_transporte]').checked;
+      await data.upsertLaborRate({ id, rol: r.rol, costo_hora: r.costo_hora, es_transporte: r.es_transporte });
+      toast('Guardado');
+    });
+  });
+  $('#moAdd').onclick = async () => {
+    const r = await data.upsertLaborRate({ rol: 'Nuevo rol', costo_hora: 0, display_order: laborRates.length * 10 });
+    laborRates.push(r); renderMO();
+  };
+}
+
+/* ───────── Plantillas de producto (BOM) ───────── */
+function renderTemplates() {
+  pane.innerHTML = `
+    <div class="toolbar">
+      <span class="muted">${templates.length} plantillas</span>
+      <button class="btn primary" id="tNew">+ Nueva plantilla</button>
     </div>
-  </section>
-</main>
+    <div id="tList">${templates.map(t => `
+      <div class="tpl-card" data-id="${t.id}">
+        <div><div class="t-name">${esc(t.nombre)}</div><div class="muted">${esc(t.categoria || '')} ${t.dimensiones ? '· ' + esc(t.dimensiones) : ''}</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="pill">${t.es_estandar ? 'estándar' : 'a medida'}</span>
+          ${t.precio_referencia ? `<b>${money(t.precio_referencia)}</b>` : ''}
+        </div>
+      </div>`).join('') || '<p class="muted">Todavía no hay plantillas. Creá una con los materiales y horas típicas de un producto (Leñero, Parrilla, etc.).</p>'}</div>`;
+  $('#tNew').onclick = () => editTemplate(null);
+  pane.querySelectorAll('.tpl-card').forEach(c => c.onclick = () => editTemplate(c.dataset.id));
+}
 
-<!-- Modal edición producto -->
-<div id="modalMount"></div>
+async function editTemplate(id) {
+  let tpl = { nombre: '', categoria: '', dimensiones: '', terminacion: '', multiplicador: 1.5, es_estandar: true, precio_referencia: null };
+  let mats = [], labs = [];
+  if (id) { const t = await data.getTemplate(id); tpl = t.tpl; mats = t.materiales.map(m => ({ ...m })); labs = t.manoObra.map(l => ({ ...l })); }
 
-<script type="module" src="/js/catalog.js"></script>
+  const matOpts = (sel) => materials.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join('');
+  const labOpts = (sel) => laborRates.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.rol)}</option>`).join('');
+
+  function preview() {
+    const line = {
+      materiales: mats.map(m => ({ costoUnit: m.costo_unit, cantidad: m.cantidad })),
+      manoObra: labs.map(l => ({ costoHora: l.costo_hora, horas: l.horas })),
+      multiplicador: n(tpl.multiplicador) || 1.5,
+    };
+    calcLine(line);
+    return line;
+  }
+  function draw() {
+    const p = preview();
+    pane.innerHTML = `
+    <button class="btn sm" id="tBack">← Volver</button>
+    <div class="editor" style="margin-top:12px">
+      <h3>${id ? 'Editar' : 'Nueva'} plantilla</h3>
+      <div class="fgrid">
+        <div class="fg"><label>Nombre</label><input id="f-nombre" value="${esc(tpl.nombre)}"></div>
+        <div class="fg"><label>Categoría</label><input id="f-categoria" value="${esc(tpl.categoria)}"></div>
+        <div class="fg"><label>Dimensiones</label><input id="f-dimensiones" value="${esc(tpl.dimensiones)}"></div>
+        <div class="fg"><label>Terminación</label><input id="f-terminacion" value="${esc(tpl.terminacion)}"></div>
+        <div class="fg"><label>Multiplicador</label><input id="f-mult" type="number" step="0.05" value="${n(tpl.multiplicador) || 1.5}"></div>
+        <div class="fg"><label>Tipo</label><select id="f-estandar"><option value="1" ${tpl.es_estandar ? 'selected' : ''}>Estándar</option><option value="0" ${!tpl.es_estandar ? 'selected' : ''}>A medida</option></select></div>
+      </div>
+
+      <div class="sub">Materiales</div>
+      <table class="grid"><thead><tr><th style="width:40%">Material</th><th>Dimensión</th><th class="num">Cant.</th><th class="num">Costo/u</th><th class="num">Subtotal</th><th></th></tr></thead>
+      <tbody id="mtBody">${mats.map((m, i) => `<tr data-i="${i}">
+        <td><select data-f="material_id">${matOpts(m.material_id)}</select></td>
+        <td><input data-f="dimension" value="${esc(m.dimension)}"></td>
+        <td class="num"><input data-f="cantidad" type="number" step="0.01" value="${n(m.cantidad)}"></td>
+        <td class="num"><input data-f="costo_unit" type="number" step="0.01" value="${n(m.costo_unit)}"></td>
+        <td class="num">${money(n(m.costo_unit) * n(m.cantidad))}</td>
+        <td class="row-actions"><button data-del>✕</button></td></tr>`).join('')}</tbody></table>
+      <button class="btn sm" id="addMat" style="margin-top:8px">+ Material</button>
+
+      <div class="sub">Mano de obra</div>
+      <table class="grid"><thead><tr><th style="width:40%">Rol</th><th class="num">Costo/hora</th><th class="num">Horas</th><th class="num">Subtotal</th><th></th></tr></thead>
+      <tbody id="lbBody">${labs.map((l, i) => `<tr data-i="${i}">
+        <td><select data-f="labor_rate_id">${labOpts(l.labor_rate_id)}</select></td>
+        <td class="num"><input data-f="costo_hora" type="number" step="1" value="${n(l.costo_hora)}"></td>
+        <td class="num"><input data-f="horas" type="number" step="0.5" value="${n(l.horas)}"></td>
+        <td class="num">${money(n(l.costo_hora) * n(l.horas))}</td>
+        <td class="row-actions"><button data-del>✕</button></td></tr>`).join('')}</tbody></table>
+      <button class="btn sm" id="addLab" style="margin-top:8px">+ Mano de obra</button>
+
+      <div class="costbox">
+        <div><span>Materiales</span><b>${money(p.costoMateriales)}</b></div>
+        <div><span>Mano de obra</span><b>${money(p.costoMO)}</b></div>
+        <div><span>Costo directo</span><b>${money(p.costoDirecto)}</b></div>
+        <div><span>Precio (×${p.multiplicador})</span><b>${money(p.precioVenta)}</b></div>
+        <div><span>Margen</span><b>${pct(p.margen)}</b></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn primary" id="tSave">Guardar plantilla</button>
+        ${id ? '<button class="btn" id="tDel">Eliminar</button>' : ''}
+      </div>
+    </div>`;
+    wire();
+  }
+  function wire() {
+    $('#tBack').onclick = () => renderTemplates();
+    const sync = () => {
+      tpl.nombre = $('#f-nombre').value; tpl.categoria = $('#f-categoria').value;
+      tpl.dimensiones = $('#f-dimensiones').value; tpl.terminacion = $('#f-terminacion').value;
+      tpl.multiplicador = n($('#f-mult').value) || 1.5; tpl.es_estandar = $('#f-estandar').value === '1';
+    };
+    ['f-nombre', 'f-categoria', 'f-dimensiones', 'f-terminacion', 'f-mult', 'f-estandar'].forEach(idf => $('#' + idf).onchange = () => { sync(); draw(); });
+    $('#mtBody').querySelectorAll('tr').forEach(tr => {
+      const i = +tr.dataset.i;
+      tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
+        const f = el.dataset.f;
+        if (f === 'material_id') { mats[i].material_id = el.value; const mm = materials.find(x => x.id === el.value); if (mm) { mats[i].costo_unit = mm.precio_unit; mats[i].descripcion = mm.nombre; } }
+        else mats[i][f] = (f === 'cantidad' || f === 'costo_unit') ? n(el.value) : el.value;
+        draw();
+      });
+      tr.querySelector('[data-del]').onclick = () => { mats.splice(i, 1); draw(); };
+    });
+    $('#lbBody').querySelectorAll('tr').forEach(tr => {
+      const i = +tr.dataset.i;
+      tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
+        const f = el.dataset.f;
+        if (f === 'labor_rate_id') { labs[i].labor_rate_id = el.value; const rr = laborRates.find(x => x.id === el.value); if (rr) { labs[i].costo_hora = rr.costo_hora; labs[i].rol = rr.rol; } }
+        else labs[i][f] = n(el.value);
+        draw();
+      });
+      tr.querySelector('[data-del]').onclick = () => { labs.splice(i, 1); draw(); };
+    });
+    $('#addMat').onclick = () => { const m0 = materials[0] || {}; mats.push({ material_id: m0.id || null, descripcion: m0.nombre || '', dimension: '', costo_unit: m0.precio_unit || 0, cantidad: 1 }); draw(); };
+    $('#addLab').onclick = () => { const r0 = laborRates.find(r => !r.es_transporte) || laborRates[0] || {}; labs.push({ labor_rate_id: r0.id || null, rol: r0.rol || '', costo_hora: r0.costo_hora || 0, horas: 1 }); draw(); };
+    $('#tSave').onclick = async () => {
+      sync();
+      if (!tpl.nombre.trim()) { toast('Ponele un nombre'); return; }
+      const p = preview();
+      const payload = { ...(id ? { id } : {}), nombre: tpl.nombre, categoria: tpl.categoria, dimensiones: tpl.dimensiones, terminacion: tpl.terminacion, multiplicador: tpl.multiplicador, es_estandar: tpl.es_estandar, precio_referencia: Math.round(p.precioVenta), activo: true };
+      try {
+        await data.saveTemplate(payload, mats, labs);
+        templates = await data.listTemplates();
+        toast('Plantilla guardada'); renderTemplates();
+      } catch (e) { toast('Error: ' + (e.message || e)); }
+    };
+    if (id) $('#tDel').onclick = async () => { if (!confirm('¿Eliminar plantilla?')) return; await data.deleteTemplate(id); templates = await data.listTemplates(); renderTemplates(); };
+  }
+  draw();
+}
+</script>
 </body>
 </html>

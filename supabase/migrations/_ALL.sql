@@ -1,6 +1,6 @@
--- De Cirene ERP · esquema completo + seed (001–009). Pegar y ejecutar en Supabase SQL Editor.
+-- De Cirene ERP · esquema + seed (001–010). Pegar y ejecutar en Supabase SQL Editor.
 
--- ============================== 001_core.sql ==============================
+-- ====== 001_core.sql ======
 -- =====================================================================
 -- De Cirene ERP — 001 núcleo
 -- Tablas operativas base del ERP de De Cirene (herrería).
@@ -199,7 +199,7 @@ drop trigger if exists trg_production_cards_updated on production_cards;
 create trigger trg_production_cards_updated before update on production_cards
   for each row execute function set_updated_at();
 
--- ============================== 002_seed_stages.sql ==============================
+-- ====== 002_seed_stages.sql ======
 -- =====================================================================
 -- De Cirene ERP — 002 seed de etapas (kanban_stages)
 -- Pipeline COMERCIAL (CRM, del procedimiento/Asana) + pipeline PRODUCCIÓN
@@ -230,7 +230,7 @@ on conflict (key) do update
       display_order = excluded.display_order,
       color = excluded.color;
 
--- ============================== 003_materials.sql ==============================
+-- ====== 003_materials.sql ======
 -- =====================================================================
 -- De Cirene ERP — 003 materiales
 -- Catálogo de materiales con precios (hoja "Materiales" del Excel cotizador).
@@ -259,7 +259,7 @@ drop trigger if exists trg_materials_updated on materials;
 create trigger trg_materials_updated before update on materials
   for each row execute function set_updated_at();
 
--- ============================== 004_labor_rates.sql ==============================
+-- ====== 004_labor_rates.sql ======
 -- =====================================================================
 -- De Cirene ERP — 004 tarifas de mano de obra
 -- Roles y costo/hora del Excel. Configurables desde el catálogo (admin).
@@ -282,7 +282,7 @@ insert into labor_rates (rol, costo_hora, es_transporte, display_order) values
   ('Transporte',     250, true,  40)
 on conflict (rol) do nothing;
 
--- ============================== 005_product_templates.sql ==============================
+-- ====== 005_product_templates.sql ======
 -- =====================================================================
 -- De Cirene ERP — 005 plantillas de producto (BOM)
 -- Cada hoja del Excel (Leñero, Parrilla, Quemador, Chispero...) = una
@@ -336,7 +336,7 @@ drop trigger if exists trg_templates_updated on product_templates;
 create trigger trg_templates_updated before update on product_templates
   for each row execute function set_updated_at();
 
--- ============================== 006_quotes.sql ==============================
+-- ====== 006_quotes.sql ======
 -- =====================================================================
 -- De Cirene ERP — 006 cotizaciones (presupuestos)
 -- Modelo relacional: quotes + quote_lines (el detalle fino de materiales
@@ -413,7 +413,7 @@ drop trigger if exists trg_quotes_updated on quotes;
 create trigger trg_quotes_updated before update on quotes
   for each row execute function set_updated_at();
 
--- ============================== 007_accounting.sql ==============================
+-- ====== 007_accounting.sql ======
 -- =====================================================================
 -- De Cirene ERP — 007 contabilidad y cierres de caja
 -- Reemplaza a Odoo. Cobros por trabajo + movimientos de caja + cierres.
@@ -472,7 +472,7 @@ create index if not exists idx_cash_mov_fecha on cash_movements(fecha);
 create index if not exists idx_cash_mov_session on cash_movements(cash_session_id);
 create index if not exists idx_cash_mov_card on cash_movements(production_card_id);
 
--- ============================== 008_rls.sql ==============================
+-- ====== 008_rls.sql ======
 -- =====================================================================
 -- De Cirene ERP — 008 Row Level Security
 -- Equipo chico: lectura/escritura autenticada en lo operativo (CRM, quotes,
@@ -556,7 +556,7 @@ begin
   end loop;
 end $$;
 
--- ============================== 009_seed_materials.sql ==============================
+-- ====== 009_seed_materials.sql ======
 -- =====================================================================
 -- De Cirene ERP — 009 seed de materiales (desde Cotizador Herrería.xlsx, hoja Materiales)
 -- Lista de precios real de la herrería. Idempotente por nombre+proveedor via delete previo.
@@ -654,4 +654,43 @@ insert into materials (nombre,tipo,unidad,precio_unit,compra_min,precio_compra,p
   ('Tapas de plástico 30x30','Tapas de plástico','un',30.0,1.0,30.0,'Barraca HN',true,'seed-excel-2026'),
   ('Chapa labrada 3mm 100cmx300cm','Chapa labrada','un',8577.0,1.0,8577.0,'',true,'seed-excel-2026'),
   ('Hormigón Pedregullo','Hormigón','m3',0,null,null,'',true,'seed-excel-2026');
+
+-- ====== 010_seed_templates.sql ======
+delete from product_templates;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Leñero','Almacenaje','90x40x110 cm',1.45,true,7109,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Caño','30x30x2mm',700.0,2.0,0),(tid,'Varilla','10mm',310.0,1.0,1),(tid,'Tejido Electrosoldado','1.7x1.1m',120.0,1.0,2),(tid,'Pintura','1 litro',1675.0,0.33,3),(tid,'Tapas Caño','30x30',30.0,4.0,4);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,4.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,8.0,1);
+end $$;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Parrilla móvil','Cocina','',1.45,true,8996,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','10mm',254.0,5.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1),(tid,'Manivela y cadena','',2100.0,1.0,2),(tid,'Pomela','Serie N3',90.0,2.0,3);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,4.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,4.0,1);
+end $$;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Parrilla fija','Cocina','',1.4,true,4304,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','10mm',254.0,5.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0);
+end $$;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Quemador','Cocina','',1.45,true,4162,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','14mm',455.0,4.0,0);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0);
+end $$;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Sacabotas','Accesorios','6 pares',1.4,true,3597,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Planchuela','1 1/4x1/8',340.0,1.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1),(tid,'Pintura','0.1lt',1675.0,0.03,2);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,3.0,1);
+end $$;
+do $$ declare tid uuid; begin
+  insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
+  values ('Chispero','Estufa','1.20 x 0.60 m',1.5,true,4958,true) returning id into tid;
+  insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Tejido electrosoldado','',80.0,1.0,0),(tid,'Angulo','3/4x1/8',325.0,1.0,1),(tid,'Pintura y gastos','',500.0,1.0,2);
+  insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,4.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,8.0,1);
+end $$;
 
