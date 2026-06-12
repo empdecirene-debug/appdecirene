@@ -128,6 +128,23 @@ renderNavbar('cot');
 $('#b-tpl').innerHTML = '<option value="">— en blanco —</option>' + templates.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
 refreshLoadQuotes();
 
+// Contexto desde el CRM: ?intake=<id> precarga cliente; ?quote=<id> carga la cotización
+const _params = new URLSearchParams(location.search);
+const _quoteParam = _params.get('quote');
+if (_quoteParam) { try { await cargarCotizacion(_quoteParam); } catch {} }
+const _intakeId = _params.get('intake');
+if (_intakeId) {
+  state.intakeId = _intakeId;
+  try {
+    const lead = await data.getIntakeCard(_intakeId);
+    if (lead && !_quoteParam) {
+      state.cliente = { nombre: lead.client_query || '', contacto: lead.client_phone_e164 || '', direccion: '' };
+      $('#c-nombre').value = state.cliente.nombre; $('#c-contacto').value = state.cliente.contacto;
+      $('#quoteMeta').textContent = 'Cotizando para: ' + (lead.client_query || '');
+    }
+  } catch {}
+}
+
 // Builder field bindings
 $('#b-nombre').oninput = e => builder.nombre = e.target.value;
 $('#b-cant').oninput = e => builder.cantidad = n(e.target.value) || 1;
@@ -269,7 +286,7 @@ async function guardar() {
       id: state.id, numero: state.numero, estado: 'presupuestado',
       cliente_nombre: state.cliente.nombre || null, cliente_contacto: state.cliente.contacto || null,
       cliente_telefono: state.cliente.contacto || null, cliente_direccion: state.cliente.direccion || null,
-      vendedor: vendor, vendedor_user_id: user?.id || null,
+      vendedor: vendor, vendedor_user_id: user?.id || null, intake_card_id: state.intakeId || null,
       subtotal_materiales: t.subtotalMateriales, subtotal_mo: t.subtotalMO, costo_directo: t.costoDirecto,
       multiplicador: 1.5, precio_venta: t.precioVenta, ganancia: t.ganancia, margen: t.margen,
     };

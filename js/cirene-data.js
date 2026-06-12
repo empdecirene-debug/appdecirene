@@ -132,3 +132,83 @@ export async function currentVendorName() {
   const { data } = await db().from('user_profiles').select('full_name,vendor_name').eq('id', user.id).single();
   return (data && (data.vendor_name || data.full_name)) || user.email;
 }
+
+/* ───────────── Etapas (kanban) ───────────── */
+export async function listStages(category) {
+  let q = db().from('kanban_stages').select('*').eq('active', true).order('display_order');
+  if (category) q = q.eq('category', category);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+/* ───────────── CRM (intake / leads) ───────────── */
+export function newId(prefix) { return prefix + '-' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+
+export async function listIntakeCards() {
+  const { data, error } = await db().from('intake_cards').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function createIntakeCard(card) {
+  const { data: { user } } = await db().auth.getUser();
+  const row = { id: newId('in'), stage_key: 'mensaje_entrante', status: 'abierta', vendor: card.vendor || 'Comercial', vendor_user_id: user?.id || null, ...card };
+  const { data, error } = await db().from('intake_cards').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function saveIntakeCard(card) {
+  const { data, error } = await db().from('intake_cards').update(card).eq('id', card.id).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function getIntakeCard(id) {
+  const { data } = await db().from('intake_cards').select('*').eq('id', id).single();
+  return data || null;
+}
+export async function getQuoteByIntake(intakeId) {
+  const { data } = await db().from('quotes').select('*').eq('intake_card_id', intakeId).order('created_at', { ascending: false }).limit(1);
+  return (data && data[0]) || null;
+}
+
+/* ───────────── Producción ───────────── */
+export async function listProductionCards() {
+  const { data, error } = await db().from('production_cards').select('*').is('archived_at', null).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function saveProductionCard(card) {
+  const { data, error } = await db().from('production_cards').update(card).eq('id', card.id).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function moveProductionStage(id, stage_key) {
+  const patch = { stage_key };
+  if (stage_key === 'entregado') patch.completed_at = new Date().toISOString();
+  return saveProductionCard({ id, ...patch });
+}
+// Crea una tarjeta de producción a partir de un lead aceptado (con su cotización si hay).
+export async function createProductionFromIntake(intake, quote) {
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  const lines = [];
+  if (quote) {
+    const { data: ql } = await sb.from('quote_lines').select('*').eq('quote_id', quote.id);
+    (ql || []).forEach(l => lines.push({ producto: l.producto, cantidad: n(l.cantidad) || 1, precio: n(l.precio_venta) }));
+  }
+  const card = {
+    id: newId('pr'), source: 'quote_approved', stage_key: 'procesar',
+    vendor: intake.vendor, vendor_user_id: user?.id || null,
+    intake_card_id: intake.id, quote_id: quote?.id || null,
+    client_name: intake.client_query, client_phone_e164: intake.client_phone_e164 || (quote?.cliente_telefono || null),
+    direccion: quote?.cliente_direccion || null, description: intake.description,
+    product_lines: lines, total_venta: quote?.precio_venta || 0, estado_pago: 'NO',
+    due_date: intake.target_date || null, billing_month: new Date().toISOString().slice(0, 7),
+  };
+  const { data: pc, error } = await sb.from('production_cards').insert(card).select().single();
+  if (error) throw error;
+  await sb.from('intake_cards').update({ status: 'aceptada', stage_key: 'aceptado', resulting_production_card_id: pc.id }).eq('id', intake.id);
+  if (quote) await sb.from('quotes').update({ estado: 'aceptado', production_card_id: pc.id }).eq('id', quote.id);
+  return pc;
+}
+function n(x) { const v = parseFloat(x); return Number.isFinite(v) ? v : 0; }

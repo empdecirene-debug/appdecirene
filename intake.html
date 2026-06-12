@@ -2,948 +2,183 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>De Cirene · Bandeja de entrada</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · CRM</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/png" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/cirene-theme.css">
 <style>
-:root {
-  --azul: #0A0A0A; --azul-d: #000000; --celeste: #888888; --tinta: #14161A; --tinta-2: #5A5F66; --tinta-3: #9AA0A6;
-  --bg: #F5F5F4; --surface: #fff; --surface-2: #FAFAFA; --border: #E2E2E0; --border-2: #E8F1F6;
-  --rojo: #E63946; --verde: #2BB673; --naranja: #F4A261; --violeta: #9333EA;
-  --err-bg: #FCEBEB; --err-text: #791F1F; --ok-bg: #E1F5EE; --ok-text: #085041;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: var(--tinta);
-  background: var(--bg); font-size: 15px; line-height: 1.5; min-height: 100vh; }
-.container { max-width: 880px; margin: 0 auto; padding: 16px; }
-h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-h2 { font-size: 16px; font-weight: 600; }
-.subtitle { font-size: 13px; color: var(--tinta-2); margin-top: 2px; }
-
-.page-hdr { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 12px; gap: 12px; }
-
-.tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-  padding: 3px; margin-bottom: 14px; }
-.tab-bar button { flex: 1; padding: 8px; border: none; background: transparent; font-family: inherit;
-  font-size: 13px; font-weight: 600; color: var(--tinta-2); border-radius: 7px; cursor: pointer; }
-.tab-bar button.active { background: var(--azul); color: #fff; }
-
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 14px 16px; margin-bottom: 10px; }
-.card .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.card .cli { font-weight: 600; font-size: 15px; color: var(--tinta); }
-.card .desc { font-size: 13px; color: var(--tinta-2); margin-top: 4px; line-height: 1.45; word-break: break-word; }
-.card .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--tinta-3); }
-.card .meta strong { color: var(--tinta-2); }
-.card .ph { width: 80px; height: 80px; border-radius: 8px; background: var(--surface-2);
-  background-size: cover; background-position: center; flex-shrink: 0; }
-
-.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px;
-  font-size: 11px; font-weight: 600; }
-.b-pend { background: #FFF3DD; color: #8A5800; }
-.b-prod { background: var(--ok-bg); color: var(--ok-text); }
-.b-cot  { background: #EFEFEF; color: #222222; }
-.b-mues { background: #F3E8FF; color: #6B21A8; }
-.b-disc { background: #F4F4F4; color: #6B7280; }
-
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--surface); color: var(--tinta); font-family: inherit;
-  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .12s; }
-.btn:hover { background: var(--surface-2); }
-.btn.primary { background: var(--azul); color: #fff; border-color: var(--azul); }
-.btn.primary:hover { background: var(--azul-d); }
-.btn.success { background: var(--verde); color: #fff; border-color: var(--verde); }
-.btn.danger { background: var(--rojo); color: #fff; border-color: var(--rojo); }
-.btn.ghost { border-color: transparent; background: transparent; color: var(--tinta-2); }
-.btn.sm { padding: 5px 10px; font-size: 12px; }
-
-.fab { position: fixed; bottom: 24px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
-  background: var(--azul); color: #fff; border: none; box-shadow: 0 6px 20px rgba(0, 0, 0,.32);
-  font-size: 28px; cursor: pointer; z-index: 30; }
-.fab:hover { background: var(--azul-d); }
-
-.fg { margin-bottom: 12px; }
-.label { font-size: 11px; font-weight: 600; color: var(--tinta-2); text-transform: uppercase;
-  letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
-input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-  border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--tinta); background: #fff; }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--azul);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
-textarea { resize: vertical; min-height: 70px; }
-
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-@media (max-width: 540px) {
-  .row2, .row3 { grid-template-columns: 1fr; }
-}
-
-.alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
-.alert.err { background: var(--err-bg); color: var(--err-text); border-left: 3px solid #A32D2D; }
-.alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
-.alert.warn { background: #FFF7E0; color: #6B4500; border-left: 3px solid #C58A00; }
-
-.empty { padding: 40px 20px; text-align: center; color: var(--tinta-3); }
-.empty .icon { font-size: 36px; margin-bottom: 10px; }
-
-#filesInput { display: none; }
-.files-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.file-chip { position: relative; width: 88px; padding: 4px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--surface); text-align: center; font-size: 10px; color: var(--tinta-2); }
-.file-chip .thumb { width: 80px; height: 80px; border-radius: 6px; background: var(--surface-2);
-  background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center;
-  font-size: 28px; color: var(--tinta-3); margin-bottom: 3px; }
-.file-chip .name { display: block; word-break: break-all; line-height: 1.2;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.file-chip .rm { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
-  border: 1px solid var(--border); background: #fff; color: var(--rojo); font-size: 13px; line-height: 1;
-  cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-
-.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-
-.section-hdr { font-size: 12px; font-weight: 700; color: var(--tinta-2); text-transform: uppercase;
-  letter-spacing: 0.05em; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-2); }
-.section-hdr:first-of-type { margin-top: 0; }
-
-/* ============ Tabla de líneas ============ */
-.lines { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; }
-.lines-hdr, .lines-row {
-  display: grid;
-  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.1fr) minmax(0, .8fr) minmax(0, .8fr) minmax(0, 1fr) 32px;
-  gap: 6px;
-  padding: 6px 8px;
-  align-items: center;
-}
-.lines-hdr { background: var(--surface-2); border-bottom: 1px solid var(--border); }
-.lines-hdr span { font-size: 10px; font-weight: 700; color: var(--tinta-2); text-transform: uppercase; letter-spacing: .04em; }
-.lines-row { border-bottom: 1px solid var(--border-2); }
-.lines-row:last-child { border-bottom: none; }
-.lines-row input {
-  padding: 7px 9px; font-size: 13px; border: 1px solid transparent; border-radius: 6px; background: transparent;
-}
-.lines-row input:hover { border-color: var(--border-2); }
-.lines-row input:focus { background: #fff; border-color: var(--azul); }
-.lines-row input[type=number] { text-align: right; }
-.line-del { width: 24px; height: 24px; border-radius: 6px; border: none; background: transparent; color: var(--tinta-3);
-  cursor: pointer; font-size: 16px; line-height: 1; }
-.line-del:hover { background: var(--err-bg); color: var(--err-text); }
-.lines-foot { padding: 8px; background: var(--surface-2); border-top: 1px solid var(--border-2); }
-@media (max-width: 720px) {
-  .lines-hdr { display: none; }
-  .lines-row { grid-template-columns: 1fr 32px; row-gap: 4px; padding: 10px 8px; }
-  .lines-row .col-prod   { grid-column: 1; }
-  .lines-row .col-del    { grid-column: 2; grid-row: 1; }
-  .lines-row .col-color  { grid-column: 1; }
-  .lines-row .col-talle  { grid-column: 1; }
-  .lines-row .col-qty    { grid-column: 1; }
-  .lines-row .col-price  { grid-column: 1; }
-  .lines-row input { border: 1px solid var(--border-2); background: #fff; }
-}
-
-/* ============ Autocomplete producto ============ */
-.ac-wrap { position: relative; }
-.ac-list {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
-  background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-top: 4px;
-  max-height: 240px; overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(2, 62, 92, 0.12);
-}
-.ac-item { padding: 8px 12px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.ac-item:hover, .ac-item.sel { background: var(--surface-2); }
-.ac-item .ac-cat { font-size: 11px; color: var(--tinta-3); background: var(--surface-2); padding: 1px 8px; border-radius: 99px; flex-shrink: 0; }
-.ac-item:hover .ac-cat, .ac-item.sel .ac-cat { background: #fff; }
-.ac-empty { padding: 10px 12px; font-size: 12px; color: var(--tinta-3); font-style: italic; }
+  .wrap { max-width: 100%; margin: 0; padding: 14px 16px 40px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
+  .col { flex: 0 0 250px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-height: 120px; }
+  .col.drop { border-color: #0A0A0A; box-shadow: 0 0 0 2px #0A0A0A; }
+  .col h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); padding: 4px 6px 8px; display: flex; justify-content: space-between; }
+  .col h3 .cnt { background: #0A0A0A; color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; }
+  .lead { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; margin-bottom: 8px; cursor: grab; }
+  .lead:hover { border-color: #0A0A0A; }
+  .lead .nm { font-weight: 700; font-size: 13px; }
+  .lead .ds { font-size: 11px; color: var(--tinta-3); margin: 2px 0; line-height: 1.35; max-height: 28px; overflow: hidden; }
+  .lead .mt { font-size: 11px; color: var(--tinta-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .u-baja { background: #9AA0A6; } .u-normal { background: #3A6EA5; } .u-alta { background: #C9A227; } .u-urgente { background: #A33A3A; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  /* modal */
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 30px 16px; z-index: 100; overflow: auto; }
+  .ov.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 480px; padding: 22px 24px; }
+  .modal h2 { font-size: 16px; margin-bottom: 14px; }
+  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .fg textarea { min-height: 64px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mact { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-
 <div id="navbar-mount"></div>
-
-<div class="container" id="app">
-  <div class="alert" style="background: var(--surface-2); color: var(--tinta-2);">Cargando…</div>
+<div class="wrap">
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">CRM · Consultas</h1>
+    <button class="btn primary" id="btnNew">+ Nueva consulta</button>
+  </div>
+  <div class="board" id="board"></div>
 </div>
+
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
 
 <script type="module">
 import { renderNavbar } from './js/navbar.js';
-import { requireAuth, getProfile, isAdmin } from './js/auth.js';
-import { listMyIntakes, listPendingTriage, createIntake, triageToProduction, discardIntake, compressImage } from './js/intake.js';
-import { createTaskFromForm } from './js/production.js';
-import { mountClientPicker } from './js/client-picker.js';
-import { getSupa } from './js/supa.js';
-import { getImage } from './js/image-store.js';
-import { bootstrapCatalogFromSupabase } from './js/catalog-store.js';
-import { openCatalogPicker } from './js/catalog-picker.js';
+import { requireAuth } from './js/auth.js';
+import * as data from './js/cirene-data.js';
+import { money } from './js/quote-engine.js';
 
-// Modo "nueva tarea desde producción": viene del botón en /production.html.
-// En ese modo escondemos tabs/lista, vamos directo al form, y al guardar
-// creamos una production_card (no una intake_card) en la columna A Pedir Insumos.
-const URL_PARAMS = new URLSearchParams(location.search);
-const MODE = URL_PARAMS.get('as') === 'new-task' ? 'new-task' : 'intake';
-if (MODE === 'new-task') document.title = 'De Cirene · Nueva tarea';
+const $ = s => document.querySelector(s);
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const $ = id => document.getElementById(id);
-const esc = s => (s || '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-const CHANNEL_OPTIONS = ['WhatsApp', 'Instagram', 'Email', 'Referido', 'Web', 'Llamada', 'Otro'];
-const PAYMENT_OPTIONS = ['Efectivo', 'Transferencia', 'Tarjeta', 'Mercado Pago', 'Otro'];
-
-function emptyForm() {
-  return {
-    clientQuery: '',
-    clientPartnerId: null,  // id de res.partner en Odoo si se eligió/creó desde el picker
-    descripcionPedido: '',
-    description: '',
-    targetDate: '',
-    phone: '',
-    vendor: '',
-    channelSale: '',
-    paymentMethod: '',
-    senalAmount: '',
-    // Reemplaza el viejo `photoDataUrl` único. Cada item: { name, mime, dataUrl, kind }
-    // donde kind = 'photo' (imagen comprimida) | 'file' (otro: SVG, PDF, etc.)
-    files: [],
-    lines: [emptyLine()],
-  };
-}
-function emptyLine() {
-  return { producto: '', color: '', talle: '', cantidad: '', precio: '' };
-}
-
-const state = {
-  view: MODE === 'new-task' ? 'new' : 'list',
-  loading: false,
-  intakes: [],
-  triageIntakes: [],
-  isAdmin: false,
-  vendors: [],
-  defaultVendor: '',
-  catalog: [],
-  catalogReady: false,
-  msg: null,
-  form: emptyForm(),
-  acOpenFor: null,         // index de línea con autocomplete inline abierto (legacy)
-  acQuery: '',
-};
-
-function resetForm() {
-  state.form = emptyForm();
-  state.form.vendor = state.defaultVendor;
-}
-
-// (#3/#4) Borrador del form "Nueva tarea" en localStorage: si recargás o
-// navegás por accidente no perdés lo escrito. Se limpia al crear la tarea.
-const INTAKE_DRAFT_KEY = 'cirene_intake_draft_v1';
-let _intakeDraftTimer = null;
-let _intakeSaved = false;
-function _intakeFormHasData(f) {
-  return !!(f && (f.clientQuery || f.descripcionPedido || f.description || f.phone ||
-    (Array.isArray(f.lines) && f.lines.some(l => l.producto || l.cantidad || l.color || l.talle || l.precio)) ||
-    (Array.isArray(f.files) && f.files.length)));
-}
-function saveIntakeDraft() {
-  if (MODE !== 'new-task' || _intakeSaved) return;
-  if (_intakeDraftTimer) clearTimeout(_intakeDraftTimer);
-  _intakeDraftTimer = setTimeout(() => {
-    try {
-      if (_intakeFormHasData(state.form)) localStorage.setItem(INTAKE_DRAFT_KEY, JSON.stringify(state.form));
-    } catch (e) { /* localStorage lleno (adjuntos grandes): no bloquea */ }
-  }, 500);
-}
-function clearIntakeDraft() {
-  _intakeSaved = true;
-  try { localStorage.removeItem(INTAKE_DRAFT_KEY); } catch (e) {}
-}
-function restoreIntakeDraft() {
-  if (MODE !== 'new-task') return;
-  try {
-    const raw = localStorage.getItem(INTAKE_DRAFT_KEY);
-    if (!raw) return;
-    const d = JSON.parse(raw);
-    if (d && typeof d === 'object' && _intakeFormHasData(d)) {
-      state.form = Object.assign(emptyForm(), d);
-    }
-  } catch (e) { /* draft inválido: se ignora */ }
-}
-
-// ============ Catálogo de productos — primero localStorage, después Supabase ============
-// El cotizador lo cachea en localStorage cuando se abre. Si el usuario entra a Nueva
-// Tarea sin haber abierto antes el cotizador (frecuente en demo), hacemos fallback
-// a la tabla `catalog_v1` de Supabase para no quedarnos sin autocomplete.
-async function loadCatalog() {
-  // 1) localStorage (camino rápido)
-  try {
-    const raw = localStorage.getItem('cirene_catalog_v3');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const arr = (parsed.productos || []).filter(p => p && p.n);
-      if (arr.length) return arr;
-    }
-  } catch (e) {
-    console.warn('No se pudo leer catálogo local:', e.message);
-  }
-  // 2) Supabase: tabla catalog_v1 (id='main')
-  try {
-    const supa = getSupa();
-    const { data, error } = await supa.from('catalog_v1').select('data').eq('id', 'main').single();
-    if (!error && data?.data?.productos?.length) {
-      const arr = data.data.productos.filter(p => p && p.n);
-      // Cacheamos localmente para que el próximo intake/cotizador ya tenga todo
-      try { localStorage.setItem('cirene_catalog_v3', JSON.stringify(data.data)); } catch {}
-      return arr;
-    }
-  } catch (e) {
-    console.warn('No se pudo leer catálogo de Supabase:', e.message);
-  }
-  return [];
-}
-function searchCatalog(q, limit = 8) {
-  const ql = (q || '').trim().toLowerCase();
-  if (!ql) return state.catalog.slice(0, limit);
-  return state.catalog
-    .filter(p => p.n.toLowerCase().includes(ql) || (p.k || '').toLowerCase().includes(ql))
-    .slice(0, limit);
-}
-
-// ============ Vendedores activos ============
-async function loadVendors() {
-  try {
-    const supa = getSupa();
-    const { data, error } = await supa.from('user_profiles').select('id, full_name, vendor_name, active').eq('active', true);
-    if (error) throw error;
-    return (data || []).map(p => ({
-      id: p.id,
-      name: p.vendor_name || p.full_name,
-    })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
-  } catch (e) {
-    console.warn('No se pudieron cargar vendedores:', e.message);
-    return [];
-  }
-}
-
-async function load() {
-  state.loading = true;
-  render();
-  try {
-    if (MODE !== 'new-task') {
-      state.intakes = await listMyIntakes();
-      if (state.isAdmin) state.triageIntakes = await listPendingTriage();
-    }
-  } catch (e) {
-    state.msg = { kind: 'err', text: `Error al cargar: ${e.message}` };
-  }
-  state.loading = false;
-  render();
-}
-
-function setView(v) { state.view = v; state.msg = null; state.acOpenFor = null; render(); }
-
-function statusBadge(s) {
-  switch (s) {
-    case 'pendiente_triaje': return '<span class="badge b-pend">Pendiente triaje</span>';
-    case 'convertida_produccion': return '<span class="badge b-prod">→ Producción</span>';
-    case 'convertida_cotizacion': return '<span class="badge b-cot">→ Cotización</span>';
-    case 'enviada_muestra': return '<span class="badge b-mues">→ Muestra</span>';
-    case 'descartada': return '<span class="badge b-disc">Descartada</span>';
-    default: return `<span class="badge">${s}</span>`;
-  }
-}
-
-function formatLines(lines) {
-  if (!Array.isArray(lines) || !lines.length) return '';
-  const summary = lines
-    .filter(l => l && (l.producto || l.cantidad))
-    .map(l => `${l.cantidad || '?'}× ${l.producto || 'sin producto'}${l.color ? ' ' + l.color : ''}${l.talle ? ' (' + l.talle + ')' : ''}`)
-    .join(' · ');
-  return summary ? `<div class="desc" style="margin-top:6px;font-size:12px;color:var(--tinta-2);">${esc(summary)}</div>` : '';
-}
-
-function renderListView() {
-  if (state.loading) return '<div class="empty">Cargando…</div>';
-  if (!state.intakes.length) return `
-    <div class="empty">
-      <div class="icon">📋</div>
-      <p>Todavía no creaste tarjetas en la bandeja.</p>
-      <p style="font-size:12px;margin-top:6px;">Toca el botón "+" para crear una nueva.</p>
-    </div>`;
-  return state.intakes.map(c => `
-    <div class="card">
-      <div class="row">
-        <div style="flex:1;min-width:0;">
-          <div class="cli">${esc(c.client_query)}</div>
-          ${c.description ? `<div class="desc">${esc(c.description)}</div>` : ''}
-          ${formatLines(c.product_lines)}
-          <div class="meta">
-            <span><strong>${esc(c.id)}</strong></span>
-            ${c.client_phone_e164 ? `<span>📞 ${esc(c.client_phone_e164)}</span>` : ''}
-            ${c.target_date ? `<span>📅 ${c.target_date}</span>` : ''}
-            ${c.channel_venta ? `<span>💬 ${esc(c.channel_venta)}</span>` : ''}
-            ${statusBadge(c.status)}
-          </div>
-        </div>
-        ${c.photo_urls?.[0] ? `<div class="ph" style="background-image:url(${c.photo_urls[0]})"></div>` : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderTriageView() {
-  if (state.loading) return '<div class="empty">Cargando…</div>';
-  if (!state.triageIntakes.length) return '<div class="empty"><div class="icon">✨</div><p>No hay nada para triajear.</p></div>';
-  return state.triageIntakes.map(c => `
-    <div class="card">
-      <div class="row">
-        <div style="flex:1;min-width:0;">
-          <div class="cli">${esc(c.client_query)}</div>
-          ${c.description ? `<div class="desc">${esc(c.description)}</div>` : ''}
-          ${formatLines(c.product_lines)}
-          <div class="meta">
-            <span><strong>${esc(c.id)}</strong></span>
-            <span>👤 ${esc(c.vendor)}</span>
-            ${c.client_phone_e164 ? `<span>📞 ${esc(c.client_phone_e164)}</span>` : ''}
-            ${c.target_date ? `<span>📅 ${c.target_date}</span>` : ''}
-            ${c.channel_venta ? `<span>💬 ${esc(c.channel_venta)}</span>` : ''}
-            ${c.modo_pago ? `<span>💳 ${esc(c.modo_pago)}</span>` : ''}
-          </div>
-          <div class="actions">
-            <button class="btn success sm" data-prod="${c.id}">→ A producción</button>
-            <button class="btn sm" data-sample="${c.id}">→ Es muestra</button>
-            <button class="btn danger sm" data-discard="${c.id}">Descartar</button>
-          </div>
-        </div>
-        ${c.photo_urls?.[0] ? `<div class="ph" style="background-image:url(${c.photo_urls[0]})"></div>` : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderLineRow(line, idx) {
-  const acOpen = state.acOpenFor === idx;
-  let acHtml = '';
-  if (acOpen) {
-    if (!state.catalogReady) {
-      acHtml = `<div class="ac-list"><div class="ac-empty">Cargá primero el catálogo abriendo el Cotizador al menos una vez.</div></div>`;
-    } else {
-      const results = searchCatalog(state.acQuery, 12);
-      if (!results.length) {
-        acHtml = `<div class="ac-list"><div class="ac-empty">Sin coincidencias. Podés escribir el nombre libremente.</div></div>`;
-      } else {
-        acHtml = `<div class="ac-list">${results.map((p, i) => `
-          <div class="ac-item" data-ac-pick="${idx}" data-ac-name="${esc(p.n)}">
-            <span>${esc(p.n)}</span>
-            <span class="ac-cat">${esc(p.k || '')}</span>
-          </div>`).join('')}</div>`;
-      }
-    }
-  }
-  return `
-    <div class="lines-row" data-line-idx="${idx}">
-      <div class="ac-wrap col-prod" style="display:flex;gap:4px;align-items:center">
-        <input style="flex:1" data-line-field="producto" data-idx="${idx}" value="${esc(line.producto)}" placeholder="Producto…" autocomplete="off" />
-        <button type="button" title="Abrir catálogo" data-line-pickcat="${idx}" style="padding:6px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer;font-size:13px">🛍️</button>
-        ${acHtml}
-      </div>
-      <input class="col-color" data-line-field="color" data-idx="${idx}" value="${esc(line.color)}" placeholder="Color" autocomplete="off" />
-      <input class="col-talle" data-line-field="talle" data-idx="${idx}" value="${esc(line.talle)}" placeholder="Talle" autocomplete="off" />
-      <input class="col-qty" data-line-field="cantidad" data-idx="${idx}" type="number" min="0" step="1" value="${esc(line.cantidad)}" placeholder="Cant." />
-      <input class="col-price" data-line-field="precio" data-idx="${idx}" type="number" min="0" step="0.01" value="${esc(line.precio)}" placeholder="Precio" />
-      <button class="line-del col-del" title="Eliminar línea" data-line-del="${idx}">×</button>
-    </div>
-  `;
-}
-
-function renderNewView() {
-  const f = state.form;
-  const vendorOpts = state.vendors.length
-    ? state.vendors.map(v => `<option value="${esc(v.name)}" ${f.vendor === v.name ? 'selected' : ''}>${esc(v.name)}</option>`).join('')
-    : `<option value="${esc(f.vendor)}" selected>${esc(f.vendor || 'Sin vendedores cargados')}</option>`;
-  return `
-    <div class="card">
-      <h2 style="margin-bottom:14px">Nueva tarjeta</h2>
-
-      <div class="section-hdr">Cliente</div>
-      <div class="fg">
-        <label class="label">Cliente *</label>
-        <input id="f_cli" value="${esc(f.clientQuery)}" placeholder="Ej: Acme SRL · contacto del cliente · qué te dijeron…" />
-      </div>
-      <div class="row2">
-        <div class="fg">
-          <label class="label">Teléfono</label>
-          <input id="f_phone" value="${esc(f.phone)}" placeholder="+598 99 123 456" inputmode="tel" />
-        </div>
-        <div class="fg">
-          <label class="label">Fecha objetivo</label>
-          <input type="date" id="f_date" value="${f.targetDate}" />
-        </div>
-      </div>
-
-      <div class="section-hdr">Productos</div>
-      ${!state.catalogReady ? `<div class="alert warn">El catálogo de productos no está cargado en este navegador. Abrí el <a href="/index.html" style="color:inherit;text-decoration:underline">Cotizador</a> una vez para cachear los 518 productos. Mientras tanto podés escribir libremente.</div>` : ''}
-      <div class="lines">
-        <div class="lines-hdr">
-          <span>Producto</span><span>Color</span><span>Talle</span><span>Cant.</span><span>Precio</span><span></span>
-        </div>
-        ${f.lines.map((l, i) => renderLineRow(l, i)).join('')}
-        <div class="lines-foot">
-          <button class="btn sm" type="button" id="btnAddLine">+ Agregar línea</button>
-        </div>
-      </div>
-
-      <div class="fg" style="margin-top:14px">
-        <label class="label">Descripción del pedido <span style="color:var(--rojo);font-weight:700">*</span></label>
-        <input id="f_pedido" placeholder="Ej: Pedido de invierno, Cumpleaños Juan, Uniformes Acme" value="${esc(f.descripcionPedido)}" />
-        <small style="color:var(--tinta-3);font-size:11px">Este texto aparece en la tarjeta del kanban debajo del cliente.</small>
-      </div>
-
-      <div class="fg" style="margin-top:14px">
-        <label class="label">Descripción / notas internas</label>
-        <textarea id="f_desc" placeholder="Indicaciones del estampado, ubicación del logo, urgencias, etc.">${esc(f.description)}</textarea>
-      </div>
-
-      <div class="section-hdr">Comercial</div>
-      <div class="row3">
-        <div class="fg">
-          <label class="label">Vendedor</label>
-          <select id="f_vendor">${vendorOpts}</select>
-        </div>
-        <div class="fg">
-          <label class="label">Canal de venta</label>
-          <select id="f_channel">
-            <option value="">—</option>
-            ${CHANNEL_OPTIONS.map(o => `<option value="${esc(o)}" ${f.channelSale===o?'selected':''}>${esc(o)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="fg">
-          <label class="label">Modo de pago</label>
-          <select id="f_pay">
-            <option value="">—</option>
-            ${PAYMENT_OPTIONS.map(o => `<option value="${esc(o)}" ${f.paymentMethod===o?'selected':''}>${esc(o)}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div class="fg">
-        <label class="label">Monto de seña</label>
-        <input type="number" id="f_senal" min="0" step="0.01" value="${esc(f.senalAmount)}" placeholder="0" />
-      </div>
-
-      <div class="section-hdr">Archivos</div>
-      <div class="fg" style="margin-bottom:0">
-        <input type="file" id="filesInput" multiple accept="image/*,.svg,.pdf,application/pdf,image/svg+xml" />
-        <button class="btn" type="button" id="btnFiles">📎 Subir archivos (mockups, fotos, SVG, PDF…)</button>
-        ${f.files.length ? `
-          <div class="files-list">
-            ${f.files.map((file, i) => `
-              <div class="file-chip">
-                <div class="thumb" ${file.kind === 'photo' ? `style="background-image:url(${file.dataUrl})"` : ''}>
-                  ${file.kind === 'photo' ? '' : (file.mime === 'application/pdf' ? '📄' : (file.mime === 'image/svg+xml' ? '🎨' : '📎'))}
-                </div>
-                <span class="name" title="${esc(file.name)}">${esc(file.name)}</span>
-                <button type="button" class="rm" data-rm-file="${i}" title="Quitar">×</button>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-      </div>
-
-      <div class="actions">
-        <button class="btn primary" id="btnSave">Crear tarjeta</button>
-        <button class="btn" id="btnCancel">Cancelar</button>
-      </div>
-    </div>
-  `;
-}
+let stages = [], cards = [];
+await requireAuth();
+renderNavbar('intake');
+[stages, cards] = await Promise.all([data.listStages('comercial'), data.listIntakeCards()]);
+// el lead aceptado sale del board (pasó a producción)
+stages = stages.filter(s => s.key !== 'aceptado');
+render();
 
 function render() {
-  renderNavbar(MODE === 'new-task' ? 'production' : 'intake');
-  const app = $('app');
+  const visible = cards.filter(c => c.status !== 'aceptada');
+  $('#board').innerHTML = stages.map(st => {
+    const cs = visible.filter(c => (c.stage_key || 'mensaje_entrante') === st.key);
+    return `<div class="col" data-stage="${st.key}">
+      <h3><span>${esc(st.label)}</span><span class="cnt">${cs.length}</span></h3>
+      <div class="drop-zone">${cs.map(leadHtml).join('')}</div>
+    </div>`;
+  }).join('');
+  bind();
+}
+function leadHtml(c) {
+  return `<div class="lead" draggable="true" data-id="${c.id}">
+    <div class="nm">${esc(c.client_query)}</div>
+    <div class="ds">${esc(c.description || '')}</div>
+    <div class="mt"><span class="dot u-${c.urgency || 'normal'}"></span>${esc(c.client_phone_e164 || '')} ${c.target_date ? '· ' + c.target_date : ''}</div>
+  </div>`;
+}
+function bind() {
+  let dragId = null;
+  $('#board').querySelectorAll('.lead').forEach(el => {
+    el.ondragstart = e => { dragId = el.dataset.id; e.dataTransfer.effectAllowed = 'move'; };
+    el.onclick = () => openLead(el.dataset.id);
+  });
+  $('#board').querySelectorAll('.col').forEach(col => {
+    col.ondragover = e => { e.preventDefault(); col.classList.add('drop'); };
+    col.ondragleave = () => col.classList.remove('drop');
+    col.ondrop = async e => {
+      e.preventDefault(); col.classList.remove('drop');
+      const id = dragId, stage = col.dataset.stage; if (!id) return;
+      const c = cards.find(x => x.id === id); if (!c || c.stage_key === stage) return;
+      c.stage_key = stage; render();
+      try { await data.saveIntakeCard({ id, stage_key: stage }); } catch (err) { toast('Error al mover'); }
+    };
+  });
+}
 
-  const tabBar = `
-    <div class="tab-bar">
-      <button class="${state.view==='list'?'active':''}" data-v="list">Mías (${state.intakes.length})</button>
-      ${state.isAdmin ? `<button class="${state.view==='triage'?'active':''}" data-v="triage">Triaje (${state.triageIntakes.length})</button>` : ''}
+/* Nueva consulta */
+$('#btnNew').onclick = () => {
+  $('#modal').innerHTML = `<h2>Nueva consulta</h2>
+    <div class="fg"><label>Cliente / empresa</label><input id="f-cli" placeholder="Nombre"></div>
+    <div class="row2">
+      <div class="fg"><label>Teléfono</label><input id="f-tel" placeholder="097…"></div>
+      <div class="fg"><label>Email</label><input id="f-mail"></div>
     </div>
-  `;
-
-  let content = '';
-  if (state.view === 'new') content = renderNewView();
-  else if (state.view === 'triage') content = renderTriageView();
-  else content = renderListView();
-
-  const title = MODE === 'new-task' ? 'Nueva tarea' : 'Bandeja de entrada';
-  const subtitle = MODE === 'new-task'
-    ? 'Va directo a la columna "A Pedir Insumos" de producción'
-    : (state.view === 'new' ? 'Crear tarjeta rápida' : state.view === 'triage' ? 'Procesar tarjetas de los vendedores' : 'Tus tarjetas pendientes y procesadas');
-
-  app.innerHTML = `
-    <div class="page-hdr">
-      <div>
-        <h1>${title}</h1>
-        <p class="subtitle">${subtitle}</p>
-      </div>
+    <div class="fg"><label>Producto / detalle</label><textarea id="f-desc" placeholder="Producto, medidas, color, terminación, lugar de instalación…"></textarea></div>
+    <div class="row2">
+      <div class="fg"><label>Fecha objetivo</label><input id="f-fecha" type="date"></div>
+      <div class="fg"><label>Urgencia</label><select id="f-urg"><option value="baja">Baja</option><option value="normal" selected>Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
     </div>
-    ${(MODE !== 'new-task' && state.view !== 'new') ? tabBar : ''}
-    ${state.msg ? `<div class="alert ${state.msg.kind}">${esc(state.msg.text)}</div>` : ''}
-    ${content}
-  `;
-
-  document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => setView(b.dataset.v));
-
-  if (state.view === 'new') wireNewView();
-
-  if (state.view === 'triage') {
-    document.querySelectorAll('[data-prod]').forEach(b => b.onclick = () => onTriage(b.dataset.prod, false));
-    document.querySelectorAll('[data-sample]').forEach(b => b.onclick = () => onTriage(b.dataset.sample, true));
-    document.querySelectorAll('[data-discard]').forEach(b => b.onclick = () => onDiscard(b.dataset.discard));
-  }
-}
-
-function wireNewView() {
-  $('btnCancel').onclick = () => {
-    if (MODE === 'new-task') { location.href = '/production.html'; return; }
-    resetForm();
-    setView('list');
+    <div class="mact"><button class="btn primary" id="f-save">Crear</button><button class="btn" id="f-cancel">Cancelar</button></div>`;
+  showModal();
+  $('#f-cancel').onclick = hideModal;
+  $('#f-save').onclick = async () => {
+    const cli = $('#f-cli').value.trim();
+    if (!cli) { toast('Falta el cliente'); return; }
+    try {
+      const card = await data.createIntakeCard({
+        client_query: cli, client_phone_e164: $('#f-tel').value || null, client_email: $('#f-mail').value || null,
+        description: $('#f-desc').value || null, target_date: $('#f-fecha').value || null, urgency: $('#f-urg').value,
+      });
+      cards.unshift(card); hideModal(); render(); toast('Consulta creada');
+    } catch (e) { toast('Error: ' + (e.message || e)); }
   };
-  $('btnSave').onclick = onSave;
-  $('btnFiles').onclick = () => $('filesInput').click();
-  $('filesInput').onchange = onFiles;
-  document.querySelectorAll('[data-rm-file]').forEach(b => {
-    b.onclick = () => {
-      const i = +b.dataset.rmFile;
-      state.form.files.splice(i, 1);
-      render();
-    };
-  });
-  $('f_cli').oninput = e => {
-    state.form.clientQuery = e.target.value;
-    // Tipeo manual invalida cualquier partner Odoo elegido antes.
-    state.form.clientPartnerId = null;
+};
+
+/* Detalle del lead */
+async function openLead(id) {
+  const c = cards.find(x => x.id === id); if (!c) return;
+  const quote = await data.getQuoteByIntake(id);
+  $('#modal').innerHTML = `<h2>${esc(c.client_query)}</h2>
+    <div class="row2">
+      <div class="fg"><label>Teléfono</label><input id="e-tel" value="${esc(c.client_phone_e164)}"></div>
+      <div class="fg"><label>Email</label><input id="e-mail" value="${esc(c.client_email)}"></div>
+    </div>
+    <div class="fg"><label>Producto / detalle</label><textarea id="e-desc">${esc(c.description)}</textarea></div>
+    <div class="row2">
+      <div class="fg"><label>Fecha objetivo</label><input id="e-fecha" type="date" value="${esc(c.target_date)}"></div>
+      <div class="fg"><label>Etapa</label><select id="e-stage">${stages.concat([{key:'aceptado',label:'Aceptado'},{key:'rechazado',label:'Rechazado'}]).map(s => `<option value="${s.key}" ${c.stage_key === s.key ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></div>
+    </div>
+    <div style="font-size:12px;color:var(--tinta-2);margin:4px 0">${quote ? `📄 Cotización <b>${quote.id}</b> · ${money(quote.precio_venta)}` : 'Sin cotización todavía.'}</div>
+    <div class="mact">
+      <button class="btn primary" id="e-cot">${quote ? 'Ver/editar cotización' : 'Cotizar'}</button>
+      <button class="btn" id="e-save">Guardar</button>
+      <button class="btn" id="e-accept" style="background:#2E7D46;color:#fff;border-color:#2E7D46">Aceptar → Producción</button>
+      <button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button>
+    </div>`;
+  showModal();
+  $('#e-close').onclick = hideModal;
+  $('#e-cot').onclick = () => { location.href = `/index.html?intake=${id}${quote ? '&quote=' + quote.id : ''}`; };
+  $('#e-save').onclick = async () => {
+    const patch = { id, client_phone_e164: $('#e-tel').value || null, client_email: $('#e-mail').value || null, description: $('#e-desc').value || null, target_date: $('#e-fecha').value || null, stage_key: $('#e-stage').value };
+    Object.assign(c, patch);
+    try { await data.saveIntakeCard(patch); hideModal(); render(); toast('Guardado'); } catch (e) { toast('Error: ' + (e.message || e)); }
   };
-  // Autocomplete contra Odoo (res.partner) + creación inline, igual que el Cotizador.
-  mountClientPicker($('f_cli'), {
-    kind: 'customer',
-    initialName: state.form.clientQuery || '',
-    onSelect: (sel) => {
-      state.form.clientQuery = sel.name || '';
-      state.form.clientPartnerId = sel.partnerId || null;
-      if (sel.phone) {
-        state.form.phone = sel.phone;
-        if ($('f_phone')) $('f_phone').value = sel.phone;
-      }
-    },
-    onCreate: (sel) => {
-      state.form.clientQuery = sel.name || '';
-      state.form.clientPartnerId = sel.partnerId || null;
-    },
-  });
-  $('f_phone').oninput = e => state.form.phone = e.target.value;
-  $('f_date').onchange = e => state.form.targetDate = e.target.value;
-  $('f_desc').oninput = e => state.form.description = e.target.value;
-  if ($('f_pedido')) $('f_pedido').oninput = e => state.form.descripcionPedido = e.target.value;
-  $('f_vendor').onchange = e => state.form.vendor = e.target.value;
-  $('f_channel').onchange = e => state.form.channelSale = e.target.value;
-  $('f_pay').onchange = e => state.form.paymentMethod = e.target.value;
-  $('f_senal').oninput = e => state.form.senalAmount = e.target.value;
-  $('btnAddLine').onclick = () => { state.form.lines.push(emptyLine()); render(); };
-
-  document.querySelectorAll('[data-line-field]').forEach(inp => {
-    const idx = +inp.dataset.idx;
-    const field = inp.dataset.lineField;
-    inp.oninput = e => { state.form.lines[idx][field] = e.target.value; };
-    if (field === 'producto') {
-      inp.onfocus = e => { state.acOpenFor = idx; state.acQuery = e.target.value; renderAcOnly(); };
-      inp.oninput = e => {
-        state.form.lines[idx].producto = e.target.value;
-        state.acQuery = e.target.value;
-        renderAcOnly();
-      };
-      inp.onblur = () => setTimeout(() => { if (state.acOpenFor === idx) { state.acOpenFor = null; renderAcOnly(); } }, 180);
-    }
-  });
-
-  document.querySelectorAll('[data-line-del]').forEach(b => {
-    b.onclick = () => {
-      const i = +b.dataset.lineDel;
-      state.form.lines.splice(i, 1);
-      if (!state.form.lines.length) state.form.lines.push(emptyLine());
-      render();
-    };
-  });
-
-  // Botón 🛍️ → abre el picker compartido con imágenes
-  document.querySelectorAll('[data-line-pickcat]').forEach(b => {
-    b.onclick = () => {
-      const idx = +b.dataset.linePickcat;
-      import('./js/catalog-picker.js').then(({ openCatalogPicker }) => {
-        openCatalogPicker({
-          initialQuery: state.form.lines[idx]?.producto || '',
-          onPick: ({ n, c }) => {
-            const line = state.form.lines[idx];
-            if (line) {
-              line.producto = n;
-              if (c > 0 && !line.precio) line.precio = c;
-            }
-            render();
-          },
-        });
-      });
-    };
-  });
-
-  document.querySelectorAll('[data-ac-pick]').forEach(item => {
-    item.onmousedown = e => {  // mousedown porque blur del input dispara antes que click
-      e.preventDefault();
-      const idx = +item.dataset.acPick;
-      state.form.lines[idx].producto = item.dataset.acName;
-      state.acOpenFor = null;
-      render();
-    };
-  });
+  $('#e-accept').onclick = async () => {
+    if (!quote && !confirm('No hay cotización para este lead. ¿Pasarlo a Producción igual (sin total)?')) return;
+    try {
+      const pc = await data.createProductionFromIntake(c, quote);
+      c.status = 'aceptada'; hideModal(); render();
+      toast('Pasó a Producción: ' + pc.id);
+    } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
 }
 
-// re-renderiza solo la zona del autocomplete sin perder foco del input
-function renderAcOnly() {
-  if (state.view !== 'new') return;
-  document.querySelectorAll('[data-line-idx]').forEach(row => {
-    const idx = +row.dataset.lineIdx;
-    const wrap = row.querySelector('.ac-wrap');
-    const existing = wrap.querySelector('.ac-list');
-    if (existing) existing.remove();
-    if (state.acOpenFor !== idx) return;
-    let html = '';
-    if (!state.catalogReady) {
-      html = `<div class="ac-list"><div class="ac-empty">Cargá primero el catálogo abriendo el Cotizador al menos una vez.</div></div>`;
-    } else {
-      const results = searchCatalog(state.acQuery, 12);
-      html = results.length
-        ? `<div class="ac-list">${results.map(p => `<div class="ac-item" data-ac-pick="${idx}" data-ac-name="${esc(p.n)}"><span>${esc(p.n)}</span><span class="ac-cat">${esc(p.k || '')}</span></div>`).join('')}</div>`
-        : `<div class="ac-list"><div class="ac-empty">Sin coincidencias. Podés escribir el nombre libremente.</div></div>`;
-    }
-    wrap.insertAdjacentHTML('beforeend', html);
-    wrap.querySelectorAll('[data-ac-pick]').forEach(item => {
-      item.onmousedown = e => {
-        e.preventDefault();
-        const i = +item.dataset.acPick;
-        state.form.lines[i].producto = item.dataset.acName;
-        state.acOpenFor = null;
-        render();
-      };
-    });
-  });
-}
-
-
-function renderFab() {
-  let f = document.querySelector('.fab');
-  if (state.view === 'new') { if (f) f.remove(); return; }
-  if (!f) {
-    f = document.createElement('button');
-    f.className = 'fab';
-    f.title = 'Nueva tarjeta';
-    f.textContent = '+';
-    document.body.appendChild(f);
-    f.onclick = () => setView('new');
-  }
-}
-
-// Lee cualquier File a dataURL (sin compresión).
-function readFileAsDataURL(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-
-async function onFiles(e) {
-  const list = Array.from(e.target.files || []);
-  if (!list.length) return;
-  try {
-    for (const file of list) {
-      const isImage = file.type.startsWith('image/') && file.type !== 'image/svg+xml';
-      // Imágenes raster: comprimo a 1200px. SVG/PDF y otros: dataURL crudo.
-      const dataUrl = isImage ? await compressImage(file) : await readFileAsDataURL(file);
-      state.form.files.push({
-        name: file.name,
-        mime: file.type || 'application/octet-stream',
-        dataUrl,
-        kind: isImage ? 'photo' : 'file',
-      });
-    }
-    // Reset del input para que pueda volver a seleccionarse el mismo archivo
-    e.target.value = '';
-    render();
-  } catch (err) {
-    state.msg = { kind: 'err', text: 'No se pudo procesar un archivo: ' + err.message };
-    render();
-  }
-}
-
-// Overlay global de carga durante el guardado (que puede tardar 1-3s por la sync con Odoo).
-function showOverlay(text) {
-  let o = document.getElementById('gln-overlay');
-  if (!o) {
-    o = document.createElement('div');
-    o.id = 'gln-overlay';
-    o.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,.88);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px';
-    document.body.appendChild(o);
-  }
-  o.innerHTML = `
-    <div style="width:42px;height:42px;border:4px solid var(--azul);border-top-color:transparent;border-radius:50%;animation:gln-spin .8s linear infinite"></div>
-    <div style="font-size:14px;color:var(--tinta);font-weight:600">${text}</div>
-  `;
-  // Inyectar keyframes una sola vez
-  if (!document.getElementById('gln-spin-style')) {
-    const s = document.createElement('style');
-    s.id = 'gln-spin-style';
-    s.textContent = '@keyframes gln-spin { to { transform: rotate(360deg); } }';
-    document.head.appendChild(s);
-  }
-}
-function hideOverlay() {
-  const o = document.getElementById('gln-overlay');
-  if (o) o.remove();
-}
-
-async function onSave() {
-  const f = state.form;
-  if (!f.clientQuery.trim()) {
-    state.msg = { kind: 'err', text: 'El campo "Cliente" es obligatorio.' };
-    return render();
-  }
-  showOverlay(MODE === 'new-task' ? 'Creando tarea y sincronizando con Odoo…' : 'Guardando…');
-  const cleanLines = f.lines
-    .filter(l => l.producto || l.cantidad || l.color || l.talle || l.precio)
-    .map(l => ({
-      producto: (l.producto || '').trim(),
-      color: (l.color || '').trim(),
-      talle: (l.talle || '').trim(),
-      cantidad: l.cantidad ? Number(l.cantidad) : null,
-      precio: l.precio ? Number(l.precio) : null,
-    }));
-  // Armamos attachments en el formato canónico que guarda production_cards.attachments
-  const attachments = f.files.map((file, i) => ({
-    kind: file.kind,
-    url: file.dataUrl,
-    name: file.name || `archivo-${i+1}`,
-    mime: file.mime,
-  }));
-  try {
-    if (MODE === 'new-task') {
-      const result = await createTaskFromForm({
-        clientName: f.clientQuery.trim(),
-        clientPartnerId: f.clientPartnerId || null,
-        clientPhone: f.phone.trim() || null,
-        description: f.description.trim(),
-        descripcionPedido: (f.descripcionPedido || '').trim() || null,
-        targetDate: f.targetDate || null,
-        vendor: f.vendor.trim() || null,
-        channelSale: f.channelSale || null,
-        paymentMethod: f.paymentMethod || null,
-        senalAmount: f.senalAmount ? Number(f.senalAmount) : null,
-        productLines: cleanLines,
-        attachments,
-      });
-      // El toast informa también el resultado de la sync con Odoo.
-      const so = result?.saleOrder;
-      let toast = 'Tarea creada en "Borrador" — completá los campos faltantes para moverla a Pedir Insumos';
-      if (so?.orderId) toast += so.alreadyExisted ? ` · SO Odoo #${so.orderId} (ya existía)` : ` · SO Odoo #${so.orderId} creado`;
-      else if (so?.error) toast += ` · ⚠ Odoo falló: ${so.error}`;
-      sessionStorage.setItem('cirene_toast', toast);
-      clearIntakeDraft();   // tarea creada → descartar borrador y no avisar al salir
-      location.href = '/production.html';
-      return;
-    }
-    const id = await createIntake({
-      clientQuery: f.clientQuery.trim(),
-      description: f.description.trim(),
-      targetDate: f.targetDate || null,
-      phone: f.phone.trim() || null,
-      vendor: f.vendor.trim() || null,
-      channelSale: f.channelSale || null,
-      paymentMethod: f.paymentMethod || null,
-      senalAmount: f.senalAmount ? Number(f.senalAmount) : null,
-      productLines: cleanLines,
-      files: f.files,
-    });
-    resetForm();
-    state.msg = { kind: 'ok', text: `Tarjeta ${id} creada` };
-    setView('list');
-    await load();
-    hideOverlay();
-  } catch (e) {
-    hideOverlay();
-    state.msg = { kind: 'err', text: 'Error al guardar: ' + e.message };
-    render();
-  }
-}
-
-async function onTriage(id, isSample) {
-  const intake = state.triageIntakes.find(i => i.id === id);
-  if (!intake) return;
-  try {
-    const pid = await triageToProduction(intake, { isSample });
-    state.msg = { kind: 'ok', text: `Tarjeta producción creada: ${pid}` };
-    await load();
-  } catch (e) {
-    state.msg = { kind: 'err', text: 'Error en triaje: ' + e.message };
-    render();
-  }
-}
-
-async function onDiscard(id) {
-  const intake = state.triageIntakes.find(i => i.id === id);
-  if (!intake) return;
-  const notes = prompt('Motivo de descarte (opcional):');
-  if (notes === null) return;
-  try {
-    await discardIntake(intake, notes || '');
-    state.msg = { kind: 'ok', text: 'Tarjeta descartada' };
-    await load();
-  } catch (e) {
-    state.msg = { kind: 'err', text: 'Error: ' + e.message };
-    render();
-  }
-}
-
-// Boot
-(async () => {
-  await requireAuth();
-  state.isAdmin = await isAdmin();
-
-  // (#6) Catálogo unificado: refrescamos desde Supabase catalog_v1 (misma
-  // fuente que el cotizador/comparador/personalizador) antes de leerlo, así
-  // intake nunca queda con datos viejos.
-  try { await bootstrapCatalogFromSupabase({ timeoutMs: 4000 }); } catch (e) { console.warn('bootstrap catálogo:', e.message); }
-  state.catalog = await loadCatalog();
-  state.catalogReady = state.catalog.length > 0;
-
-  state.vendors = await loadVendors();
-  const profile = await getProfile();
-  state.defaultVendor = profile?.vendor_name || profile?.full_name || '';
-  state.form.vendor = state.defaultVendor;
-
-  // Restaurar borrador si el usuario había empezado a cargar una tarea.
-  restoreIntakeDraft();
-  if (!state.form.vendor) state.form.vendor = state.defaultVendor;
-
-  await load();
-})();
-
-window.addEventListener('DOMContentLoaded', renderFab);
-// Autoguardado del borrador en cada cambio (debounced dentro de saveIntakeDraft).
-document.addEventListener('input', saveIntakeDraft, true);
-document.addEventListener('change', saveIntakeDraft, true);
-// Aviso si se intenta salir con datos sin guardar (salvo que ya se creó la tarea).
-window.addEventListener('beforeunload', (e) => {
-  if (MODE === 'new-task' && !_intakeSaved && _intakeFormHasData(state.form)) {
-    e.preventDefault(); e.returnValue = '';
-  }
-});
-const obs = new MutationObserver(renderFab);
-obs.observe(document.body, { childList: true });
+function showModal() { $('#ov').classList.add('show'); }
+function hideModal() { $('#ov').classList.remove('show'); }
+$('#ov').onclick = e => { if (e.target === $('#ov')) hideModal(); };
 </script>
 </body>
 </html>
