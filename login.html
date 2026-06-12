@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Iniciar sesión</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/glide-theme.css">
+<style>
+:root {
+  --azul: #0A0A0A; --azul-d: #000000; --celeste: #888888; --tinta: #14161A; --tinta-2: #5A5F66;
+  --surface: #fff; --border: #E2E2E0;
+  --err-bg: #FCEBEB; --err-text: #791F1F;
+  --ok-bg: #E1F5EE; --ok-text: #085041;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+  background:
+    repeating-linear-gradient(60deg, transparent 0 38px, rgba(255,255,255,.035) 38px 39px),
+    repeating-linear-gradient(-60deg, transparent 0 38px, rgba(255,255,255,.035) 38px 39px),
+    #0A0A0A;
+  color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; font-size: 15px; gap: 26px; }
+.brandmark { text-align: center; color: #fff; }
+.brandmark .eyebrow { font-size: 11px; letter-spacing: .42em; font-weight: 600; opacity: .8; text-transform: uppercase; }
+.brandmark .wordmark { font-family: 'Raleway',sans-serif; font-size: 34px; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase; margin-top: 4px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 32px 30px; width: 100%; max-width: 380px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); }
+.brand { text-align: center; margin-bottom: 22px; }
+.brand h1 { font-size: 16px; font-weight: 600; letter-spacing: .02em; color: var(--tinta-2); }
+.fg { margin-bottom: 14px; }
+.label { font-size: 12px; font-weight: 600; color: var(--tinta-2); text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 6px; display: block; }
+input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; color: var(--tinta); background: #fff; transition: border-color .15s; }
+input:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
+button.primary { width: 100%; padding: 11px; border-radius: 8px; border: none; background: var(--azul);
+  color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s;
+  font-family: inherit; margin-top: 6px; }
+button.primary:hover { background: var(--azul-d); }
+button.primary:disabled { opacity: 0.5; cursor: wait; }
+.alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; line-height: 1.45; }
+.alert.err { background: var(--err-bg); color: var(--err-text); border-left: 3px solid #A32D2D; }
+.alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
+.hint { font-size: 11px; color: var(--tinta-2); text-align: center; margin-top: 16px; line-height: 1.5; }
+.hint a { color: var(--azul); }
+</style>
+</head>
+<body>
+
+<div class="brandmark">
+  <div class="eyebrow">Emprendimientos</div>
+  <div class="wordmark">De&nbsp;C&#x0268;rene</div>
+</div>
+
+<div class="card">
+  <div class="brand">
+    <h1>Herrería · acceso al sistema</h1>
+  </div>
+
+  <div id="msg"></div>
+
+  <form id="loginForm">
+    <div class="fg">
+      <label class="label" for="email">Email</label>
+      <input id="email" type="email" required autocomplete="email" />
+    </div>
+    <div class="fg">
+      <label class="label" for="password">Contraseña</label>
+      <input id="password" type="password" required autocomplete="current-password" />
+    </div>
+    <button type="submit" class="primary" id="btnLogin">Iniciar sesión</button>
+  </form>
+
+  <p class="hint">
+    ¿No tenés cuenta? Pedile al admin que te cree una. Las cuentas se administran desde el panel de Supabase.
+  </p>
+</div>
+
+<script type="module">
+import { signIn, getCurrentUser } from './js/auth.js';
+
+const $ = id => document.getElementById(id);
+const msg = $('msg');
+
+function showMsg(text, kind = 'err') {
+  msg.innerHTML = `<div class="alert ${kind}">${text}</div>`;
+}
+
+// Si ya hay sesión, redirigir al destino (next= en query) o al cotizador
+(async () => {
+  const user = await getCurrentUser().catch(() => null);
+  if (user) {
+    const next = new URLSearchParams(location.search).get('next') || '/home.html';
+    location.href = next;
+  }
+})();
+
+$('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $('email').value.trim();
+  const password = $('password').value;
+  $('btnLogin').disabled = true;
+  msg.innerHTML = '';
+  try {
+    await signIn(email, password);
+    const next = new URLSearchParams(location.search).get('next') || '/home.html';
+    location.href = next;
+  } catch (err) {
+    showMsg(`No se pudo iniciar sesión: ${err.message || err}`);
+    $('btnLogin').disabled = false;
+  }
+};
+</script>
+</body>
+</html>

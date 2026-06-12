@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Órdenes de compra</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/glide-theme.css">
+<style>
+:root {
+  --azul: #0A0A0A; --azul-d: #000000; --celeste: #888888; --tinta: #14161A; --tinta-2: #5A5F66; --tinta-3: #9AA0A6;
+  --bg: #F5F5F4; --surface: #fff; --surface-2: #FAFAFA; --border: #E2E2E0;
+  --rojo: #E63946; --verde: #2BB673; --err-bg: #FCEBEB; --err-text: #791F1F;
+  --ok-bg: #E1F5EE; --ok-text: #085041;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: var(--tinta);
+  background: var(--bg); font-size: 14px; line-height: 1.45; min-height: 100vh; }
+.container { max-width: 980px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 12px 0; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.subtitle { font-size: 13px; color: var(--tinta-2); }
+.page-hdr { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--tinta); font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--azul); color: #fff; border-color: var(--azul); }
+.btn.primary:hover { background: var(--azul-d); }
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn.danger { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+.fg { margin-bottom: 10px; }
+.label { font-size: 11px; font-weight: 600; color: var(--tinta-2); text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
+input, textarea, select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; color: var(--tinta); background: #fff; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .row2 { grid-template-columns: 1fr; } }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; padding: 8px 10px; color: var(--tinta-2); font-weight: 600;
+  border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tbl .num { text-align: right; }
+
+.line-tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+.line-tbl th { text-align: left; padding: 6px; color: var(--tinta-2); font-weight: 600; font-size: 11px;
+  border-bottom: 1px solid var(--border); }
+.line-tbl td { padding: 4px; vertical-align: middle; }
+.line-tbl input { padding: 6px 8px; font-size: 12px; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; }
+.b-bor { background: var(--surface-2); color: var(--tinta-2); }
+.b-env { background: #EFEFEF; color: #222222; }
+.b-conf { background: var(--ok-bg); color: var(--ok-text); }
+.b-rec { background: #DEF8F9; color: #0A0A0A; }
+.b-fac { background: #F3E8FF; color: #6B21A8; }
+.b-can { background: #F4F4F4; color: #6B7280; }
+
+.alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+.alert.err { background: var(--err-bg); color: var(--err-text); border-left: 3px solid #A32D2D; }
+.alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
+.alert.info { background: #EFEFEF; color: #222222; border-left: 3px solid var(--azul); }
+.empty { padding: 30px 20px; text-align: center; color: var(--tinta-3); }
+
+.totals { display: flex; justify-content: flex-end; gap: 16px; padding: 8px 0;
+  border-top: 1px solid var(--border); font-size: 13px; }
+.totals .big { font-size: 17px; font-weight: 700; color: var(--azul-d); }
+</style>
+</head>
+<body>
+
+<div id="navbar-mount"></div>
+
+<div class="container">
+  <div id="msg"></div>
+  <div id="content">Cargando…</div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js';
+import { requireAdmin } from './js/auth.js';
+import { getSupa } from './js/supa.js';
+import { listWorkshops } from './js/workshops.js';
+import { listPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus, getPurchaseOrder } from './js/purchase-orders.js';
+import { loadCard } from './js/production.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmt = n => (Number(n) || 0).toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const params = new URLSearchParams(location.search);
+const initialCardId = params.get('card');
+const initialView = params.get('new') ? 'new' : 'list';
+
+const state = {
+  view: initialView,          // list | new | detail
+  pos: [],
+  workshops: [],
+  detailId: null,
+  detailPo: null,
+  cardId: initialCardId,
+  cardData: null,
+  msg: null,
+  form: { workshopId: '', notes: '', lines: [{ description: '', quantity: 1, unit_price: 0 }] },
+};
+
+function showError(t) { state.msg = { kind: 'err', text: t }; render(); }
+function showOk(t) { state.msg = { kind: 'ok', text: t }; render(); setTimeout(() => { state.msg = null; render(); }, 3000); }
+
+async function load() {
+  try {
+    state.workshops = await listWorkshops({ activeOnly: true });
+    state.pos = await listPurchaseOrders({ cardId: state.cardId });
+    if (state.cardId) state.cardData = await loadCard(state.cardId);
+  } catch (e) {
+    showError('Error: ' + e.message);
+  }
+  render();
+}
+
+function statusBadge(s) {
+  const map = {
+    borrador: ['b-bor', 'Borrador'],
+    enviada: ['b-env', 'Enviada'],
+    confirmada: ['b-conf', 'Confirmada'],
+    recibida: ['b-rec', 'Recibida'],
+    facturada: ['b-fac', 'Facturada'],
+    cancelada: ['b-can', 'Cancelada'],
+  };
+  const [cls, label] = map[s] || ['b-bor', s];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function renderList() {
+  return `
+    <div class="page-hdr">
+      <div>
+        <h1>Órdenes de compra</h1>
+        <p class="subtitle">
+          ${state.cardId ? `Filtradas por tarjeta <code>${esc(state.cardId)}</code> · ${state.cardData?.client_name || ''}` : `${state.pos.length} órdenes en total`}
+        </p>
+      </div>
+      <button class="btn primary" id="btnNew">+ Nueva OC</button>
+    </div>
+
+    ${state.cardId ? `<div class="alert info">Estás creando OCs vinculadas a la tarjeta <strong>${esc(state.cardId)}</strong>. <a href="/purchase-orders.html" style="color:var(--azul);">Ver todas</a></div>` : ''}
+
+    <div class="card" style="padding:0;">
+      ${state.pos.length ? `
+        <table class="tbl">
+          <thead><tr>
+            <th>ID</th><th>Tarjeta</th><th>Taller</th><th>Líneas</th><th class="num">Total</th><th>Estado</th><th>Odoo</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${state.pos.map(po => `
+              <tr>
+                <td><code style="font-size:11px">${esc(po.id)}</code></td>
+                <td><a href="/production.html?card=${esc(po.production_card_id || '')}">${esc(po.production_card_id || '—')}</a></td>
+                <td>${esc(po.workshops?.name || '—')}</td>
+                <td>${(po.lines || []).length}</td>
+                <td class="num"><strong>${fmt(po.total)}</strong></td>
+                <td>${statusBadge(po.status)}</td>
+                <td>${po.odoo_purchase_order_id ? `<span class="badge b-conf">#${po.odoo_purchase_order_id}</span>` : '—'}</td>
+                <td><button class="btn sm" data-detail="${po.id}">Detalle</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="empty">No hay órdenes de compra. Creá la primera con "+ Nueva OC".</div>'}
+    </div>
+  `;
+}
+
+function renderNew() {
+  const f = state.form;
+  const subtotal = f.lines.reduce((a, l) => a + (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0), 0);
+  return `
+    <div class="page-hdr">
+      <div>
+        <h1>Nueva OC</h1>
+        <p class="subtitle">${state.cardId ? `Para tarjeta <strong>${esc(state.cardId)}</strong> · ${state.cardData?.client_name || ''}` : 'OC operativa a un taller/proveedor'}</p>
+      </div>
+      <button class="btn" id="btnCancel">Cancelar</button>
+    </div>
+
+    <div class="card">
+      <div class="row2">
+        <div class="fg">
+          <label class="label">Taller / proveedor *</label>
+          <select id="f_workshop">
+            <option value="">— Elegir —</option>
+            ${state.workshops.map(w => `<option value="${esc(w.id)}" ${f.workshopId === w.id ? 'selected' : ''}>${esc(w.name)}${w.odoo_partner_id ? ' · (Odoo)' : ''}</option>`).join('')}
+          </select>
+          ${!state.workshops.length ? '<p style="font-size:11px;color:var(--rojo);margin-top:4px;">No hay talleres activos. Crear primero en <a href="/admin.html">Admin</a>.</p>' : ''}
+        </div>
+        <div class="fg">
+          <label class="label">Tarjeta de producción</label>
+          <input id="f_card" value="${esc(state.cardId || '')}" placeholder="prod-202605-..." readonly style="background:var(--surface-2);" />
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="label">Notas / descripción del trabajo</label>
+        <textarea id="f_notes" rows="2" placeholder="Ej: bordado de 80 unidades, logo pecho izquierdo, según arte adjunto">${esc(f.notes)}</textarea>
+      </div>
+
+      <h2 style="margin: 14px 0 8px;">Líneas</h2>
+      <table class="line-tbl">
+        <thead>
+          <tr>
+            <th style="width: 60%;">Descripción</th>
+            <th style="width: 12%;">Cant.</th>
+            <th style="width: 18%;">Precio unit.</th>
+            <th style="width: 10%; text-align: right;">Importe</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${f.lines.map((l, j) => `
+            <tr>
+              <td><input data-l="${j}" data-f="description" value="${esc(l.description)}" placeholder="Servicio / material" /></td>
+              <td><input type="number" data-l="${j}" data-f="quantity" value="${l.quantity}" style="text-align:right" min="0" step="0.01" /></td>
+              <td><input type="number" data-l="${j}" data-f="unit_price" value="${l.unit_price}" style="text-align:right" min="0" step="0.01" /></td>
+              <td style="text-align:right;font-weight:500;padding-right:6px">${fmt((l.quantity || 0) * (l.unit_price || 0))}</td>
+              <td><button class="btn sm" data-delline="${j}" style="padding:3px 6px">✕</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <button class="btn sm" id="btnAddLine">+ Agregar línea</button>
+
+      <div class="totals">
+        <span>Total: <span class="big">${fmt(subtotal)}</span></span>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" id="pushOdoo" checked style="width:auto" />
+          Crear como borrador de <strong>purchase.order</strong> en Odoo
+        </label>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn primary" id="btnSave">Crear OC</button>
+        <button class="btn" id="btnCancelSave">Cancelar</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderDetail() {
+  const po = state.detailPo;
+  if (!po) return '<div class="card">Cargando…</div>';
+  return `
+    <div class="page-hdr">
+      <div>
+        <h1>OC ${esc(po.id)}</h1>
+        <p class="subtitle">${esc(po.workshops?.name || '—')} · ${statusBadge(po.status)} ${po.odoo_purchase_order_id ? `· Odoo #${po.odoo_purchase_order_id}` : ''}</p>
+      </div>
+      <button class="btn" id="btnBackList">← Volver</button>
+    </div>
+
+    <div class="card">
+      <div class="row2">
+        <div><div class="label">Tarjeta</div><div><a href="/production.html">${esc(po.production_card_id || '—')}</a></div></div>
+        <div><div class="label">Creada</div><div>${new Date(po.created_at).toLocaleString('es-UY')}</div></div>
+      </div>
+      ${po.notes ? `<div class="fg"><div class="label">Notas</div><div>${esc(po.notes)}</div></div>` : ''}
+
+      <h2 style="margin: 14px 0 8px;">Líneas</h2>
+      <table class="tbl">
+        <thead><tr><th>Descripción</th><th class="num">Cant.</th><th class="num">Precio unit.</th><th class="num">Importe</th></tr></thead>
+        <tbody>
+          ${(po.lines || []).map(l => `
+            <tr>
+              <td>${esc(l.description)}</td>
+              <td class="num">${l.quantity}</td>
+              <td class="num">${fmt(l.unit_price)}</td>
+              <td class="num">${fmt((l.quantity || 0) * (l.unit_price || 0))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div class="totals">
+        <span>Total: <span class="big">${fmt(po.total)}</span></span>
+      </div>
+
+      <h2 style="margin: 14px 0 8px;">Cambiar estado</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${['borrador','enviada','confirmada','recibida','facturada','cancelada'].map(s =>
+          `<button class="btn sm ${s===po.status?'primary':''}" data-status="${s}">${s}</button>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  renderNavbar('purchase-orders');
+  $('msg').innerHTML = state.msg ? `<div class="alert ${state.msg.kind}">${esc(state.msg.text)}</div>` : '';
+  if (state.view === 'list') $('content').innerHTML = renderList();
+  else if (state.view === 'new') $('content').innerHTML = renderNew();
+  else if (state.view === 'detail') $('content').innerHTML = renderDetail();
+
+  // listeners
+  if ($('btnNew')) $('btnNew').onclick = () => { state.view = 'new'; state.msg = null; render(); };
+  if ($('btnCancel') || $('btnCancelSave')) {
+    const handler = () => { state.view = 'list'; state.msg = null; render(); };
+    if ($('btnCancel')) $('btnCancel').onclick = handler;
+    if ($('btnCancelSave')) $('btnCancelSave').onclick = handler;
+  }
+  if ($('btnBackList')) $('btnBackList').onclick = () => { state.view = 'list'; state.detailPo = null; render(); };
+
+  if (state.view === 'new') {
+    if ($('f_workshop')) $('f_workshop').onchange = e => { state.form.workshopId = e.target.value; };
+    if ($('f_notes')) $('f_notes').oninput = e => { state.form.notes = e.target.value; };
+    if ($('btnAddLine')) $('btnAddLine').onclick = () => {
+      state.form.lines.push({ description: '', quantity: 1, unit_price: 0 });
+      render();
+    };
+    document.querySelectorAll('[data-l]').forEach(el => {
+      el.oninput = () => {
+        const j = parseInt(el.dataset.l);
+        const f = el.dataset.f;
+        const v = ['quantity','unit_price'].includes(f) ? parseFloat(el.value) || 0 : el.value;
+        state.form.lines[j][f] = v;
+        // re-render to update totals
+        render();
+        // restore focus
+        const sel = document.querySelector(`[data-l="${j}"][data-f="${f}"]`);
+        if (sel) { sel.focus(); sel.setSelectionRange(sel.value.length, sel.value.length); }
+      };
+    });
+    document.querySelectorAll('[data-delline]').forEach(el => {
+      el.onclick = () => {
+        state.form.lines.splice(parseInt(el.dataset.delline), 1);
+        if (!state.form.lines.length) state.form.lines.push({ description: '', quantity: 1, unit_price: 0 });
+        render();
+      };
+    });
+    if ($('btnSave')) $('btnSave').onclick = onSave;
+  }
+
+  if (state.view === 'detail') {
+    document.querySelectorAll('[data-status]').forEach(b => b.onclick = async () => {
+      try {
+        await updatePurchaseOrderStatus(state.detailPo.id, b.dataset.status);
+        state.detailPo = await getPurchaseOrder(state.detailPo.id);
+        showOk('Estado actualizado');
+      } catch (e) { showError(e.message); }
+    });
+  }
+
+  document.querySelectorAll('[data-detail]').forEach(b => b.onclick = async () => {
+    try {
+      state.detailId = b.dataset.detail;
+      state.detailPo = await getPurchaseOrder(state.detailId);
+      state.view = 'detail';
+      render();
+    } catch (e) { showError(e.message); }
+  });
+}
+
+async function onSave() {
+  const f = state.form;
+  if (!f.workshopId) return showError('Elegí un taller');
+  if (!f.lines.length || f.lines.every(l => !l.description && !l.quantity)) return showError('Agregá al menos una línea');
+  const pushOdoo = $('pushOdoo')?.checked;
+  try {
+    const po = await createPurchaseOrder({
+      productionCardId: state.cardId || null,
+      workshopId: f.workshopId,
+      notes: f.notes,
+      lines: f.lines.filter(l => l.description || l.quantity > 0 || l.unit_price > 0),
+      pushToOdoo: pushOdoo,
+    });
+    state.form = { workshopId: '', notes: '', lines: [{ description: '', quantity: 1, unit_price: 0 }] };
+    state.view = 'list';
+    showOk(`OC ${po.id} creada${po.odoo_purchase_order_id ? ' · Odoo #' + po.odoo_purchase_order_id : ''}`);
+    await load();
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+// Boot
+(async () => {
+  if (!(await requireAdmin())) return;
+  await load();
+})();
+</script>
+</body>
+</html>

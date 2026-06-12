@@ -1,0 +1,26 @@
+/* Pills de estado de guardado — usados por js/save-guard.js + integraciones
+   inline en production.html, intake.html, admin.html.
+   Las páginas index.html y catalog.html los tienen inline desde antes y se
+   mantienen como están (mismas reglas, idéntico aspecto). */
+
+.saving-pill{
+  background:#E8F0FE;color:#1A73E8;padding:3px 9px;border-radius:99px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  animation:saving-pulse 1s ease-in-out infinite;
+}
+.saved-pill{
+  background:#D6F5E5;color:#1A7A4A;padding:3px 9px;border-radius:99px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+}
+.save-error-pill{
+  background:#FDECEA;color:#C62828;padding:3px 9px;border-radius:99px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+}
+.dirty-pill{
+  background:#FFF4D6;color:#A67400;padding:3px 9px;border-radius:99px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+}
+@keyframes saving-pulse{
+  0%,100%{opacity:1}
+  50%{opacity:.55}
+}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Inicio</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/glide-theme.css">
+<style>
+body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sans-serif; margin: 0; }
+.home-wrap { max-width: 1100px; margin: 0 auto; padding: 40px 22px 80px; }
+.home-hdr { text-align: center; margin-bottom: 36px; }
+.home-hdr h1 { font-family: 'Raleway', sans-serif; font-size: 32px; color: var(--azul); margin: 0 0 6px; }
+.home-hdr p { color: var(--tinta-3); margin: 0; font-size: 14px; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--border, #e6eaf0); border-radius: 14px;
+  padding: 28px 18px; text-decoration: none; color: var(--tinta, #14213d);
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+  text-align: center; min-height: 150px;
+}
+.tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0,.10);
+  border-color: var(--azul);
+}
+.tile .icon { line-height: 1; margin-bottom: 12px; color: var(--azul, #0A0A0A); }
+.tile:hover .icon { color: var(--azul, #0A0A0A); }
+.tile .label { font-size: 16px; font-weight: 700; }
+.tile .desc { font-size: 11px; color: var(--tinta-3); margin-top: 4px; }
+.tile.admin-only { background: linear-gradient(135deg, #fff, #F0F0EF); border-color: var(--azul); }
+@media (max-width: 480px) {
+  .home-wrap { padding: 20px 12px 60px; }
+  .home-hdr h1 { font-size: 24px; }
+  .tile { min-height: 110px; padding: 18px 12px; }
+  .tile .icon { font-size: 32px; }
+  .tile .label { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<div id="navbar-mount"></div>
+
+<div class="home-wrap">
+  <div class="home-hdr">
+    <h1>De&nbsp;C&#x0268;rene</h1>
+    <p id="welcomeText">Cargando…</p>
+  </div>
+  <div class="tile-grid" id="tileGrid"></div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js';
+import { icon } from './js/icons.js';
+
+const TILES = [
+  { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },
+  { id: 'cot',      icon: 'calculator', label: 'Cotizar',      href: '/index.html',         desc: 'Presupuesto + PDF' },
+  { id: 'catalog',  icon: 'package',    label: 'Catálogo',     href: '/catalog.html',       desc: 'Productos, materiales y tarifas' },
+  { id: 'prod',     icon: 'clipboard',  label: 'Producción',   href: '/production.html',    desc: 'Kanban + calendario' },
+  { id: 'ventas',   icon: 'chart',      label: 'Ventas',       href: '/ventas.html',        desc: 'KPIs e indicadores' },
+  { id: 'conta',    icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html',  desc: 'Caja, cobros y cierres', adminOnly: true },
+  { id: 'admin',    icon: 'users',      label: 'Admin',        href: '/admin.html',         desc: 'Usuarios y tarifas', adminOnly: true },
+];
+
+(async () => {
+  await requireAuth();
+  renderNavbar('home');
+  const admin = await isAdmin();
+  const profile = await getProfile();
+  const name = profile?.vendor_name || profile?.full_name || profile?.email || 'De Cirene';
+  document.getElementById('welcomeText').textContent = `Hola ${name}, ¿qué hacés hoy?`;
+
+  // Hash deep-links (#oc, #stock, #metrics) los maneja production.html al cargarse;
+  // acá solo ponemos los hrefs.
+  const grid = document.getElementById('tileGrid');
+  grid.innerHTML = TILES
+    .filter(t => admin || !t.adminOnly)
+    .map(t => `
+      <a class="tile ${t.adminOnly ? 'admin-only' : ''}" href="${t.href}">
+        <div class="icon">${icon(t.icon, { size: 40, stroke: 1.6 })}</div>
+        <div class="label">${t.label}</div>
+        ${t.desc ? `<div class="desc">${t.desc}</div>` : ''}
+      </a>`)
+    .join('');
+})();
+</script>
+</body>
+</html>

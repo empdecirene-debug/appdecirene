@@ -1,0 +1,13 @@
+# Config local de Claude Code
+.claude/
+
+# Planillas fuente / temporales de Excel (no versionar — son datos, no código)
+*.xlsx
+~$*
+
+# macOS
+.DS_Store
+
+# Dependencias / build
+node_modules/
+.netlify/

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Admin</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/glide-theme.css">
+<style>
+:root {
+  --azul: #0A0A0A; --azul-d: #000000; --celeste: #888888; --tinta: #14161A; --tinta-2: #5A5F66; --tinta-3: #9AA0A6;
+  --bg: #F5F5F4; --surface: #fff; --surface-2: #FAFAFA; --border: #E2E2E0;
+  --rojo: #E63946; --verde: #2BB673; --err-bg: #FCEBEB; --err-text: #791F1F;
+  --ok-bg: #E1F5EE; --ok-text: #085041;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: var(--tinta);
+  background: var(--bg); font-size: 14px; line-height: 1.45; min-height: 100vh; }
+.container { max-width: 980px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 12px 0; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.subtitle { font-size: 13px; color: var(--tinta-2); margin-top: 2px; }
+.tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 3px; margin-bottom: 14px; overflow-x: auto; }
+.tab-bar button { padding: 8px 14px; border: none; background: transparent; font-family: inherit;
+  font-size: 13px; font-weight: 600; color: var(--tinta-2); border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.tab-bar button.active { background: var(--azul); color: #fff; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--tinta); font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--azul); color: #fff; border-color: var(--azul); }
+.btn.primary:hover { background: var(--azul-d); }
+.btn.danger { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.fg { margin-bottom: 10px; }
+.label { font-size: 11px; font-weight: 600; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
+input, textarea, select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; color: var(--tinta); background: #fff; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .row2, .row3 { grid-template-columns: 1fr; } }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; padding: 8px 10px; color: var(--tinta-2); font-weight: 600;
+  border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl .inactive { opacity: 0.5; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--tinta-2); }
+.alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+.alert.err { background: var(--err-bg); color: var(--err-text); border-left: 3px solid #A32D2D; }
+.alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
+.alert.info { background: #EFEFEF; color: #222222; border-left: 3px solid var(--azul); }
+.empty { padding: 30px 20px; text-align: center; color: var(--tinta-3); }
+</style>
+</head>
+<body>
+
+<div id="navbar-mount"></div>
+
+<div class="container">
+  <h1>Administración</h1>
+  <p class="subtitle">Gestión de talleres, etapas, campos y usuarios. (Las modificaciones avanzadas se hacen desde el panel de Supabase.)</p>
+
+  <div id="msg"></div>
+
+  <div class="tab-bar">
+    <button data-t="workshops" class="active">Talleres</button>
+    <button data-t="stages">Etapas Kanban</button>
+    <button data-t="fields">Campos personalizados</button>
+    <button data-t="users">Usuarios</button>
+  </div>
+
+  <div id="content">Cargando…</div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js';
+import { requireAdmin } from './js/auth.js';
+import { getSupa } from './js/supa.js';
+import { listWorkshops, createWorkshop, updateWorkshop, deactivateWorkshop } from './js/workshops.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const state = {
+  tab: 'workshops',
+  workshops: [],
+  stages: [],
+  fields: [],
+  users: [],
+  editingId: null,
+  msg: null,
+};
+
+function showError(t) { state.msg = { kind: 'err', text: t }; render(); }
+function showOk(t) { state.msg = { kind: 'ok', text: t }; render(); setTimeout(() => { state.msg = null; render(); }, 2500); }
+
+async function load() {
+  try {
+    const supa = getSupa();
+    if (state.tab === 'workshops') state.workshops = await listWorkshops();
+    if (state.tab === 'stages') {
+      const { data } = await supa.from('kanban_stages').select('*').order('display_order');
+      state.stages = data || [];
+    }
+    if (state.tab === 'fields') {
+      const { data } = await supa.from('custom_fields').select('*').order('applies_to, display_order');
+      state.fields = data || [];
+    }
+    if (state.tab === 'users') {
+      const { data } = await supa.from('user_profiles').select('*').order('full_name');
+      state.users = data || [];
+    }
+  } catch (e) {
+    showError('Error al cargar: ' + e.message);
+  }
+  render();
+}
+
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  state.tab = b.dataset.t;
+  state.editingId = null;
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('active', x.dataset.t === state.tab));
+  load();
+});
+
+function renderWorkshops() {
+  if (state.editingId === 'new' || (state.editingId && state.editingId !== null)) {
+    const w = state.editingId === 'new' ? {} : state.workshops.find(x => x.id === state.editingId);
+    return `
+      <div class="card">
+        <h2>${state.editingId === 'new' ? 'Nuevo taller' : 'Editar taller'}</h2>
+        <div class="row2">
+          <div class="fg"><label class="label">Nombre *</label><input id="w_name" value="${esc(w.name)}" /></div>
+          <div class="fg"><label class="label">Contacto</label><input id="w_contact" value="${esc(w.contact_name)}" /></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label class="label">Teléfono</label><input id="w_phone" value="${esc(w.contact_phone)}" /></div>
+          <div class="fg"><label class="label">Email</label><input id="w_email" value="${esc(w.contact_email)}" /></div>
+        </div>
+        <div class="fg">
+          <label class="label">Técnicas (separadas por coma)</label>
+          <input id="w_tec" value="${esc((w.tecnicas || []).join(', '))}" placeholder="bordado, estampado, sublimación" />
+        </div>
+        <div class="fg"><label class="label">Notas</label><textarea id="w_notes">${esc(w.notes)}</textarea></div>
+        ${state.editingId === 'new' ? `
+          <div class="fg">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+              <input type="checkbox" id="w_odoo" style="width:auto" /> Sincronizar como proveedor en Odoo
+            </label>
+          </div>
+        ` : (w.odoo_partner_id ? `<div class="alert info" style="margin-top:6px;">Sincronizado con Odoo · partner #${w.odoo_partner_id}</div>` : '')}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn primary" id="btnSaveW">Guardar</button>
+          <button class="btn" id="btnCancelW">Cancelar</button>
+          ${state.editingId !== 'new' && w.active !== false ? `<button class="btn danger" id="btnDeactW">Desactivar</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2>Talleres (${state.workshops.length})</h2>
+      <button class="btn primary" id="btnNewW">+ Nuevo taller</button>
+    </div>
+    <div class="card" style="padding:0;">
+      ${state.workshops.length ? `
+        <table class="tbl">
+          <thead><tr><th>Nombre</th><th>Técnicas</th><th>Contacto</th><th>Odoo</th><th></th></tr></thead>
+          <tbody>
+            ${state.workshops.map(w => `
+              <tr class="${!w.active ? 'inactive' : ''}">
+                <td><strong>${esc(w.name)}</strong></td>
+                <td>${(w.tecnicas || []).map(t => `<span class="badge">${esc(t)}</span>`).join(' ') || '—'}</td>
+                <td style="font-size:12px;">${esc(w.contact_phone)} ${w.contact_email ? '· ' + esc(w.contact_email) : ''}</td>
+                <td>${w.odoo_partner_id ? `<span class="badge" style="background:var(--ok-bg);color:var(--ok-text);">#${w.odoo_partner_id}</span>` : '—'}</td>
+                <td style="text-align:right;"><button class="btn sm" data-edit="${w.id}">Editar</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="empty">No hay talleres. Creá el primero con "+ Nuevo taller".</div>'}
+    </div>
+  `;
+}
+
+function renderStages() {
+  const byCat = {};
+  for (const s of state.stages) (byCat[s.category] ||= []).push(s);
+  const cats = Object.keys(byCat);
+  return `
+    <div class="card">
+      <h2>Etapas del Kanban</h2>
+      <p class="subtitle">Estos estados aparecen como columnas en producción. Para editarlos (renombrar, agregar, reordenar) usá <strong>Supabase Studio</strong> → tabla <code>kanban_stages</code>.</p>
+      ${cats.map(cat => `
+        <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(cat)}</h3>
+        <table class="tbl">
+          <thead><tr><th>Key</th><th>Etiqueta</th><th>Orden</th><th>Activa</th><th>Match Asana</th></tr></thead>
+          <tbody>
+            ${byCat[cat].map(s => `
+              <tr class="${!s.active ? 'inactive' : ''}">
+                <td><code style="font-size:11px;">${esc(s.key)}</code></td>
+                <td>${esc(s.label)}</td>
+                <td>${s.display_order}</td>
+                <td>${s.active ? '✓' : '—'}</td>
+                <td style="font-size:11px;color:var(--tinta-3);">${esc(s.triggers_status) || '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderFields() {
+  const byApp = {};
+  for (const f of state.fields) (byApp[f.applies_to] ||= []).push(f);
+  return `
+    <div class="card">
+      <h2>Campos personalizados</h2>
+      <p class="subtitle">Campos extra que aparecen en las tarjetas. Para editar/agregar usá <strong>Supabase Studio</strong> → tabla <code>custom_fields</code>.</p>
+      ${Object.keys(byApp).map(applies => `
+        <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(applies)}</h3>
+        <table class="tbl">
+          <thead><tr><th>Key</th><th>Etiqueta</th><th>Tipo</th><th>Opciones</th><th>Requerido</th></tr></thead>
+          <tbody>
+            ${byApp[applies].map(f => `
+              <tr class="${!f.active ? 'inactive' : ''}">
+                <td><code style="font-size:11px;">${esc(f.field_key)}</code></td>
+                <td>${esc(f.label)}</td>
+                <td><span class="badge">${esc(f.field_type)}</span></td>
+                <td style="font-size:11px;color:var(--tinta-3);">${f.options ? esc(JSON.stringify(f.options)) : '—'}</td>
+                <td>${f.required ? '✓' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderUsers() {
+  return `
+    <div class="card">
+      <h2>Usuarios (${state.users.length})</h2>
+      <p class="subtitle">Para crear usuarios nuevos: <strong>Supabase → Authentication → Users → "Add user"</strong>. Después acá podés actualizar el perfil (vendedor, rol).</p>
+      <table class="tbl">
+        <thead><tr><th>Email</th><th>Nombre</th><th>Vendedor</th><th>Rol</th><th>Activo</th></tr></thead>
+        <tbody>
+          ${state.users.length ? state.users.map(u => `
+            <tr class="${!u.active ? 'inactive' : ''}">
+              <td>${esc(u.email)}</td>
+              <td>${esc(u.full_name)}</td>
+              <td>${esc(u.vendor_name) || '—'}</td>
+              <td><span class="badge">${esc(u.role)}</span></td>
+              <td>${u.active ? '✓' : '—'}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="5" class="empty">No hay perfiles. Crear desde Supabase Auth.</td></tr>'}
+        </tbody>
+      </table>
+      <div class="alert info" style="margin-top:14px;">
+        <strong>Setup inicial</strong>: después de crear usuarios en Supabase Auth, insertar perfiles con SQL:
+        <pre style="background:var(--surface-2);padding:8px;margin-top:8px;border-radius:6px;font-size:11px;overflow-x:auto;">insert into user_profiles (id, email, full_name, vendor_name, role)
+values
+  ('uuid-de-timoteo', 'timoteo@glide.uy', 'Timoteo Artucio', 'Timoteo Artucio', 'director'),
+  ('uuid-de-lucia',   'lucia@glide.uy',   'Lucia Sainz',      'Lucia Sainz',      'admin'),
+  ('uuid-de-santi',   'santi@glide.uy',   'Santiago Gurmendez','Santiago Gurmendez','vendor'),
+  ('uuid-de-tomas',   'tomas@glide.uy',   'Tomas Casamayou', 'Tomas Casamayou', 'vendor');</pre>
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  renderNavbar('admin');
+  $('msg').innerHTML = state.msg ? `<div class="alert ${state.msg.kind}">${esc(state.msg.text)}</div>` : '';
+  if (state.tab === 'workshops') $('content').innerHTML = renderWorkshops();
+  else if (state.tab === 'stages') $('content').innerHTML = renderStages();
+  else if (state.tab === 'fields') $('content').innerHTML = renderFields();
+  else if (state.tab === 'users') $('content').innerHTML = renderUsers();
+
+  // workshop bindings
+  const newBtn = $('btnNewW');
+  if (newBtn) newBtn.onclick = () => { state.editingId = 'new'; render(); };
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { state.editingId = b.dataset.edit; render(); });
+  if ($('btnCancelW')) $('btnCancelW').onclick = () => { state.editingId = null; render(); };
+  if ($('btnSaveW')) $('btnSaveW').onclick = saveWorkshop;
+  if ($('btnDeactW')) $('btnDeactW').onclick = deactivateW;
+}
+
+async function saveWorkshop() {
+  const fields = {
+    name: $('w_name').value.trim(),
+    contact_name: $('w_contact').value.trim() || null,
+    contact_phone: $('w_phone').value.trim() || null,
+    contact_email: $('w_email').value.trim() || null,
+    tecnicas: $('w_tec').value.split(',').map(s => s.trim()).filter(Boolean),
+    notes: $('w_notes').value.trim() || null,
+  };
+  if (!fields.name) return showError('Nombre requerido');
+  try {
+    if (state.editingId === 'new') {
+      await createWorkshop({ ...fields, syncOdoo: $('w_odoo')?.checked });
+      showOk('Taller creado');
+    } else {
+      await updateWorkshop(state.editingId, fields);
+      showOk('Taller actualizado');
+    }
+    state.editingId = null;
+    await load();
+  } catch (e) {
+    showError('Error: ' + e.message);
+  }
+}
+
+async function deactivateW() {
+  if (!confirm('Desactivar este taller? No se borra, queda inactivo.')) return;
+  try {
+    await deactivateWorkshop(state.editingId);
+    showOk('Desactivado');
+    state.editingId = null;
+    await load();
+  } catch (e) { showError(e.message); }
+}
+
+// Boot
+(async () => {
+  if (!(await requireAdmin())) return;
+  await load();
+})();
+</script>
+</body>
+</html>
