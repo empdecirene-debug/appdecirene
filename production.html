@@ -101,7 +101,8 @@ document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
 await requireAuth();
 renderNavbar('production');
 try {
-  [stages, cards] = await Promise.all([data.listStages(), data.listProductionCards()]);
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout). Puede ser la conexión o el proyecto Supabase. Probá Reintentar.')), 15000));
+  [stages, cards] = await Promise.race([Promise.all([data.listStages(), data.listProductionCards()]), timeout]);
   stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
 } catch (e) {
   $('#view').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Producción.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
@@ -113,7 +114,10 @@ data.countCommentsByCard().then(m => { commentCounts = m; render(); }).catch(() 
 const cid = new URLSearchParams(location.search).get('card');
 if (cid && cards.find(c => c.id === cid)) openCard(cid);
 
-function render() { ({ kanban: renderKanban, lista: renderLista, cal: renderCal }[view])(); }
+function render() {
+  try { ({ kanban: renderKanban, lista: renderLista, cal: renderCal }[view] || renderKanban)(); }
+  catch (e) { $('#view').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">Error al mostrar el tablero: ${esc(e.message || e)}<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`; console.error(e); }
+}
 const noPrice = c => !n(c.total_venta);
 
 /* ── KANBAN ── */
