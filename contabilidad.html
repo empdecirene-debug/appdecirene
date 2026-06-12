@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Contabilidad</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 20px 80px; }
+  .tabbar { display: inline-flex; gap: 4px; background: var(--surface-3); padding: 3px; border-radius: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tabbar button { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .tabbar button.active { background: #0A0A0A; color: #fff; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th { text-align: left; padding: 8px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 7px 8px; border-bottom: 1px solid var(--surface-3); }
+  td.num, th.num { text-align: right; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.green { background: #2E7D46; color: #fff; border-color: #2E7D46; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .kpis { display: flex; gap: 16px; flex-wrap: wrap; }
+  .kpi { background: #0A0A0A; color: #fff; border-radius: 12px; padding: 14px 20px; min-width: 150px; }
+  .kpi span { display: block; font-size: 11px; opacity: .7; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi b { font-size: 24px; }
+  .pay { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .pay-NO { background: #FDECEE; color: #A33A3A; } .pay-SEÑA { background: #FAEFD6; color: #8A6D1B; } .pay-SI { background: #E1F5EE; color: #1F6B45; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; }
+  .ov.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 420px; padding: 22px 24px; }
+  .modal h2 { font-size: 16px; margin-bottom: 12px; }
+  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg select { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <h1 style="font-family:'Raleway';margin-bottom:14px">Contabilidad</h1>
+  <div class="tabbar">
+    <button data-tab="caja" class="active">Caja del día</button>
+    <button data-tab="cobros">Cobros por trabajo</button>
+    <button data-tab="mov">Movimientos</button>
+    <button data-tab="balance">Balance</button>
+  </div>
+  <div id="pane"></div>
+</div>
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js';
+import { requireAuth, isAdmin } from './js/auth.js';
+import * as data from './js/cirene-data.js';
+import { money, n } from './js/quote-engine.js';
+
+const $ = s => document.querySelector(s);
+const pane = $('#pane');
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+
+await requireAuth();
+renderNavbar('contabilidad');
+if (!(await isAdmin())) { pane.innerHTML = '<div class="card">Esta sección es solo para administración.</div>'; document.querySelector('.tabbar').style.display = 'none'; }
+else { document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b)); render(b.dataset.tab); }); render('caja'); }
+
+function render(tab) { ({ caja: renderCaja, cobros: renderCobros, mov: renderMov, balance: renderBalance }[tab] || renderCaja)(); }
+
+/* ── Caja del día ── */
+async function renderCaja() {
+  pane.innerHTML = '<div class="card">Cargando…</div>';
+  const ses = await data.getOpenSession();
+  if (!ses) {
+    pane.innerHTML = `<div class="card"><h2 style="font-size:15px;margin-bottom:10px">No hay caja abierta</h2>
+      <div class="toolbar"><label class="muted">Saldo inicial $</label><input id="ci" type="number" value="0" style="width:120px">
+      <button class="btn primary" id="abrir">Abrir caja de hoy</button></div></div>`;
+    $('#abrir').onclick = async () => { await data.openCashSession(n($('#ci').value), today()); toast('Caja abierta'); renderCaja(); };
+    return;
+  }
+  const movs = await data.listCashMovements({ sessionId: ses.id });
+  let ing = 0, egr = 0; movs.forEach(m => m.tipo === 'ingreso' ? ing += n(m.monto) : egr += n(m.monto));
+  const saldo = n(ses.saldo_inicial) + ing - egr;
+  pane.innerHTML = `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><b>Caja abierta</b> · ${ses.fecha}</div><button class="btn" id="cerrar">Cerrar caja</button></div>
+    <div class="kpis">
+      <div class="kpi"><span>Saldo inicial</span><b>${money(ses.saldo_inicial)}</b></div>
+      <div class="kpi"><span>Ingresos</span><b>${money(ing)}</b></div>
+      <div class="kpi"><span>Egresos</span><b>${money(egr)}</b></div>
+      <div class="kpi"><span>Saldo actual</span><b>${money(saldo)}</b></div>
+    </div></div>
+    <div class="card"><h2 style="font-size:14px;margin-bottom:8px">Movimientos de hoy (${movs.length})</h2>
+      <table class="grid"><thead><tr><th>Concepto</th><th>Categoría</th><th>Método</th><th class="num">Monto</th></tr></thead>
+      <tbody>${movs.map(m => `<tr><td>${esc(m.descripcion || (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'))}</td><td>${esc(m.categoria)}</td><td>${esc(m.metodo || '')}</td>
+        <td class="num" style="color:${m.tipo === 'ingreso' ? '#1F6B45' : '#A33A3A'}">${m.tipo === 'ingreso' ? '+' : '−'} ${money(m.monto)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Sin movimientos.</td></tr>'}</tbody></table></div>`;
+  $('#cerrar').onclick = async () => { if (!confirm('¿Cerrar la caja del día?')) return; const r = await data.closeCashSession(ses.id); toast('Caja cerrada · saldo ' + money(r.saldo_final)); renderCaja(); };
+}
+
+/* ── Cobros por trabajo ── */
+async function renderCobros() {
+  pane.innerHTML = '<div class="card">Cargando…</div>';
+  const [cards, byCard] = await Promise.all([data.listProductionCards(), data.paymentsByCard()]);
+  const rows = cards.filter(c => n(c.total_venta) > 0).map(c => {
+    const pagado = byCard[c.id] || 0, total = n(c.total_venta), saldo = total - pagado;
+    const estado = (total > 0 && saldo <= 0.01) ? 'SI' : (pagado > 0 ? 'SEÑA' : 'NO');
+    return { c, pagado, total, saldo, estado };
+  });
+  pane.innerHTML = `<div class="card"><h2 style="font-size:14px;margin-bottom:10px">Cobros por trabajo</h2>
+    <table class="grid"><thead><tr><th>Cliente</th><th class="num">Total</th><th class="num">Cobrado</th><th class="num">Saldo</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${esc(r.c.client_name)}</td><td class="num">${money(r.total)}</td><td class="num">${money(r.pagado)}</td>
+      <td class="num">${money(r.saldo)}</td><td><span class="pay pay-${r.estado}">${r.estado}</span></td>
+      <td><button class="btn sm green" data-cobro="${r.c.id}">+ Cobro</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">No hay trabajos con monto.</td></tr>'}</tbody></table></div>`;
+  pane.querySelectorAll('[data-cobro]').forEach(b => b.onclick = () => cobroModal(rows.find(r => r.c.id === b.dataset.cobro)));
+}
+function cobroModal(r) {
+  $('#modal').innerHTML = `<h2>Registrar cobro</h2>
+    <div class="muted" style="margin-bottom:10px">${esc(r.c.client_name)} · saldo ${money(r.saldo)}</div>
+    <div class="fg"><label>Tipo</label><select id="p-tipo"><option value="sena">Seña</option><option value="saldo">Saldo</option><option value="total">Pago total</option></select></div>
+    <div class="fg"><label>Monto $</label><input id="p-monto" type="number" value="${Math.max(0, Math.round(r.saldo))}"></div>
+    <div class="fg"><label>Método</label><select id="p-metodo"><option>Efectivo</option><option>Transferencia</option><option>MercadoPago</option></select></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn green" id="p-save">Registrar</button><button class="btn sm" id="p-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#p-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#p-save').onclick = async () => {
+    const monto = n($('#p-monto').value); if (monto <= 0) { toast('Monto inválido'); return; }
+    try {
+      await data.registerJobPayment({ card: r.c, tipo: $('#p-tipo').value, monto, metodo: $('#p-metodo').value });
+      $('#ov').classList.remove('show'); toast('Cobro registrado'); renderCobros();
+    } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
+}
+
+/* ── Movimientos ── */
+let mvFrom = '', mvTo = '';
+async function renderMov() {
+  const movs = await data.listCashMovements({ from: mvFrom || undefined, to: mvTo || undefined });
+  pane.innerHTML = `<div class="card">
+    <div class="toolbar"><label class="muted">Desde</label><input type="date" id="mf" value="${mvFrom}"><label class="muted">Hasta</label><input type="date" id="mt" value="${mvTo}">
+      <button class="btn sm" id="mfilter">Filtrar</button><button class="btn primary" id="addMov" style="margin-left:auto">+ Movimiento</button></div>
+    <table class="grid"><thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Método</th><th class="num">Monto</th></tr></thead>
+    <tbody>${movs.map(m => `<tr><td>${m.fecha}</td><td>${esc(m.descripcion || '')}</td><td>${esc(m.categoria)}</td><td>${esc(m.metodo || '')}</td>
+      <td class="num" style="color:${m.tipo === 'ingreso' ? '#1F6B45' : '#A33A3A'}">${m.tipo === 'ingreso' ? '+' : '−'} ${money(m.monto)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Sin movimientos.</td></tr>'}</tbody></table></div>`;
+  $('#mfilter').onclick = () => { mvFrom = $('#mf').value; mvTo = $('#mt').value; renderMov(); };
+  $('#addMov').onclick = movModal;
+}
+function movModal() {
+  $('#modal').innerHTML = `<h2>Nuevo movimiento</h2>
+    <div class="fg"><label>Tipo</label><select id="m-tipo"><option value="egreso">Egreso</option><option value="ingreso">Ingreso</option></select></div>
+    <div class="fg"><label>Categoría</label><select id="m-cat"><option value="compra_materiales">Compra de materiales</option><option value="sueldo">Sueldo</option><option value="transporte">Transporte</option><option value="venta">Venta</option><option value="otro">Otro</option></select></div>
+    <div class="fg"><label>Monto $</label><input id="m-monto" type="number" value="0"></div>
+    <div class="fg"><label>Método</label><select id="m-metodo"><option>Efectivo</option><option>Transferencia</option><option>MercadoPago</option></select></div>
+    <div class="fg"><label>Descripción</label><input id="m-desc" placeholder="(opcional)"></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" id="m-save">Guardar</button><button class="btn sm" id="m-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#m-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#m-save').onclick = async () => {
+    const monto = n($('#m-monto').value); if (monto <= 0) { toast('Monto inválido'); return; }
+    try {
+      await data.registerCashMovement({ tipo: $('#m-tipo').value, categoria: $('#m-cat').value, monto, metodo: $('#m-metodo').value, descripcion: $('#m-desc').value });
+      $('#ov').classList.remove('show'); toast('Movimiento guardado'); renderMov();
+    } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
+}
+
+/* ── Balance ── */
+let blFrom = today().slice(0, 8) + '01', blTo = today();
+async function renderBalance() {
+  const rep = await data.cashReport({ from: blFrom, to: blTo });
+  pane.innerHTML = `<div class="card">
+    <div class="toolbar"><label class="muted">Desde</label><input type="date" id="bf" value="${blFrom}"><label class="muted">Hasta</label><input type="date" id="bt" value="${blTo}"><button class="btn sm" id="bfilter">Filtrar</button></div>
+    <div class="kpis">
+      <div class="kpi"><span>Ingresos</span><b>${money(rep.ingresos)}</b></div>
+      <div class="kpi"><span>Egresos</span><b>${money(rep.egresos)}</b></div>
+      <div class="kpi" style="background:${rep.neto >= 0 ? '#1F6B45' : '#A33A3A'}"><span>Resultado</span><b>${money(rep.neto)}</b></div>
+    </div></div>
+    <div class="card"><h2 style="font-size:14px;margin-bottom:8px">Por categoría</h2>
+    <table class="grid"><tbody>${Object.entries(rep.porCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${money(v)}</td></tr>`).join('') || '<tr><td class="muted">Sin datos en el período.</td></tr>'}</tbody></table></div>`;
+  $('#bfilter').onclick = () => { blFrom = $('#bf').value; blTo = $('#bt').value; renderBalance(); };
+}
+$('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
+</script>
+</body>
+</html>

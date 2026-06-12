@@ -212,3 +212,86 @@ export async function createProductionFromIntake(intake, quote) {
   return pc;
 }
 function n(x) { const v = parseFloat(x); return Number.isFinite(v) ? v : 0; }
+
+/* ───────────── Contabilidad / Caja ───────────── */
+const today = () => new Date().toISOString().slice(0, 10);
+
+export async function getOpenSession() {
+  const { data } = await db().from('cash_sessions').select('*').eq('estado', 'abierta').order('fecha', { ascending: false }).limit(1);
+  return (data && data[0]) || null;
+}
+export async function openCashSession(saldoInicial = 0, fecha = today()) {
+  const { data: { user } } = await db().auth.getUser();
+  const { data, error } = await db().from('cash_sessions').insert({ fecha, estado: 'abierta', saldo_inicial: saldoInicial, abierta_por: user?.id || null }).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function closeCashSession(id) {
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  const { data: ses } = await sb.from('cash_sessions').select('*').eq('id', id).single();
+  const { data: movs } = await sb.from('cash_movements').select('tipo,monto').eq('cash_session_id', id);
+  let ing = 0, egr = 0;
+  (movs || []).forEach(m => m.tipo === 'ingreso' ? ing += n(m.monto) : egr += n(m.monto));
+  const saldo_final = n(ses.saldo_inicial) + ing - egr;
+  const { data, error } = await sb.from('cash_sessions').update({ estado: 'cerrada', total_ingresos: ing, total_egresos: egr, saldo_final, cerrada_por: user?.id || null, cerrada_at: new Date().toISOString() }).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function listCashSessions() {
+  const { data } = await db().from('cash_sessions').select('*').order('fecha', { ascending: false }).limit(60);
+  return data || [];
+}
+export async function listCashMovements({ from, to, sessionId } = {}) {
+  let q = db().from('cash_movements').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false });
+  if (sessionId) q = q.eq('cash_session_id', sessionId);
+  if (from) q = q.gte('fecha', from);
+  if (to) q = q.lte('fecha', to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+export async function registerCashMovement(m) {
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  const ses = await getOpenSession();
+  const row = { tipo: m.tipo, categoria: m.categoria || 'otro', monto: m.monto, metodo: m.metodo || null, descripcion: m.descripcion || null, fecha: m.fecha || today(), cash_session_id: ses?.id || null, registrado_por: user?.id || null };
+  const { data, error } = await sb.from('cash_movements').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function listJobPayments(cardId) {
+  const { data } = await db().from('job_payments').select('*').eq('production_card_id', cardId).order('fecha');
+  return data || [];
+}
+export async function paymentsByCard() {
+  const { data } = await db().from('job_payments').select('production_card_id,monto');
+  const map = {};
+  (data || []).forEach(p => { map[p.production_card_id] = (map[p.production_card_id] || 0) + n(p.monto); });
+  return map;
+}
+export async function jobBalance(card) {
+  const pays = await listJobPayments(card.id);
+  const pagado = pays.reduce((s, p) => s + n(p.monto), 0);
+  const total = n(card.total_venta);
+  const saldo = total - pagado;
+  const estado = (total > 0 && saldo <= 0.01) ? 'SI' : (pagado > 0 ? 'SEÑA' : 'NO');
+  return { total, pagado, saldo, estado, pays };
+}
+export async function registerJobPayment({ card, tipo, monto, metodo, fecha }) {
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  const ses = await getOpenSession();
+  const { data: pay, error } = await sb.from('job_payments').insert({ production_card_id: card.id, tipo, monto, metodo: metodo || null, fecha: fecha || today(), cash_session_id: ses?.id || null, registrado_por: user?.id || null }).select().single();
+  if (error) throw error;
+  await sb.from('cash_movements').insert({ tipo: 'ingreso', categoria: 'venta', monto, metodo: metodo || null, fecha: fecha || today(), production_card_id: card.id, job_payment_id: pay.id, cash_session_id: ses?.id || null, descripcion: 'Cobro ' + (card.client_name || card.id), registrado_por: user?.id || null });
+  const bal = await jobBalance(card);
+  await sb.from('production_cards').update({ estado_pago: bal.estado, contabilidad: 'Agregado' }).eq('id', card.id);
+  return { pay, bal };
+}
+export async function cashReport({ from, to } = {}) {
+  const movs = await listCashMovements({ from, to });
+  let ingresos = 0, egresos = 0; const porCat = {};
+  movs.forEach(m => { const v = n(m.monto); if (m.tipo === 'ingreso') ingresos += v; else egresos += v; const k = (m.tipo === 'ingreso' ? '+ ' : '− ') + (m.categoria || 'otro'); porCat[k] = (porCat[k] || 0) + v; });
+  return { ingresos, egresos, neto: ingresos - egresos, porCat, count: movs.length };
+}
