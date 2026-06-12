@@ -58,21 +58,7 @@ export async function getProfile() {
 
 export async function isAdmin() {
   const p = await getProfile();
-  return !!p && ['admin','director','ceo'].includes(p.role);
-}
-
-// Resuelve el res.users.id de Odoo bajo el cual deben registrarse las ventas
-// del usuario actual. Si el profile tiene `odoo_user_email` seteado (caso Lucía
-// → contacto@glide.uy), se usa ese; si no, el email del propio profile.
-// Retorna null si Odoo no responde o no encuentra el user — en ese caso la SO
-// se crea sin user_id explícito (Odoo asume el del proxy).
-export async function getOdooUserIdForCurrentUser() {
-  const p = await getProfile();
-  if (!p) return null;
-  const login = (p.odoo_user_email && p.odoo_user_email.trim()) || p.email;
-  if (!login) return null;
-  const { findOdooUserIdByLogin } = await import('./odoo-client.js');
-  return await findOdooUserIdByLogin(login);
+  return !!p && ['admin','director'].includes(p.role);
 }
 
 export async function isCanMoveCards() {
