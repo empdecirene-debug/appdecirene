@@ -11,6 +11,9 @@
 <style>
   .wrap { max-width: 100%; padding: 14px 16px 40px; }
   .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; }
+  .seg button { border: none; background: transparent; padding: 7px 14px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg button.active { background: #0A0A0A; color: #fff; }
   .board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
   .col { flex: 0 0 260px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-height: 120px; }
   .col.drop { border-color: #0A0A0A; box-shadow: 0 0 0 2px #0A0A0A; }
@@ -18,25 +21,44 @@
   .col h3 .cnt { background: #0A0A0A; color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; }
   .tk { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; margin-bottom: 8px; cursor: grab; }
   .tk:hover { border-color: #0A0A0A; }
+  .tk.noprice { border-left: 3px solid #A33A3A; }
+  .warn { color: #A33A3A; font-weight: 700; }
+  .cmt { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; }
+  .cmt .who { font-weight: 700; font-size: 11px; } .cmt .when { color: var(--tinta-3); font-size: 10px; }
   .tk .nm { font-weight: 700; font-size: 13px; }
   .tk .ds { font-size: 11px; color: var(--tinta-3); margin: 2px 0; max-height: 28px; overflow: hidden; }
   .tk .mt { font-size: 11px; color: var(--tinta-2); display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px; }
   .pay { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
   .pay-NO { background: #FDECEE; color: #A33A3A; } .pay-SEÑA { background: #FAEFD6; color: #8A6D1B; } .pay-SI { background: #E1F5EE; color: #1F6B45; }
-  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); cursor: pointer; }
+  table.grid td { padding: 8px 10px; border-bottom: 1px solid var(--surface-3); }
+  table.grid tr:hover td { background: var(--surface-2); cursor: pointer; }
+  td.num, th.num { text-align: right; }
+  /* calendario */
+  .calhd { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .dow { font-size: 10px; text-transform: uppercase; color: var(--tinta-3); text-align: center; padding: 4px; font-weight: 700; }
+  .cal .day { background: #fff; border: 1px solid var(--border); border-radius: 8px; min-height: 84px; padding: 4px 5px; }
+  .cal .day.empty { background: transparent; border: none; }
+  .cal .day .dn { font-size: 11px; color: var(--tinta-3); font-weight: 700; }
+  .cal .day.today { border-color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A; }
+  .cal .ev { background: #0A0A0A; color: #fff; border-radius: 5px; padding: 2px 5px; font-size: 10px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal .ev.np { background: #A33A3A; }
+  .btn { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
   .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 30px 16px; z-index: 100; overflow: auto; }
   .ov.show { display: flex; }
-  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 520px; padding: 22px 24px; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 540px; padding: 22px 24px; }
   .modal h2 { font-size: 16px; margin-bottom: 4px; } .modal .sub { font-size: 12px; color: var(--tinta-3); margin-bottom: 14px; }
-  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 4px; }
   .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .lines { background: var(--surface-2); border-radius: 9px; padding: 8px 10px; font-size: 13px; margin: 6px 0 12px; }
   .lines .l { display: flex; justify-content: space-between; padding: 2px 0; }
-  .lines .tot { font-weight: 800; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
   .mact { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
   #toast.show { opacity: 1; }
 </style>
@@ -44,8 +66,15 @@
 <body>
 <div id="navbar-mount"></div>
 <div class="wrap">
-  <div class="hd"><h1 style="font-family:'Raleway'">Producción</h1><span class="muted" id="count"></span></div>
-  <div class="board" id="board"></div>
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">Producción</h1>
+    <div class="seg" id="viewSeg">
+      <button data-v="kanban" class="active">Kanban</button>
+      <button data-v="lista">Lista</button>
+      <button data-v="cal">Calendario</button>
+    </div>
+  </div>
+  <div id="view"></div>
 </div>
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
@@ -54,69 +83,136 @@
 import { renderNavbar } from './js/navbar.js';
 import { requireAuth } from './js/auth.js';
 import * as data from './js/cirene-data.js';
-import { money } from './js/quote-engine.js';
+import { money, n } from './js/quote-engine.js';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let stages = [], cards = [];
+let stages = [], cards = [], commentCounts = {};
+let view = 'kanban', calMode = 'entrega', calDate = new Date();
+let listSort = { k: 'client_name', dir: 1 };
+
 await requireAuth();
 renderNavbar('production');
-[stages, cards] = await Promise.all([data.listStages(), data.listProductionCards()]);
+[stages, cards, commentCounts] = await Promise.all([data.listStages(), data.listProductionCards(), data.countCommentsByCard().catch(() => ({}))]);
 stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
-render();
 
-// deep-link ?card=<id> desde Ventas
+document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#viewSeg button').forEach(x => x.classList.toggle('active', x === b));
+  view = b.dataset.v; render();
+});
+render();
 const cid = new URLSearchParams(location.search).get('card');
 if (cid && cards.find(c => c.id === cid)) openCard(cid);
 
-function render() {
-  $('#count').textContent = `${cards.length} trabajos`;
-  $('#board').innerHTML = stages.map(st => {
+function render() { ({ kanban: renderKanban, lista: renderLista, cal: renderCal }[view])(); }
+const noPrice = c => !n(c.total_venta);
+
+/* ── KANBAN ── */
+function renderKanban() {
+  $('#view').innerHTML = `<div class="board">${stages.map(st => {
     const cs = cards.filter(c => (c.stage_key || 'procesar') === st.key);
-    return `<div class="col" data-stage="${st.key}">
-      <h3><span>${esc(st.label)}</span><span class="cnt">${cs.length}</span></h3>
-      <div>${cs.map(tkHtml).join('')}</div></div>`;
-  }).join('');
-  bind();
+    return `<div class="col" data-stage="${st.key}"><h3><span>${esc(st.label)}</span><span class="cnt">${cs.length}</span></h3><div>${cs.map(tkHtml).join('')}</div></div>`;
+  }).join('')}</div>`;
+  bindKanban();
 }
 function tkHtml(c) {
-  const lines = (c.product_lines || []);
-  const resumen = lines.map(l => l.producto).filter(Boolean).join(', ');
-  return `<div class="tk" draggable="true" data-id="${c.id}">
+  const resumen = (c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ');
+  return `<div class="tk ${noPrice(c) ? 'noprice' : ''}" draggable="true" data-id="${c.id}">
     <div class="nm">${esc(c.client_name || 'Sin cliente')}</div>
     <div class="ds">${esc(resumen || c.description || '')}</div>
-    <div class="mt"><span>${c.total_venta ? money(c.total_venta) : ''}</span>
+    <div class="mt"><span>${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</span>
       <span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></div>
-    ${c.due_date ? `<div class="mt"><span>📅 ${c.due_date}</span><span>${esc(c.entrega || '')}</span></div>` : ''}
+    <div class="mt"><span>${c.due_date ? '📅 ' + c.due_date : ''} ${esc(c.entrega || '')}</span><span>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</span></div>
   </div>`;
 }
-function bind() {
+function bindKanban() {
   let dragId = null;
-  $('#board').querySelectorAll('.tk').forEach(el => {
-    el.ondragstart = e => { dragId = el.dataset.id; e.dataTransfer.effectAllowed = 'move'; };
-    el.onclick = () => openCard(el.dataset.id);
-  });
-  $('#board').querySelectorAll('.col').forEach(col => {
+  $('#view').querySelectorAll('.tk').forEach(el => { el.ondragstart = e => { dragId = el.dataset.id; e.dataTransfer.effectAllowed = 'move'; }; el.onclick = () => openCard(el.dataset.id); });
+  $('#view').querySelectorAll('.col').forEach(col => {
     col.ondragover = e => { e.preventDefault(); col.classList.add('drop'); };
     col.ondragleave = () => col.classList.remove('drop');
     col.ondrop = async e => {
       e.preventDefault(); col.classList.remove('drop');
       const id = dragId, stage = col.dataset.stage; if (!id) return;
       const c = cards.find(x => x.id === id); if (!c || c.stage_key === stage) return;
-      c.stage_key = stage; render();
+      c.stage_key = stage; renderKanban();
       try { await data.moveProductionStage(id, stage); } catch { toast('Error al mover'); }
     };
   });
 }
 
+/* ── LISTA ── */
+function renderLista() {
+  const stLabel = k => (stages.find(s => s.key === k) || {}).label || k;
+  const rows = [...cards].sort((a, b) => {
+    let va = a[listSort.k], vb = b[listSort.k];
+    if (listSort.k === 'total_venta') { va = n(va); vb = n(vb); }
+    return (va > vb ? 1 : va < vb ? -1 : 0) * listSort.dir;
+  });
+  const th = (k, l, cls = '') => `<th data-k="${k}" class="${cls}">${l}${listSort.k === k ? (listSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  $('#view').innerHTML = `<table class="grid"><thead><tr>
+    ${th('client_name', 'Cliente')}${th('description', 'Producto')}${th('stage_key', 'Etapa')}
+    ${th('total_venta', 'Total', 'num')}<th>Pago</th>${th('due_date', 'Entrega')}<th>Coment.</th></tr></thead>
+    <tbody>${rows.map(c => `<tr data-id="${c.id}">
+      <td><b>${esc(c.client_name || '—')}</b></td>
+      <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
+      <td>${esc(stLabel(c.stage_key))}</td>
+      <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
+      <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
+      <td>${c.due_date || ''} ${esc(c.entrega || '')}</td>
+      <td>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</td></tr>`).join('')}</tbody></table>`;
+  $('#view').querySelectorAll('th[data-k]').forEach(t => t.onclick = () => { const k = t.dataset.k; listSort = { k, dir: listSort.k === k ? -listSort.dir : 1 }; renderLista(); });
+  $('#view').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
+}
+
+/* ── CALENDARIO (Entrega / Producción) ── */
+function renderCal() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  const first = new Date(y, m, 1), startDow = (first.getDay() + 6) % 7; // lunes=0
+  const days = new Date(y, m + 1, 0).getDate();
+  const dateField = calMode === 'entrega' ? 'due_date' : 'production_date';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const byDay = {};
+  cards.forEach(c => { const d = c[dateField]; if (d && d.slice(0, 7) === `${y}-${String(m + 1).padStart(2, '0')}`) (byDay[+d.slice(8, 10)] = byDay[+d.slice(8, 10)] || []).push(c); });
+  const dows = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  let cells = dows.map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < startDow; i++) cells += '<div class="day empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const evs = (byDay[d] || []).map(c => `<div class="ev ${noPrice(c) ? 'np' : ''}" data-id="${c.id}" title="${esc(c.client_name)}">${esc(c.client_name || '—')}</div>`).join('');
+    cells += `<div class="day ${ds === todayStr ? 'today' : ''}"><div class="dn">${d}</div>${evs}</div>`;
+  }
+  const monthName = calDate.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' });
+  $('#view').innerHTML = `
+    <div class="calhd">
+      <div class="seg"><button id="cm-ent" class="${calMode === 'entrega' ? 'active' : ''}">Entrega</button><button id="cm-pro" class="${calMode === 'produccion' ? 'active' : ''}">Producción</button></div>
+      <button class="btn sm" id="cprev">‹</button><b style="min-width:150px;text-align:center;text-transform:capitalize">${monthName}</b><button class="btn sm" id="cnext">›</button>
+      <span class="muted">Mostrando fecha de <b>${calMode === 'entrega' ? 'entrega' : 'producción'}</b></span>
+    </div>
+    <div class="cal">${cells}</div>`;
+  $('#cm-ent').onclick = () => { calMode = 'entrega'; renderCal(); };
+  $('#cm-pro').onclick = () => { calMode = 'produccion'; renderCal(); };
+  $('#cprev').onclick = () => { calDate = new Date(y, m - 1, 1); renderCal(); };
+  $('#cnext').onclick = () => { calDate = new Date(y, m + 1, 1); renderCal(); };
+  $('#view').querySelectorAll('.ev').forEach(e => e.onclick = () => openCard(e.dataset.id));
+}
+
+/* ── MODAL ── */
 function openCard(id) {
   const c = cards.find(x => x.id === id); if (!c) return;
   const lines = c.product_lines || [];
   $('#modal').innerHTML = `<h2>${esc(c.client_name || 'Trabajo')}</h2><div class="sub">${esc(c.id)} ${c.quote_id ? '· ' + esc(c.quote_id) : ''} · ${esc(c.vendor || '')}</div>
-    <div class="lines">${lines.map(l => `<div class="l"><span>${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</span><span>${l.precio ? money(l.precio * (l.cantidad || 1)) : ''}</span></div>`).join('') || '<div class="muted" style="font-size:12px">Sin ítems</div>'}
-      <div class="l tot"><span>Total</span><span>${money(c.total_venta)}</span></div></div>
+    ${noPrice(c) ? '<div class="fg"><div class="warn" style="font-size:13px">⚠ Esta tarea no tiene precio cargado.</div></div>' : ''}
+    <div class="lines">${lines.map(l => `<div class="l"><span>${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</span><span>${l.precio ? money(l.precio * (l.cantidad || 1)) : '—'}</span></div>`).join('') || '<div class="muted" style="font-size:12px">Sin ítems</div>'}</div>
+    <div class="row2">
+      <div class="fg"><label>Total del trabajo $</label><input id="e-total" type="number" value="${n(c.total_venta)}"></div>
+      <div class="fg"><label>Estado de pago</label><select id="e-pago">
+        <option value="NO" ${c.estado_pago === 'NO' ? 'selected' : ''}>Sin pagar</option>
+        <option value="SEÑA" ${c.estado_pago === 'SEÑA' ? 'selected' : ''}>Seña</option>
+        <option value="SI" ${c.estado_pago === 'SI' ? 'selected' : ''}>Pagado</option></select></div>
+    </div>
     <div class="fg"><label>Descripción / notas</label><textarea id="e-desc">${esc(c.description)}</textarea></div>
     <div class="row2">
       <div class="fg"><label>Teléfono</label><input id="e-tel" value="${esc(c.client_phone_e164)}"></div>
@@ -124,25 +220,36 @@ function openCard(id) {
     </div>
     <div class="row2">
       <div class="fg"><label>Entrega</label><input id="e-ent" list="entregas" value="${esc(c.entrega)}"><datalist id="entregas"><option>RETIRO SE</option><option>Flete</option><option>Instalación</option></datalist></div>
-      <div class="fg"><label>Fecha de entrega</label><input id="e-due" type="date" value="${esc(c.due_date)}"></div>
-    </div>
-    <div class="row2">
-      <div class="fg"><label>Fecha de producción</label><input id="e-prod" type="date" value="${esc(c.production_date)}"></div>
       <div class="fg"><label>Etapa</label><select id="e-stage">${stages.map(s => `<option value="${s.key}" ${c.stage_key === s.key ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></div>
     </div>
-    <div class="fg"><label>Estado de pago</label><select id="e-pago">
-      <option value="NO" ${c.estado_pago === 'NO' ? 'selected' : ''}>Sin pagar</option>
-      <option value="SEÑA" ${c.estado_pago === 'SEÑA' ? 'selected' : ''}>Seña</option>
-      <option value="SI" ${c.estado_pago === 'SI' ? 'selected' : ''}>Pagado</option></select>
-      <div class="muted" style="font-size:11px;margin-top:4px">El registro de cobros y la caja se manejan en Contabilidad.</div></div>
-    <div class="mact"><button class="btn primary" id="e-save">Guardar</button><button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>`;
+    <div class="row2">
+      <div class="fg"><label>Fecha de entrega</label><input id="e-due" type="date" value="${esc(c.due_date)}"></div>
+      <div class="fg"><label>Fecha de producción</label><input id="e-prod" type="date" value="${esc(c.production_date)}"></div>
+    </div>
+    <div class="mact"><button class="btn primary" id="e-save">Guardar</button><button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+      <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--tinta-2)">Comentarios</label>
+      <div id="comments" class="muted" style="margin:8px 0">Cargando…</div>
+      <div style="display:flex;gap:8px"><input id="cmt-input" placeholder="Escribir un comentario…" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font:inherit"><button class="btn" id="cmt-add">Enviar</button></div>
+    </div>`;
   $('#ov').classList.add('show');
   $('#e-close').onclick = () => $('#ov').classList.remove('show');
   $('#e-save').onclick = async () => {
-    const patch = { id, description: $('#e-desc').value || null, client_phone_e164: $('#e-tel').value || null, direccion: $('#e-dir').value || null, entrega: $('#e-ent').value || null, due_date: $('#e-due').value || null, production_date: $('#e-prod').value || null, stage_key: $('#e-stage').value, estado_pago: $('#e-pago').value };
+    const patch = { id, total_venta: n($('#e-total').value), estado_pago: $('#e-pago').value, description: $('#e-desc').value || null, client_phone_e164: $('#e-tel').value || null, direccion: $('#e-dir').value || null, entrega: $('#e-ent').value || null, due_date: $('#e-due').value || null, production_date: $('#e-prod').value || null, stage_key: $('#e-stage').value };
     Object.assign(c, patch);
     try { await data.saveProductionCard(patch); $('#ov').classList.remove('show'); render(); toast('Guardado'); } catch (e) { toast('Error: ' + (e.message || e)); }
   };
+  loadComments(id);
+  $('#cmt-add').onclick = async () => {
+    const txt = $('#cmt-input').value.trim(); if (!txt) return;
+    try { await data.addComment(id, txt); $('#cmt-input').value = ''; commentCounts[id] = (commentCounts[id] || 0) + 1; loadComments(id); } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
+}
+async function loadComments(id) {
+  try {
+    const cs = await data.listComments(id);
+    $('#comments').innerHTML = cs.length ? cs.map(c => `<div class="cmt"><div class="who">${esc(c.user_label || 'Usuario')} <span class="when">${(c.occurred_at || '').slice(0, 16).replace('T', ' ')}</span></div>${esc(c.notes)}</div>`).join('') : '<span class="muted">Sin comentarios.</span>';
+  } catch { $('#comments').innerHTML = '<span class="muted">No se pudieron cargar.</span>'; }
 }
 $('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
 </script>

@@ -187,6 +187,27 @@ export async function moveProductionStage(id, stage_key) {
   if (stage_key === 'entregado') patch.completed_at = new Date().toISOString();
   return saveProductionCard({ id, ...patch });
 }
+
+/* ───────────── Comentarios / historial de tarjeta ───────────── */
+export async function listComments(cardId) {
+  const { data } = await db().from('card_stories').select('*').eq('card_id', cardId).eq('type', 'comment').order('occurred_at', { ascending: false });
+  return data || [];
+}
+export async function addComment(cardId, notes) {
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  let label = user?.email || 'Usuario';
+  try { const { data: p } = await sb.from('user_profiles').select('full_name,vendor_name').eq('id', user.id).single(); if (p) label = p.vendor_name || p.full_name || label; } catch {}
+  const { data, error } = await sb.from('card_stories').insert({ card_id: cardId, user_id: user?.id || null, user_label: label, type: 'comment', notes }).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function countCommentsByCard() {
+  const { data } = await db().from('card_stories').select('card_id').eq('type', 'comment');
+  const map = {};
+  (data || []).forEach(r => { map[r.card_id] = (map[r.card_id] || 0) + 1; });
+  return map;
+}
 // Crea una tarjeta de producción a partir de un lead aceptado (con su cotización si hay).
 export async function createProductionFromIntake(intake, quote) {
   const sb = db();
