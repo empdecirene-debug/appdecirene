@@ -24,6 +24,14 @@ premium** con el logo oficial (mano + brote). Deploy en **Netlify**.
   (`sbp_…`) **y un User-Agent de navegador** (si no, Cloudflare devuelve 403/error 1010).
 - **Entorno local**: no hay `node`/`curl`/`brew`. Servir con `python3 -m http.server`. Para PDFs
   binarios se rasteriza con un binario Swift+PDFKit.
+- **Storage**: bucket público `adjuntos` (Supabase Storage) para archivos de tarjetas de producción
+  (RLS en `storage.objects`: lectura pública, insert/delete autenticado).
+- **Caché (importante)**: todos los imports de JS llevan `?v=N` (ej. `./js/cirene-data.js?v=2`) y hay
+  un archivo `_headers` con `Cache-Control: no-cache`. **Al cambiar cualquier módulo `js/`, subir el
+  número `?v=N` en TODOS los HTML** (un `perl -pi` sobre los imports) para forzar al navegador a bajar
+  la versión nueva — si no, queda sirviendo la vieja y las páginas "se cuelgan cargando".
+- **Deploy**: el zip a Netlify excluye `.git`, `supabase/`, `netlify/`, `node_modules`, `*.md`,
+  `netlify.toml`, `inject-env.js`. Token de Netlify (`nfp_…`) y PAT de Supabase NO se versionan.
 
 ## Páginas (raíz)
 | Página | Propósito |
@@ -33,7 +41,7 @@ premium** con el logo oficial (mano + brote). Deploy en **Netlify**.
 | `index.html` | **Cotizador**: builder por producto (materiales + mano de obra × multiplicador), plantillas estándar, cliente, ítems, guarda en `quotes` y genera **PDF molde De Cirene**. Soporta `?intake=<id>` (precarga cliente, vincula al lead) y `?quote=<id>` (carga) |
 | `catalog.html` | **Catálogo**: tabs Materiales / Plantillas (BOM) / Mano de obra (CRUD) |
 | `intake.html` | **CRM**: kanban del pipeline comercial (drag&drop), nueva consulta, detalle con Cotizar y Aceptar→Producción |
-| `production.html` | **Producción**: vistas Kanban / Lista / Calendario (doble modo **Entrega** por `due_date` y **Producción** por `production_date`). Tarjeta con total editable, aviso "⚠ sin precio", comentarios |
+| `production.html` | **Producción**: vistas **Kanban** (drag&drop) / **Lista** (agrupada por etapa, tipo Asana) / **Calendario** (doble modo **Entrega** por `due_date` y **Producción** por `production_date`). Modal de tarjeta: total editable, aviso "⚠ sin precio", **comentarios** (`card_stories`) y **adjuntos** (Storage `adjuntos`). Deep-link `?card=<id>` |
 | `contabilidad.html` | **Contabilidad** (solo admin): Caja del día (abrir/cerrar), Cobros por trabajo, Movimientos, Balance |
 | `ventas.html` | **Ventas**: KPIs (facturado/cobrado/conversión) por período, evolución 12 meses, por vendedor, pipeline, productos top |
 
@@ -44,7 +52,7 @@ premium** con el logo oficial (mano + brote). Deploy en **Netlify**.
 | `auth.js` | `requireAuth`, `isAdmin` (admin\|director), `signIn/Out`, `getProfile` |
 | `navbar.js` | Navbar compartida (logo + tabs por rol). Clase `.cirene-nav` |
 | `quote-engine.js` | Motor de cálculo (réplica del Excel): `calcLine`, `calcQuoteTotals`, `money`, `pct`, `n` |
-| `cirene-data.js` | **Capa de datos única** sobre Supabase: materiales, tarifas MO, plantillas/BOM, quotes, intake (CRM), producción, contabilidad (caja/cobros/movimientos), comentarios (`card_stories`) |
+| `cirene-data.js` | **Capa de datos única** sobre Supabase: materiales, tarifas MO, plantillas/BOM, quotes, `listStages`, intake/CRM, producción, contabilidad (caja/cobros/movimientos), comentarios (`listComments`/`addComment`/`countCommentsByCard`), adjuntos (`uploadAttachment`/`deleteAttachment`). **Toda página de datos pasa por acá** |
 | `icons.js` | Iconos SVG inline |
 
 ## Supabase — tablas (migraciones en `supabase/migrations/`, `_ALL.sql` = todo junto)
@@ -57,6 +65,8 @@ estado_pago, due_date, production_date, entrega, product_lines jsonb…), `card_
 **RLS**: config (materiales/tarifas/plantillas/stages) lectura auth / escritura admin; operativo
 (intake/quotes/producción/comentarios) auth full; contabilidad solo admin.
 **Seed**: 90 materiales + 6 plantillas estándar del Excel (Leñero $7.109 = exacto).
+**Storage**: bucket público `adjuntos`; los adjuntos de cada trabajo se guardan en
+`production_cards.attachments jsonb` como `[{name,url,type,path}]`.
 
 ## Cotizador — modelo de precio (clave)
 `costo_materiales = Σ(material × cantidad)` · `costo_mo = Σ(rol × horas)` ·
@@ -69,6 +79,8 @@ estado_pago, due_date, production_date, entrega, product_lines jsonb…), `card_
 3. Antes de crear algo nuevo, reusar funciones de `cirene-data.js` / `quote-engine.js`.
 4. La publishable key es segura de versionar; el **PAT de Supabase y el token de Netlify NO** se versionan.
 5. Migraciones aplicadas son inmutables: agregar nuevas, no editar.
+6. **Caché**: al cambiar un `.js`, subir el `?v=N` de los imports en todos los HTML (si no, el navegador usa la versión vieja y la página queda "cargando").
+7. Páginas de datos: indicador "Cargando…" inmediato + `try/catch` con mensaje visible + `Promise.race` con timeout (que nunca quede colgado sin avisar).
 
 ## Datos importados (de Asana)
 Los CSV `~/Desktop/CIRENE/{Presupuestos,Herreria_Operativa}*.csv` se migraron a `intake_cards` y
