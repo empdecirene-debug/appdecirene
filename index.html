@@ -84,6 +84,10 @@
     <!-- Cotización -->
     <div class="card">
       <h2>Cotización</h2>
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
+        <div class="fg" style="flex:1;margin:0"><label>Cliente guardado</label><select id="clientPick"><option value="">— nuevo / manual —</option></select></div>
+        <button class="btn sm" type="button" id="clientSave" style="white-space:nowrap">＋ Guardar</button>
+      </div>
       <div class="row">
         <div class="fg"><label>Cliente</label><input id="c-nombre" placeholder="Nombre o empresa"></div>
         <div class="fg"><label>Contacto / teléfono</label><input id="c-contacto" placeholder="097…"></div>
@@ -106,10 +110,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=2';
-import { requireAuth } from './js/auth.js?v=2';
-import * as data from './js/cirene-data.js?v=2';
-import { calcLine, calcQuoteTotals, money, pct, n } from './js/quote-engine.js?v=2';
+import { renderNavbar } from './js/navbar.js?v=3';
+import { requireAuth } from './js/auth.js?v=3';
+import * as data from './js/cirene-data.js?v=3';
+import { calcLine, calcQuoteTotals, money, pct, n } from './js/quote-engine.js?v=3';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
@@ -127,6 +131,28 @@ renderNavbar('cot');
 // Selects
 $('#b-tpl').innerHTML = '<option value="">— en blanco —</option>' + templates.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
 refreshLoadQuotes();
+
+// Clientes guardados: seleccionar uno autocompleta sus datos
+let clientsList = await data.listClients().catch(() => []);
+function refreshClientPick(sel = '') {
+  $('#clientPick').innerHTML = '<option value="">— nuevo / manual —</option>' + clientsList.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${c.empresa ? ' · ' + esc(c.empresa) : ''}</option>`).join('');
+}
+refreshClientPick();
+$('#clientPick').onchange = e => {
+  const c = clientsList.find(x => x.id === e.target.value);
+  if (!c) return;
+  $('#c-nombre').value = c.nombre || ''; $('#c-contacto').value = c.telefono || ''; $('#c-direccion').value = c.direccion || '';
+  state.cliente = { nombre: c.nombre || '', contacto: c.telefono || '', direccion: c.direccion || '' };
+};
+$('#clientSave').onclick = async () => {
+  const nombre = $('#c-nombre').value.trim();
+  if (!nombre) { toast('Poné el nombre del cliente'); return; }
+  try {
+    const saved = await data.upsertClient({ nombre, telefono: $('#c-contacto').value || null, direccion: $('#c-direccion').value || null });
+    clientsList = [saved, ...clientsList.filter(c => c.id !== saved.id)];
+    refreshClientPick(saved.id); toast('Cliente guardado');
+  } catch (e) { toast('Error: ' + (e.message || e)); }
+};
 
 // Contexto desde el CRM: ?intake=<id> precarga cliente; ?quote=<id> carga la cotización
 const _params = new URLSearchParams(location.search);
@@ -281,7 +307,7 @@ async function guardar() {
   try {
     const t = calcQuoteTotals(state);
     if (!state.numero) { state.numero = await data.nextQuoteNumber(); state.id = data.quoteId(state.numero); }
-    const { data: { user } } = await (await import('./js/supa.js?v=2')).getSupa().auth.getUser();
+    const { data: { user } } = await (await import('./js/supa.js?v=3')).getSupa().auth.getUser();
     const quote = {
       id: state.id, numero: state.numero, estado: 'presupuestado',
       cliente_nombre: state.cliente.nombre || null, cliente_contacto: state.cliente.contacto || null,

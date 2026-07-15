@@ -8,7 +8,7 @@
 // tarjeta, el form de OC, el campo de stock, etc).
 //
 // Cómo se usa:
-//   import { saveGuard } from './save-guard.js?v=2';
+//   import { saveGuard } from './save-guard.js?v=3';
 //
 //   // Cuando una operación de save arranca:
 //   saveGuard.markPending('production-card');

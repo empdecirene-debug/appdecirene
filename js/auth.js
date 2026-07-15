@@ -1,11 +1,11 @@
 // Auth wrapper sobre Supabase Auth. Manejo de login/logout, sesión actual y rol.
 //
 // Uso:
-//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=2';
+//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=3';
 //   const user = await requireAuth();   // redirige a /login.html si no hay sesión
 //   if (await isAdmin()) { ... }
 
-import { getSupa } from './supa.js?v=2';
+import { getSupa } from './supa.js?v=3';
 
 const LOGIN_URL = '/login.html';
 

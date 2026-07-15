@@ -90,10 +90,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=2';
-import { requireAuth } from './js/auth.js?v=2';
-import * as data from './js/cirene-data.js?v=2';
-import { money, n } from './js/quote-engine.js?v=2';
+import { renderNavbar } from './js/navbar.js?v=3';
+import { requireAuth } from './js/auth.js?v=3';
+import * as data from './js/cirene-data.js?v=3';
+import { money, n } from './js/quote-engine.js?v=3';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Clientes</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 20px 80px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input[type=search] { flex: 1; min-width: 220px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 8px 10px; border-bottom: 1px solid var(--surface-3); }
+  table.grid tr:hover td { background: var(--surface-2); }
+  .row-actions button { background: none; border: none; cursor: pointer; color: var(--tinta-3); font-size: 15px; padding: 2px 6px; }
+  .row-actions button:hover { color: #0A0A0A; } .row-actions button.del:hover { color: #A33A3A; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow: auto; }
+  .ov.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 440px; padding: 22px 24px; }
+  .modal h2 { font-size: 16px; margin-bottom: 14px; }
+  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .fg textarea { min-height: 54px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">Clientes</h1>
+    <button class="btn primary" id="btnNew">+ Nuevo cliente</button>
+  </div>
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Buscar cliente por nombre, empresa, teléfono…">
+    <span class="muted" id="count"></span>
+  </div>
+  <div id="list"><div class="muted" style="padding:20px">Cargando clientes…</div></div>
+</div>
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=3';
+import { requireAuth, isAdmin } from './js/auth.js?v=3';
+import * as data from './js/cirene-data.js?v=3';
+
+const $ = s => document.querySelector(s);
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let clients = [], admin = false, filter = '';
+await requireAuth();
+renderNavbar('clientes');
+try {
+  admin = await isAdmin();
+  clients = await data.listClients();
+} catch (e) {
+  $('#list').innerHTML = `<div style="color:#A33A3A;padding:18px">No se pudo cargar Clientes.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+$('#search').oninput = e => { filter = e.target.value; renderList(); };
+$('#btnNew').onclick = () => openClient(null);
+renderList();
+
+function renderList() {
+  const s = filter.toLowerCase();
+  const rows = clients.filter(c => !s || (c.nombre + ' ' + (c.empresa || '') + ' ' + (c.telefono || '') + ' ' + (c.email || '')).toLowerCase().includes(s));
+  $('#count').textContent = `${rows.length} cliente${rows.length === 1 ? '' : 's'}${admin ? ' · viendo todos' : ''}`;
+  $('#list').innerHTML = `<table class="grid"><thead><tr>
+    <th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th>${admin ? '<th>Vendedor</th>' : ''}<th></th></tr></thead>
+    <tbody>${rows.map(c => `<tr data-id="${c.id}">
+      <td><b>${esc(c.nombre)}</b></td><td>${esc(c.empresa || '')}</td><td>${esc(c.telefono || '')}</td><td>${esc(c.email || '')}</td>
+      ${admin ? `<td>${esc(c.vendedor || '')}</td>` : ''}
+      <td class="row-actions" style="white-space:nowrap"><button data-edit title="Editar">✎</button><button data-del class="del" title="Eliminar">✕</button></td></tr>`).join('') || `<tr><td colspan="${admin ? 6 : 5}" class="muted">Sin clientes. Creá el primero con "+ Nuevo cliente".</td></tr>`}</tbody></table>`;
+  $('#list').querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelector('[data-edit]').onclick = () => openClient(id);
+    tr.querySelector('[data-del]').onclick = async (e) => { e.stopPropagation(); if (!confirm('¿Eliminar cliente?')) return; try { await data.deleteClient(id); clients = clients.filter(x => x.id !== id); renderList(); toast('Eliminado'); } catch (er) { toast('Error: ' + (er.message || er)); } };
+    tr.querySelector('td').onclick = () => openClient(id);
+  });
+}
+
+function openClient(id) {
+  const c = id ? clients.find(x => x.id === id) : { nombre: '', empresa: '', telefono: '', email: '', direccion: '', notas: '' };
+  $('#modal').innerHTML = `<h2>${id ? 'Editar' : 'Nuevo'} cliente</h2>
+    <div class="fg"><label>Nombre / razón social</label><input id="c-nombre" value="${esc(c.nombre)}"></div>
+    <div class="row2">
+      <div class="fg"><label>Empresa</label><input id="c-empresa" value="${esc(c.empresa)}"></div>
+      <div class="fg"><label>Teléfono</label><input id="c-tel" value="${esc(c.telefono)}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Email</label><input id="c-mail" value="${esc(c.email)}"></div>
+      <div class="fg"><label>Dirección</label><input id="c-dir" value="${esc(c.direccion)}"></div>
+    </div>
+    <div class="fg"><label>Notas</label><textarea id="c-notas">${esc(c.notas)}</textarea></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn primary" id="c-save">Guardar</button><button class="btn sm" id="c-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#c-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#c-save').onclick = async () => {
+    const nombre = $('#c-nombre').value.trim();
+    if (!nombre) { toast('Falta el nombre'); return; }
+    const payload = { ...(id ? { id } : {}), nombre, empresa: $('#c-empresa').value || null, telefono: $('#c-tel').value || null, email: $('#c-mail').value || null, direccion: $('#c-dir').value || null, notas: $('#c-notas').value || null };
+    try {
+      const saved = await data.upsertClient(payload);
+      if (id) clients = clients.map(x => x.id === id ? saved : x); else clients.unshift(saved);
+      $('#ov').classList.remove('show'); renderList(); toast('Guardado');
+    } catch (e) { toast('Error: ' + (e.message || e)); }
+  };
+}
+$('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
+</script>
+</body>
+</html>

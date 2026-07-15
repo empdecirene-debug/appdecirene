@@ -54,16 +54,16 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=2';
-import { requireAuth } from './js/auth.js?v=2';
-import * as data from './js/cirene-data.js?v=2';
-import { money } from './js/quote-engine.js?v=2';
+import { renderNavbar } from './js/navbar.js?v=3';
+import { requireAuth } from './js/auth.js?v=3';
+import * as data from './js/cirene-data.js?v=3';
+import { money } from './js/quote-engine.js?v=3';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let stages = [], cards = [];
+let stages = [], cards = [], clientsList = [];
 $('#board').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando consultas…</div>';
 await requireAuth();
 renderNavbar('intake');
@@ -76,6 +76,7 @@ try {
 // el lead aceptado sale del board (pasó a producción)
 stages = stages.filter(s => s.key !== 'aceptado');
 render();
+clientsList = await data.listClients().catch(() => []);
 
 function render() {
   const visible = cards.filter(c => c.status !== 'aceptada');
@@ -117,6 +118,7 @@ function bind() {
 /* Nueva consulta */
 $('#btnNew').onclick = () => {
   $('#modal').innerHTML = `<h2>Nueva consulta</h2>
+    <div class="fg"><label>Cliente guardado</label><select id="f-clientpick"><option value="">— nuevo / manual —</option>${clientsList.map(c => `<option value="${c.id}">${esc(c.nombre)}${c.empresa ? ' · ' + esc(c.empresa) : ''}</option>`).join('')}</select></div>
     <div class="fg"><label>Cliente / empresa</label><input id="f-cli" placeholder="Nombre"></div>
     <div class="row2">
       <div class="fg"><label>Teléfono</label><input id="f-tel" placeholder="097…"></div>
@@ -129,6 +131,7 @@ $('#btnNew').onclick = () => {
     </div>
     <div class="mact"><button class="btn primary" id="f-save">Crear</button><button class="btn" id="f-cancel">Cancelar</button></div>`;
   showModal();
+  $('#f-clientpick').onchange = e => { const c = clientsList.find(x => x.id === e.target.value); if (c) { $('#f-cli').value = c.nombre || ''; $('#f-tel').value = c.telefono || ''; $('#f-mail').value = c.email || ''; } };
   $('#f-cancel').onclick = hideModal;
   $('#f-save').onclick = async () => {
     const cli = $('#f-cli').value.trim();

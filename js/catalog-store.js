@@ -108,7 +108,7 @@ export async function flushCatalogToSupabase() {
 // Falla silenciosa: si Supabase no está disponible, queda solo en localStorage.
 export async function syncCatalogToSupabase(productos, tarifas) {
   try {
-    const { getSupa } = await import('./supa.js?v=2');
+    const { getSupa } = await import('./supa.js?v=3');
     const supa = getSupa();
     const payload = {
       id: 'main',
@@ -133,7 +133,7 @@ export async function syncCatalogToSupabase(productos, tarifas) {
 //     trae los cambios sin pisar localStorage solo porque "ya tenía timestamp".
 export async function bootstrapCatalogFromSupabase({ timeoutMs = 4000 } = {}) {
   try {
-    const { getSupa } = await import('./supa.js?v=2');
+    const { getSupa } = await import('./supa.js?v=3');
     const supa = getSupa();
     const fetchPromise = supa.from('catalog_v1').select('data, updated_at').eq('id', 'main').maybeSingle();
     const { data, error } = await Promise.race([

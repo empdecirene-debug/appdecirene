@@ -55,12 +55,13 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=2';
-import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=2';
-import { icon } from './js/icons.js?v=2';
+import { renderNavbar } from './js/navbar.js?v=3';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=3';
+import { icon } from './js/icons.js?v=3';
 
 const TILES = [
   { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },
+  { id: 'clientes', icon: 'users',      label: 'Clientes',     href: '/clientes.html',      desc: 'Tu cartera de clientes' },
   { id: 'cot',      icon: 'calculator', label: 'Cotizar',      href: '/index.html',         desc: 'Presupuesto + PDF' },
   { id: 'catalog',  icon: 'package',    label: 'Catálogo',     href: '/catalog.html',       desc: 'Productos, materiales y tarifas' },
   { id: 'prod',     icon: 'clipboard',  label: 'Producción',   href: '/production.html',    desc: 'Kanban + calendario' },

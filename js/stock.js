@@ -5,9 +5,9 @@
 //
 // qty_available es calculado: qty_on_hand - qty_reserved (no hay columna).
 
-import { getSupa } from './supa.js?v=2';
-import { getCurrentUser, isAdmin } from './auth.js?v=2';
-import { logAudit } from './audit.js?v=2';
+import { getSupa } from './supa.js?v=3';
+import { getCurrentUser, isAdmin } from './auth.js?v=3';
+import { logAudit } from './audit.js?v=3';
 
 export async function listStockItems({ search = '', brand = '', limit = 2000 } = {}) {
   const supa = getSupa();

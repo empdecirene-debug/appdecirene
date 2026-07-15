@@ -1,7 +1,7 @@
 // Capa de datos del ERP De Cirene sobre Supabase.
 // Materiales, tarifas de mano de obra, plantillas de producto (BOM) y cotizaciones.
 
-import { getSupa } from './supa.js?v=2';
+import { getSupa } from './supa.js?v=3';
 
 const db = () => getSupa();
 
@@ -131,6 +131,35 @@ export async function currentVendorName() {
   if (!user) return 'Visitante';
   const { data } = await db().from('user_profiles').select('full_name,vendor_name').eq('id', user.id).single();
   return (data && (data.vendor_name || data.full_name)) || user.email;
+}
+
+/* ───────────── Clientes (portal por vendedor) ───────────── */
+export async function listClients({ search = '' } = {}) {
+  const { data, error } = await db().from('clients').select('*').order('nombre');
+  if (error) throw error;
+  let rows = data || [];
+  if (search) { const s = search.toLowerCase(); rows = rows.filter(c => (c.nombre + ' ' + (c.empresa || '') + ' ' + (c.telefono || '') + ' ' + (c.email || '')).toLowerCase().includes(s)); }
+  return rows;
+}
+export async function getClient(id) {
+  const { data } = await db().from('clients').select('*').eq('id', id).single();
+  return data || null;
+}
+export async function upsertClient(c) {
+  const sb = db();
+  let row = { ...c };
+  if (!row.id) {
+    const { data: { user } } = await sb.auth.getUser();
+    row.vendedor_user_id = user?.id || null;
+    if (!row.vendedor) row.vendedor = await currentVendorName();
+  }
+  const { data, error } = await sb.from('clients').upsert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteClient(id) {
+  const { error } = await db().from('clients').delete().eq('id', id);
+  if (error) throw error;
 }
 
 /* ───────────── Etapas (kanban) ───────────── */

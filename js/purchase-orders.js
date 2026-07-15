@@ -1,11 +1,11 @@
 // Órdenes de compra operativas (a talleres o proveedores).
 // Se crean en Supabase y opcionalmente se "empujan" a Odoo como purchase.order borrador.
 
-import { getSupa } from './supa.js?v=2';
-import { getCurrentUser, isAdmin, getOdooUserIdForCurrentUser } from './auth.js?v=2';
-import { purchaseOrderId } from './ids.js?v=2';
-import { logAudit } from './audit.js?v=2';
-import { createPurchaseOrderDraft } from './odoo-client.js?v=2';
+import { getSupa } from './supa.js?v=3';
+import { getCurrentUser, isAdmin, getOdooUserIdForCurrentUser } from './auth.js?v=3';
+import { purchaseOrderId } from './ids.js?v=3';
+import { logAudit } from './audit.js?v=3';
+import { createPurchaseOrderDraft } from './odoo-client.js?v=3';
 
 export async function listPurchaseOrders({ cardId = null, status = null } = {}) {
   const supa = getSupa();

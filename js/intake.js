@@ -1,10 +1,10 @@
 // Lógica de Intake / Bandeja de entrada.
 // El vendedor crea tarjetas rápidas; admin las procesa (triaje).
 
-import { getSupa } from './supa.js?v=2';
-import { getCurrentUser, getProfile, isAdmin } from './auth.js?v=2';
-import { intakeId, productionCardId } from './ids.js?v=2';
-import { logAudit } from './audit.js?v=2';
+import { getSupa } from './supa.js?v=3';
+import { getCurrentUser, getProfile, isAdmin } from './auth.js?v=3';
+import { intakeId, productionCardId } from './ids.js?v=3';
+import { logAudit } from './audit.js?v=3';
 
 export async function listMyIntakes() {
   const supa = getSupa();

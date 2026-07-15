@@ -6,11 +6,11 @@
 //   - Tarifas: lista de técnicas con tiers por cantidad
 //   - Sync Odoo: estado + push completo + zona peligrosa (wipe + push)
 
-import { renderNavbar } from './navbar.js?v=2';
-import { requireAuth } from './auth.js?v=2';
-import { getImage, setImage, delImage, compressImage, dataUrlToBase64 } from './image-store.js?v=2';
-import { loadCatalog, saveCatalog, flushCatalogToSupabase, hasPendingSync, bootstrapCatalogFromSupabase, migrateAllProducts, newProductId, newImageKey } from './catalog-store.js?v=2';
-import { pushProductFull, archiveAllProducts, listAllProducts, upsertProductFromCatalog } from './odoo-client.js?v=2';
+import { renderNavbar } from './navbar.js?v=3';
+import { requireAuth } from './auth.js?v=3';
+import { getImage, setImage, delImage, compressImage, dataUrlToBase64 } from './image-store.js?v=3';
+import { loadCatalog, saveCatalog, flushCatalogToSupabase, hasPendingSync, bootstrapCatalogFromSupabase, migrateAllProducts, newProductId, newImageKey } from './catalog-store.js?v=3';
+import { pushProductFull, archiveAllProducts, listAllProducts, upsertProductFromCatalog } from './odoo-client.js?v=3';
 
 // saveCatalog empuja a Supabase con debounce (catalog-store.js).
 // Los eventos cirene:catalog-sync-* actualizan el indicador de estado en el header.

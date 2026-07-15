@@ -210,7 +210,7 @@ export async function loadStageRules({ force = false } = {}) {
     } catch {}
   }
   try {
-    const { getSupa } = await import('./supa.js?v=2');
+    const { getSupa } = await import('./supa.js?v=3');
     const supa = getSupa();
     const { data, error } = await supa.from('stage_rules').select('*').order('priority', { ascending: true });
     if (error) throw error;
@@ -230,7 +230,7 @@ export function listStageRules() {
 
 // UPSERT en Supabase. Si `rule.id` viene, hace UPDATE; sino INSERT.
 export async function saveStageRule(rule) {
-  const { getSupa } = await import('./supa.js?v=2');
+  const { getSupa } = await import('./supa.js?v=3');
   const supa = getSupa();
   const payload = {
     priority:               Number(rule.priority) || 999,
@@ -253,7 +253,7 @@ export async function saveStageRule(rule) {
 }
 
 export async function deleteStageRule(id) {
-  const { getSupa } = await import('./supa.js?v=2');
+  const { getSupa } = await import('./supa.js?v=3');
   const supa = getSupa();
   const { error } = await supa.from('stage_rules').delete().eq('id', id);
   if (error) throw error;
