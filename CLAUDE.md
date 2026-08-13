@@ -11,17 +11,58 @@ premium** con el logo oficial (mano + brote). Deploy en **Netlify**.
 > Clonado de la estructura de la app de Glide (uniformes) y reescrito a herrería. **No debe quedar
 > ningún rastro de "Glide"** en el código (clases CSS, ids, textos): todo es `cirene`.
 
+## ⚠ Migración a Railway (2026-08-13) — SUPABASE YA NO SE USA
+
+El proyecto de Supabase `bxlnsbkglxtxqceagsyr` **fue eliminado** (su hostname da NXDOMAIN en
+Google y Cloudflare — un proyecto *pausado* sí resolvería). Con el backend caído la app cargaba
+el login pero ninguna consulta salía. **Los datos operativos se perdieron**; el esquema y el
+seed estaban versionados y se recuperaron.
+
+Todo vive ahora dentro del **proyecto de Railway** `appdecirene`
+(`cef6a051-58ba-4e5a-a197-cfca13f7580f`), sin dependencias externas:
+
+| Antes (Supabase) | Ahora (Railway) |
+|---|---|
+| Postgres gestionado | Servicio **Postgres** en red privada (`postgres.railway.internal`), no expuesto |
+| Supabase Auth | `app_users` + scrypt + cookie httpOnly firmada (`api/session.js`) |
+| PostgREST (API automática) | `POST /api/q` — descriptor → SQL (`api/query.js`) |
+| RLS / policies | `api/registry.js`: rol × tabla. Un navegador ya no habla con la base |
+| Storage (bucket `adjuntos`) | Volumen en `/data/adjuntos`, servido en `/adjuntos/*` |
+
+**Lo clave para no romper nada:** `js/supa.js` mantiene **la misma interfaz encadenable** que
+supabase-js (`from().select().eq().single()`, `auth.*`, `storage.*`). Por eso `cirene-data.js`,
+las 9 páginas y las ~60 llamadas **no se tocaron**: solo cambió la implementación de abajo.
+Si agregás una consulta, escribila como si fuera Supabase y anda.
+
+**Lo que NO soporta** el cliente nuevo: los *embeds* de PostgREST — `select('*, workshops(name)')`.
+Devuelve todas las columnas y avisa por consola. Solo los usaban módulos heredados de Glide
+(`workshops.js`, `purchase-orders.js`, `production.js`) que ninguna página viva de Cirene importa.
+
+### Backend (`api/` + `server.js`)
+| Archivo | Qué hace |
+|---|---|
+| `api/db.js` | Pool de `pg` + **migración al arrancar**: aplica `db/schema.sql` (idempotente), siembra plantillas si faltan y crea el admin inicial. La base nunca queda atrás del código |
+| `api/registry.js` | Autorización por rol y tabla (réplica de `008_rls.sql`). **Las columnas se leen del catálogo de Postgres al arrancar**, no se listan a mano → el registro no puede desfasarse |
+| `api/query.js` | Descriptor → SQL. **Valores siempre parametrizados, identificadores siempre validados** contra el catálogo. UPDATE/DELETE sin filtros bloqueados |
+| `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas |
+| `api/router.js` | `/api/auth/{login,logout,me,password,usuarios}`, `/api/q`, `/api/upload`, `/api/health` |
+| `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
+
+**Variables en Railway**: `DATABASE_URL` (referencia a `${{Postgres.DATABASE_URL}}`),
+`SESSION_SECRET`, `ADMIN_EMAIL`, `ADJUNTOS_DIR=/data/adjuntos`, `NODE_ENV=production`.
+Si falta `SESSION_SECRET` la app anda pero las sesiones se caen en cada reinicio.
+
+**Deploy**: el servicio está conectado a `empdecirene-debug/appdecirene` rama `main` → push =
+deploy. (Antes **no tenía trigger**: servía un build del 10 de julio, por eso faltaba
+`clientes.html`.) URL: https://appdecirene-production.up.railway.app
+
+**Aplicar SQL**: ya no hace falta herramienta externa — editá `db/schema.sql` y el próximo
+deploy lo aplica. Como es idempotente, agregá `create ... if not exists` / `alter ... if not exists`.
+
 ## Stack y entorno
-- **Supabase**: proyecto ref `bxlnsbkglxtxqceagsyr`. La **publishable/anon key** va embebida en
-  `js/supa.js` (es pública por diseño; la seguridad la dan las políticas RLS). Fallback local:
-  `localStorage cirene_supabase_url` / `cirene_supabase_key`.
-- **Auth**: Supabase Auth (email+password). Roles en `user_profiles.role`: `comercial`,
-  `produccion`, `admin`, `director`. `is_admin()` = admin|director. Usuario admin: `admin@decirene.uy`.
-- **Deploy**: Netlify site `appdecirene` (id `b0e7b6f5-5696-493f-9ac6-10cdfa98ec6a`) →
-  https://appdecirene.netlify.app. Se despliega por **zip directo a la API de Netlify** (sin build;
-  la key está embebida). GitHub: `empdecirene-debug/appdecirene` (gh local = cuenta `contacto254`).
-- **Aplicar SQL** a Supabase: Management API `POST /v1/projects/{ref}/database/query` con el PAT
-  (`sbp_…`) **y un User-Agent de navegador** (si no, Cloudflare devuelve 403/error 1010).
+- **Auth**: propia (`api/session.js`). Roles en `user_profiles.role`: `comercial`,
+  `produccion`, `admin`, `director`. Admin = admin|director. Usuario admin: `admin@decirene.uy`.
+- **Alta de usuarios**: `POST /api/auth/usuarios` (solo admin) → devuelve la contraseña generada.
 - **Entorno local**: no hay `node`/`curl`/`brew`. Servir con `python3 -m http.server`. Para PDFs
   binarios se rasteriza con un binario Swift+PDFKit.
 - **Storage**: bucket público `adjuntos` (Supabase Storage) para archivos de tarjetas de producción
