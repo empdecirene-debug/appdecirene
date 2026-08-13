@@ -522,53 +522,12 @@ create index if not exists idx_cash_mov_card on cash_movements(production_card_i
 
 
 
--- Helper: ¿hay sesión autenticada?
--- (la autorización la aplica la API, ver api/registry.js)
-
--- ── user_profiles: lee la propia + admin lee todas; admin escribe ──────
-
-
--- ── Config (stages, custom_fields, materials, labor_rates, templates) ──
---    lectura autenticada / escritura admin
-do $$
-declare t text;
-begin
-  foreach t in array array[
-    'kanban_stages','custom_fields','materials','labor_rates',
-    'product_templates','template_material_lines','template_labor_lines'
-  ] loop
-    execute format('', t);
-    execute format('
-    execute format('', t);
-    execute format('
-  end loop;
-end $$;
-
--- ── Operativo (CRM, quotes, producción): autenticado lee/escribe ───────
-do $$
-declare t text;
-begin
-  foreach t in array array[
-    'intake_cards','production_cards','card_stories','production_card_transitions',
-    'card_comment_reads','quotes','quote_lines'
-  ] loop
-    execute format('', t);
-    execute format('
-  end loop;
-end $$;
-
--- ── audit_log: insert autenticado, lectura admin ──────────────────────
-
-
--- ── Contabilidad: SOLO admin/director ─────────────────────────────────
-do $$
-declare t text;
-begin
-  foreach t in array array['cash_sessions','job_payments','cash_movements'] loop
-    execute format('', t);
-    execute format('
-  end loop;
-end $$;
+-- ── PERMISOS ──────────────────────────────────────────────────────────
+-- Acá iban las políticas RLS de Supabase (008_rls.sql). Se eliminaron a propósito:
+-- con Supabase el navegador hablaba DIRECTO con la base y Postgres decidía con
+-- auth.uid(); ahora toda consulta entra por la API, que se conecta con un único
+-- usuario de base. La autorización equivalente (qué rol lee/escribe cada tabla)
+-- vive en api/registry.js y se aplica en api/router.js antes de armar el SQL.
 
 -- ====== 009_seed_materials.sql ======
 -- =====================================================================
