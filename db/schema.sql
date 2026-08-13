@@ -522,6 +522,25 @@ create index if not exists idx_cash_mov_card on cash_movements(production_card_i
 
 
 
+-- ── TALLERES ──────────────────────────────────────────────────────────
+-- Herencia de Glide (talleres tercerizados), pero `admin.html` la sigue usando y
+-- ADEMÁS es su pestaña por defecto: sin esta tabla, entrar a Administración rompía
+-- antes de mostrar nada — incluida la pestaña de Usuarios. Se crea vacía.
+-- `odoo_partner_id` no se usa en Cirene (no hay Odoo); queda porque el form lo lee.
+create table if not exists workshops (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  contact_name    text,
+  contact_email   text,
+  contact_phone   text,
+  tecnicas        text,
+  odoo_partner_id integer,
+  notes           text,
+  active          boolean not null default true,
+  created_at      timestamptz not null default now()
+);
+create index if not exists idx_workshops_active on workshops (active);
+
 -- ── PERMISOS ──────────────────────────────────────────────────────────
 -- Acá iban las políticas RLS de Supabase (008_rls.sql). Se eliminaron a propósito:
 -- con Supabase el navegador hablaba DIRECTO con la base y Postgres decidía con

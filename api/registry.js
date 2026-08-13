@@ -28,6 +28,8 @@ const TABLAS = {
   template_labor_lines:    { leer: TODOS, escribir: ADMIN },
   kanban_stages:           { leer: TODOS, escribir: ADMIN },
   custom_fields:           { leer: TODOS, escribir: ADMIN },
+  // Talleres: lo administra admin.html (es su pestaña por defecto).
+  workshops:               { leer: TODOS, escribir: ADMIN },
 
   // ── Operativo ─────────────────────────────────────────────────
   intake_cards:                { leer: TODOS, escribir: TODOS },
