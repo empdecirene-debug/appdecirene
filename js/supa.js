@@ -30,6 +30,15 @@ async function pedir(ruta, opciones = {}) {
   return { httpOk: r.ok, status: r.status, ...(j || {}) };
 }
 
+// La API devuelve el error como texto plano en los 401/403 y como objeto en los
+// errores de consulta. La app siempre lee `error.message`, así que unificamos acá:
+// si no, un "sin sesión" o un "tu rol no puede…" llegaba como `undefined` a la pantalla.
+function normalizarError(err) {
+  if (!err) return null;
+  if (typeof err === 'string') return { message: err };
+  return err.message ? err : { message: String(err.message ?? err) };
+}
+
 // ── Constructor de consultas ────────────────────────────────────────────────
 class Consulta {
   constructor(tabla) {
@@ -82,7 +91,7 @@ class Consulta {
   // Thenable: `await consulta` dispara el fetch, igual que supabase-js.
   then(resolve, reject) {
     return pedir('/q', { method: 'POST', body: JSON.stringify(this.d) })
-      .then(r => resolve({ data: r.data ?? null, error: r.error ?? null }))
+      .then(r => resolve({ data: r.data ?? null, error: normalizarError(r.error) }))
       .catch(e => resolve({ data: null, error: { message: e.message || String(e) } }));
   }
   catch(fn) { return this.then(x => x).catch(fn); }
