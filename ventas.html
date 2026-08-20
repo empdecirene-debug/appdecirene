@@ -87,8 +87,10 @@ function periodMonths(p) {
   if (p === 'ytd') { const y = now.getFullYear(), arr = []; for (let m = 0; m <= now.getMonth(); m++) arr.push(`${y}-${String(m + 1).padStart(2, '0')}`); return arr; }
   return null; // all
 }
-const cardMonth = c => c.billing_month || (c.created_at || '').slice(0, 7);
-const monthOf = d => (d || '').slice(0, 7);
+// `function` y no `const`: render() ya corrió más arriba y los usa. Con `const`
+// la pantalla moría con "Cannot access 'cardMonth' before initialization".
+function cardMonth(c) { return c.billing_month || (c.created_at || '').slice(0, 7); }
+function monthOf(d) { return (d || '').slice(0, 7); }
 
 function render() {
  try {

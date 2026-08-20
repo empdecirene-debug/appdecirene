@@ -110,8 +110,8 @@ document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
 $('#r-ok').onclick = () => { desde = $('#r-desde').value; hasta = $('#r-hasta').value; render(); };
 render();
 
-const aspectos = () => opciones.filter(o => o.tipo === 'aspecto').map(o => o.valor);
-const canales = () => opciones.filter(o => o.tipo === 'canal').map(o => o.valor);
+function aspectos() { return opciones.filter(o => o.tipo === 'aspecto').map(o => o.valor); }
+function canales() { return opciones.filter(o => o.tipo === 'canal').map(o => o.valor); }
 function filtradas() {
   return surveys.filter(s => {
     const f = (s.respondida_at || s.enviada_at || s.created_at || '').slice(0, 10);

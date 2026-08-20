@@ -125,9 +125,12 @@ function rango() {
   if (periodo === 'anio') return { d: `${hoy.getFullYear()}-01-01`, h: iso(hoy), etiqueta: 'Año ' + hoy.getFullYear() };
   return { d: desde || iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), h: hasta || iso(hoy), etiqueta: 'Rango personalizado' };
 }
-const iso = d => d.toISOString().slice(0, 10);
-const mesLabel = d => d.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' });
-const enRango = (f, r) => !!f && f >= r.d && f <= r.h;
+// `function` y no `const`: render() ya corrió más arriba y estos helpers los usa
+// rango(), así que un `const` acá abajo tiraba "Cannot access 'iso' before
+// initialization" y el dashboard no mostraba nada.
+function iso(d) { return d.toISOString().slice(0, 10); }
+function mesLabel(d) { return d.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' }); }
+function enRango(f, r) { return !!f && f >= r.d && f <= r.h; }
 // Período anterior de la misma longitud, para comparar.
 function rangoAnterior(r) {
   const d1 = new Date(r.d + 'T00:00:00'), d2 = new Date(r.h + 'T00:00:00');

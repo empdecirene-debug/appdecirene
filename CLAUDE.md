@@ -240,6 +240,12 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
    "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=5`.**
 7. Páginas de datos: indicador "Cargando…" inmediato + `try/catch` con mensaje visible
    (que nunca quede colgado sin avisar).
+7b. **Los helpers de nivel superior van como `function`, no como `const … =>`.** Las páginas
+   arrancan con código suelto arriba (`await requireAuth()`, `render()`), y `const`/`let` no se
+   izan: si el helper se declara más abajo, al llamarlo tira *"Cannot access 'X' before
+   initialization"*, el módulo se corta y la pantalla **queda con el "Cargando…" puesto, sin
+   ningún error visible**. Rompió Producción, Contabilidad, Dashboard, Ventas y el Cotizador a la
+   vez. Verificar con `perl tools/check-tdz.pl *.html` antes de pushear.
 8. **Sin IVA** en ningún módulo.
 9. Toda transición entre módulos (CRM → Venta → Producción → Cobro) tiene que ser **idempotente**:
    antes de crear, buscar si ya existe. Ver `winLead` y `createProductionFromIntake`.

@@ -189,13 +189,15 @@ function render() {
     console.error(e);
   }
 }
-const noPrice = c => !n(c.total_venta);
-const activo = c => !['entregado', 'cancelado'].includes(c.stage_key);
-const hoyStr = () => new Date().toISOString().slice(0, 10);
-const atrasado = c => {
+// Estos van como `function` a propósito: el arranque de arriba ya llamó a
+// renderTablero(), y un `const` declarado acá abajo todavía no existiría.
+function noPrice(c) { return !n(c.total_venta); }
+function activo(c) { return !['entregado', 'cancelado'].includes(c.stage_key); }
+function hoyStr() { return new Date().toISOString().slice(0, 10); }
+function atrasado(c) {
   const lim = c.fecha_objetivo_interna || c.due_date;
   return !!(lim && lim < hoyStr() && activo(c));
-};
+}
 
 /* ── TABLERO DE PRODUCCIÓN (dashboard superior) ── */
 function renderTablero() {

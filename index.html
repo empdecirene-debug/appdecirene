@@ -378,8 +378,10 @@ async function loadTemplate(id) {
 }
 
 /* ───────── Materiales del builder ───────── */
-const matOpts = sel => materials.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join('');
-const labOpts = sel => laborRates.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.rol)}</option>`).join('');
+// `function` y no `const`: drawMat()/drawLab() ya corrieron más arriba (y también
+// desde cargarCotizacion), así que un `const` acá abajo todavía no existiría.
+function matOpts(sel) { return materials.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join(''); }
+function labOpts(sel) { return laborRates.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.rol)}</option>`).join(''); }
 
 function drawMat() {
   $('#mtBody').innerHTML = builder.materiales.map((m, i) => `<tr data-i="${i}">

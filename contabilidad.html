@@ -90,8 +90,11 @@ renderNavbar('contabilidad');
 if (!(await isAdmin())) { pane.innerHTML = '<div class="card">Esta sección es solo para administración.</div>'; document.querySelector('.tabbar').style.display = 'none'; }
 else { document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b)); render(b.dataset.tab); }); render('cuentas'); }
 
-const fail = (e, ctx) => { console.error('[contabilidad]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e)); };
-const guard = async (fn) => {
+// `function` y no `const`: el render de la primera pestaña se dispara arriba,
+// antes de esta línea, y un `const` todavía no existiría (la pantalla quedaba
+// en blanco sin ningún mensaje).
+function fail(e, ctx) { console.error('[contabilidad]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e)); }
+async function guard(fn) {
   pane.innerHTML = '<div class="card">Cargando…</div>';
   try { await fn(); }
   catch (e) {
@@ -99,7 +102,7 @@ const guard = async (fn) => {
     pane.innerHTML = `<div class="card" style="color:#A33A3A">No se pudo cargar.<br><span class="muted">${esc(e.message || e)}</span>
       <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
   }
-};
+}
 
 function render(tab) {
   ({
@@ -234,10 +237,10 @@ const ESTADOS_COBRO = {
   vencido:  { label: 'Vencido', color: '#A33A3A', bg: '#FDECEE' },
   anulado:  { label: 'Anulado', color: '#9AA0A6', bg: '#F2F2F2' },
 };
-const chipEstado = (e) => {
+function chipEstado(e) {
   const x = ESTADOS_COBRO[e] || ESTADOS_COBRO.a_cobrar;
   return `<span class="pay" style="background:${x.bg};color:${x.color}">${x.label}</span>`;
-};
+}
 
 let receivables = [], prodCards = [];
 async function cargarCuentas() {
