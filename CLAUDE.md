@@ -251,6 +251,41 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
    antes de crear, buscar si ya existe. Ver `winLead` y `createProductionFromIntake`.
 10. Los costos se guardan como **snapshot** en el documento (cotización); el catálogo no reescribe
     el pasado.
+11. **Nada destructivo en `db/schema.sql`.** Se aplica entero en cada arranque, así que un
+    `delete`/`truncate` ahí borra datos del usuario en cada deploy — y en cuanto una FK lo bloquea,
+    **falla toda la migración** y la app levanta sin registro de tablas, respondiendo *"Tabla no
+    permitida"* a todo. Los seeds van con `where not exists` o con un `if exists (…) then return`.
+12. **Las listas van a columnas `jsonb`, y el driver de Postgres manda los arrays de JS como literal
+    de ARRAY.** `api/query.js` las serializa según el tipo de columna (`esJson`); del lado del
+    cliente, todo lo que salga de un jsonb pasa por `arr()` de `quote-engine.js`, porque las filas
+    viejas pueden volver como `{}`.
+
+## Verificaciones antes de pushear
+Sin `node` en la máquina de desarrollo no se puede ejecutar nada localmente, así que hay tres
+verificadores estáticos. Los tres tienen que dar OK:
+
+| Comando | Qué evita |
+|---|---|
+| `perl tools/check-sql.pl db/schema.sql` | Paréntesis o comillas sin cerrar en el esquema. Un error de sintaxis deja **toda** la migración sin aplicar |
+| `perl tools/check-tdz.pl *.html` | Helpers `const … =>` declarados debajo del arranque. Rompen la página entera y la dejan en "Cargando…" **sin ningún mensaje** |
+| `perl tools/check-columns.pl db/schema.sql js/*.js *.html` | Columnas que se escriben y no existen. La API las descarta en silencio: el registro se guarda **sin ese dato** |
+
+Nada de eso reemplaza probar contra el deploy: el bug de las listas `jsonb` y el del seed destructivo
+solo aparecieron ejecutando de verdad contra Railway y leyendo los logs del arranque.
+
+## Datos de prueba y reinicio
+Administración → **Datos de prueba** (`api/demo.js`, solo admin, todo en una transacción):
+
+- **Generar**: carga un juego ficticio coherente que recorre todos los módulos y usa el catálogo
+  real. Cada fila queda marcada con `demo = true`.
+- **Borrar los de prueba**: filtra por `demo`, no toca nada real. Devuelve los materiales que tocó
+  a su saldo real y les saca el mínimo que había puesto.
+- **Reiniciar todo**: vacía el movimiento (clientes, leads, cotizaciones, ventas, producción, stock,
+  cobros, gastos) y deja stock y cuentas corrientes en cero. Conserva usuarios, catálogo,
+  proveedores, operarios y configuración. Pide escribir `REINICIAR`.
+
+El orden de borrado está escrito a mano en `ORDEN_BORRADO` y respeta las FK: `production_cards` y
+`sales` se apuntan mutuamente, así que primero se anula `sale_id`.
 
 ## Datos importados (de Asana)
 Los CSV `~/Desktop/CIRENE/{Presupuestos,Herreria_Operativa}*.csv` se migraron a `intake_cards` y
