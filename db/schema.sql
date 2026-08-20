@@ -523,7 +523,7 @@ create index if not exists idx_cash_mov_card on cash_movements(production_card_i
 
 
 -- ── TALLERES ──────────────────────────────────────────────────────────
--- Herencia de Glide (talleres tercerizados), pero `admin.html` la sigue usando y
+-- Heredada de la app original (talleres tercerizados), pero `admin.html` la sigue usando y
 -- ADEMÁS es su pestaña por defecto: sin esta tabla, entrar a Administración rompía
 -- antes de mostrar nada — incluida la pestaña de Usuarios. Se crea vacía.
 -- `odoo_partner_id` no se usa en Cirene (no hay Odoo); queda porque el form lo lee.
@@ -718,3 +718,744 @@ create trigger trg_clients_updated before update on clients
   for each row execute function set_updated_at();
 
 -- Seed inicial: clientes distintos desde intake_cards + production_cards (ver script de import).
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AMPLIACIÓN 2026-08 · FASE 1 — COTIZADOR
+--
+-- Todo lo de abajo es idempotente (add column if not exists / create if not
+-- exists / on conflict do nothing) y NO toca datos históricos: las columnas
+-- nuevas admiten NULL o traen un default neutro (0 / false), de modo que una
+-- cotización vieja sigue calculando exactamente lo mismo que antes.
+--
+-- Se diseñó pensando en las fases siguientes (CRM, Producción, Stock,
+-- Contabilidad, Dashboard): las dimensiones y los comentarios de fabricación
+-- viven en la línea de cotización y viajan a `production_cards.product_lines`;
+-- el costo de mano de obra y de terminación queda CONGELADO en la cotización
+-- (snapshot) para que actualizar el catálogo no reescriba presupuestos viejos.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── TERMINACIONES / PINTADO ───────────────────────────────────────────
+-- Reemplaza al viejo booleano `quote_lines.pintado`. Ahora es un catálogo:
+-- se agregan opciones nuevas desde Catálogo sin tocar código.
+create table if not exists finishes (
+  id            uuid primary key default gen_random_uuid(),
+  nombre        text not null unique,
+  descripcion   text,
+  costo         numeric(12,2) not null default 0,   -- costo por unidad de producto
+  unidad        text not null default 'producto',   -- 'producto' | 'm2' | 'litro'
+  activo        boolean not null default true,
+  display_order int not null default 0,
+  notas         text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  updated_by    uuid references app_users(id)
+);
+create index if not exists idx_finishes_activo on finishes(activo);
+
+drop trigger if exists trg_finishes_updated on finishes;
+create trigger trg_finishes_updated before update on finishes
+  for each row execute function set_updated_at();
+
+-- Opción inicial pedida por De Cirene. El costo queda en 0 (a definir):
+-- se completa desde Catálogo. `do nothing` para no pisar el costo ya cargado.
+insert into finishes (nombre, costo, unidad, display_order, notas) values
+  ('Pintado en aerosol', 0, 'producto', 10, 'Costo a definir desde Catalogo')
+on conflict (nombre) do nothing;
+
+-- ── MATERIALES: fuente única de datos ─────────────────────────────────
+-- Se pueden crear/editar desde Catálogo y desde el Cotizador; ambos escriben
+-- sobre esta misma tabla (no hay copias). Stock preparado para la Fase 4.
+alter table materials add column if not exists stock_actual        numeric(12,3) not null default 0;
+alter table materials add column if not exists stock_minimo        numeric(12,3) not null default 0;
+alter table materials add column if not exists stock_comprometido  numeric(12,3) not null default 0;
+alter table materials add column if not exists proveedor_id        uuid;   -- FK a suppliers (Fase 4)
+
+-- ── MANO DE OBRA: trazabilidad del cambio de costo ────────────────────
+alter table labor_rates add column if not exists updated_by uuid references app_users(id);
+alter table labor_rates add column if not exists notas      text;
+drop trigger if exists trg_labor_rates_updated on labor_rates;
+create trigger trg_labor_rates_updated before update on labor_rates
+  for each row execute function set_updated_at();
+
+-- ── LÍNEA DE COTIZACIÓN: dimensiones, terminación y comentarios ───────
+-- Dimensiones = información PARA FABRICAR. No intervienen en el cálculo:
+-- son datos que viajan a Producción. Cada una con su unidad, todas opcionales.
+alter table quote_lines add column if not exists ancho            numeric(12,3);
+alter table quote_lines add column if not exists ancho_unidad     text default 'cm';
+alter table quote_lines add column if not exists alto             numeric(12,3);
+alter table quote_lines add column if not exists alto_unidad      text default 'cm';
+alter table quote_lines add column if not exists largo            numeric(12,3);
+alter table quote_lines add column if not exists largo_unidad     text default 'cm';
+alter table quote_lines add column if not exists diametro         numeric(12,3);
+alter table quote_lines add column if not exists diametro_unidad  text default 'cm';
+
+-- Texto libre del comercial para el equipo de producción.
+alter table quote_lines add column if not exists comentarios_produccion text;
+
+-- Terminación elegida del catálogo `finishes`. Se guarda el id + un SNAPSHOT
+-- del nombre y del costo: si mañana cambia el precio en Catálogo, esta
+-- cotización sigue mostrando lo que se presupuestó.
+alter table quote_lines add column if not exists terminacion_id      uuid references finishes(id);
+alter table quote_lines add column if not exists terminacion_nombre  text;
+alter table quote_lines add column if not exists terminacion_costo   numeric(12,2) not null default 0;
+alter table quote_lines add column if not exists costo_terminacion   numeric(12,2) not null default 0;
+
+-- `pintado` (booleano) queda para no romper cotizaciones históricas, pero la UI
+-- ya no lo usa: la terminación se elige del catálogo.
+comment on column quote_lines.pintado is 'OBSOLETO: reemplazado por terminacion_id. Se conserva por datos historicos.';
+
+-- ── COTIZACIÓN: servicios (transporte + colocación) y trazabilidad ────
+-- Transporte: se carga a mano, NO lleva markup, suma al precio final y queda
+-- separado del costo de fabricación para poder analizarlo después.
+alter table quotes add column if not exists transporte_costo  numeric(12,2) not null default 0;
+alter table quotes add column if not exists transporte_notas  text;
+
+-- Colocación: la MANO DE OBRA sí lleva markup; los viáticos NO.
+alter table quotes add column if not exists colocacion_horas          numeric(10,2) not null default 0;
+alter table quotes add column if not exists colocacion_operarios      int           not null default 1;
+alter table quotes add column if not exists colocacion_labor_rate_id  uuid references labor_rates(id);
+alter table quotes add column if not exists colocacion_rol            text;
+alter table quotes add column if not exists colocacion_costo_hora     numeric(12,2) not null default 0;  -- snapshot
+alter table quotes add column if not exists colocacion_multiplicador  numeric(6,3)  not null default 1.5;
+alter table quotes add column if not exists colocacion_viaticos       numeric(12,2) not null default 0;
+alter table quotes add column if not exists colocacion_comentarios    text;
+
+-- Denormalizados de servicios (para Ventas / Dashboard sin recalcular)
+alter table quotes add column if not exists costo_colocacion_mo   numeric(12,2) not null default 0;
+alter table quotes add column if not exists precio_colocacion_mo  numeric(12,2) not null default 0;
+alter table quotes add column if not exists subtotal_servicios    numeric(12,2) not null default 0;
+alter table quotes add column if not exists costo_terminaciones   numeric(12,2) not null default 0;
+alter table quotes add column if not exists subtotal_productos    numeric(12,2) not null default 0;
+
+-- Comentarios generales para producción (a nivel cotización).
+alter table quotes add column if not exists comentarios_produccion text;
+
+-- Vínculo permanente con el cliente (Fase 2: CRM ↔ Cliente ↔ Cotización).
+alter table quotes add column if not exists cliente_id uuid references clients(id);
+create index if not exists idx_quotes_cliente on quotes(cliente_id);
+
+-- Quién guardó por última vez (auditoría liviana; el detalle va en audit_log).
+alter table quotes add column if not exists updated_by uuid references app_users(id);
+
+-- ── NUMERACIÓN DE COTIZACIONES: una sola fuente, sin carreras ─────────
+-- Antes el navegador calculaba max(numero)+1 y armaba el id. Dos pestañas (o
+-- un doble clic) sacaban el mismo número y la segunda PISABA la primera con
+-- un upsert. Ahora el número lo da una secuencia de Postgres y el id lo arma
+-- un trigger: guardar dos veces la misma cotización actualiza, nunca duplica.
+create sequence if not exists quotes_numero_seq;
+
+do $ciren$
+declare m int;
+begin
+  select coalesce(max(numero), 0) into m from quotes;
+  if m >= 1 then perform setval('quotes_numero_seq', m, true);
+  else            perform setval('quotes_numero_seq', 1, false);
+  end if;
+end $ciren$;
+
+alter table quotes alter column numero set default nextval('quotes_numero_seq');
+
+create or replace function quotes_asignar_id() returns trigger language plpgsql as $ciren$
+declare intentos int := 0;
+begin
+  -- Si el id vino de afuera, se respeta tal cual: que un choque falle como choque
+  -- y no se renumere solo (eso taparia un error de la app).
+  if new.id is not null and new.id <> '' then return new; end if;
+
+  if new.numero is null then new.numero := nextval('quotes_numero_seq'); end if;
+  new.id := 'COT-' || lpad(new.numero::text, 4, '0');
+  -- Cotizaciones viejas pueden tener `numero` null y ya ocupar ese id: se avanza
+  -- la secuencia hasta el primer id libre.
+  while exists (select 1 from quotes q where q.id = new.id) and intentos < 10000 loop
+    new.numero := nextval('quotes_numero_seq');
+    new.id := 'COT-' || lpad(new.numero::text, 4, '0');
+    intentos := intentos + 1;
+  end loop;
+  return new;
+end $ciren$;
+
+drop trigger if exists trg_quotes_asignar_id on quotes;
+create trigger trg_quotes_asignar_id before insert on quotes
+  for each row execute function quotes_asignar_id();
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AMPLIACIÓN 2026-08 · FASES 2 a 7
+--
+-- CRM/Clientes · Producción (operarios, subtareas, capacidad) · Abastecimiento
+-- (proveedores, órdenes de compra, stock) · Finanzas (cuentas a cobrar, gastos,
+-- reintegros, activos) · Gestión (impacto social) · NPS · Notificaciones.
+--
+-- Mismas reglas que la Fase 1: todo idempotente, nada se borra, columnas nuevas
+-- con NULL o default neutro. SIN IVA en ningún lado.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 2 · CRM, CLIENTES Y VENTAS
+-- ─────────────────────────────────────────────────────────────────────
+
+-- Etapa "Lead ganado": entre "Aceptado" y el cierre del pipeline comercial.
+insert into kanban_stages (key, label, category, display_order, color) values
+  ('lead_ganado', 'Lead ganado', 'comercial', 75, '#2E7D46')
+on conflict (key) do update
+  set label = excluded.label, category = excluded.category,
+      display_order = excluded.display_order, color = excluded.color;
+
+-- CLIENTES: el teléfono normalizado a E.164 es el identificador anti-duplicados.
+alter table clients add column if not exists telefono_e164 text;
+alter table clients add column if not exists es_interno   boolean not null default false;
+alter table clients add column if not exists origen       text;   -- 'crm' | 'cotizador' | 'import'
+alter table clients add column if not exists activo       boolean not null default true;
+
+-- Rellena el normalizado de los clientes ya cargados (solo los que se pueden
+-- resolver sin ambigüedad: 8 dígitos locales, con o sin 0, o ya con 598).
+update clients set telefono_e164 = (
+  case
+    when regexp_replace(coalesce(telefono,''), '[^0-9]', '', 'g') = '' then null
+    when length(regexp_replace(telefono, '[^0-9]', '', 'g')) = 11
+     and left(regexp_replace(telefono, '[^0-9]', '', 'g'), 3) = '598'
+      then '+' || regexp_replace(telefono, '[^0-9]', '', 'g')
+    when length(regexp_replace(telefono, '[^0-9]', '', 'g')) = 9
+     and left(regexp_replace(telefono, '[^0-9]', '', 'g'), 1) = '0'
+      then '+598' || right(regexp_replace(telefono, '[^0-9]', '', 'g'), 8)
+    when length(regexp_replace(telefono, '[^0-9]', '', 'g')) = 8
+      then '+598' || regexp_replace(telefono, '[^0-9]', '', 'g')
+    else null
+  end)
+where telefono_e164 is null and telefono is not null;
+
+-- "CIRENEOS" = trabajo interno de la organización (requisito 27).
+update clients set es_interno = true
+where es_interno = false and upper(coalesce(nombre,'') || ' ' || coalesce(empresa,'')) like '%CIRENEO%';
+
+-- Un solo cliente por teléfono. Índice parcial: los clientes sin teléfono no chocan.
+-- Antes de crearlo hay que desduplicar lo que ya está (se queda el más viejo).
+do $ciren$
+begin
+  if not exists (select 1 from pg_class where relname = 'ux_clients_telefono_e164') then
+    update clients c set telefono_e164 = null
+    where telefono_e164 is not null
+      and exists (select 1 from clients o
+                   where o.telefono_e164 = c.telefono_e164 and o.created_at < c.created_at);
+    create unique index ux_clients_telefono_e164 on clients(telefono_e164)
+      where telefono_e164 is not null;
+  end if;
+end $ciren$;
+
+-- LEADS: vínculo permanente con cliente, cotización y venta.
+alter table intake_cards add column if not exists client_id  uuid references clients(id);
+alter table intake_cards add column if not exists won_at     timestamptz;
+alter table intake_cards add column if not exists sale_id    uuid;
+create index if not exists idx_intake_client on intake_cards(client_id);
+
+-- VENTAS CONFIRMADAS. Una venta nace cuando la cotización aprobada pasa a
+-- Producción. `quote_id` es UNIQUE: por más veces que se mueva la tarjeta a
+-- "Lead ganado", la venta es una sola.
+create table if not exists sales (
+  id                  uuid primary key default gen_random_uuid(),
+  quote_id            text unique references quotes(id),
+  intake_card_id      text references intake_cards(id),
+  production_card_id  text references production_cards(id),
+  client_id           uuid references clients(id),
+  cliente_nombre      text,
+  vendedor            text,
+  vendedor_user_id    uuid references app_users(id),
+  monto               numeric(12,2) not null default 0,
+  fecha               date not null default current_date,
+  billing_month       text,
+  estado              text not null default 'confirmada'
+    check (estado in ('confirmada','entregada','anulada')),
+  notas               text,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+create index if not exists idx_sales_fecha on sales(fecha);
+create index if not exists idx_sales_vendedor on sales(vendedor_user_id);
+create index if not exists idx_sales_client on sales(client_id);
+create unique index if not exists ux_sales_production_card on sales(production_card_id)
+  where production_card_id is not null;
+
+drop trigger if exists trg_sales_updated on sales;
+create trigger trg_sales_updated before update on sales
+  for each row execute function set_updated_at();
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 3 · PRODUCCIÓN: operarios, subtareas, planificación y capacidad
+-- ─────────────────────────────────────────────────────────────────────
+
+-- OPERARIOS. Se administran desde Admin. `user_id` es opcional: no todo operario
+-- tiene usuario de la app.
+create table if not exists operators (
+  id          uuid primary key default gen_random_uuid(),
+  nombre      text not null,
+  funcion     text,                               -- 'Herrero', 'Ayudante', 'Pintor'…
+  costo_hora  numeric(12,2) not null default 0,
+  user_id     uuid references app_users(id),
+  activo      boolean not null default true,
+  notas       text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  updated_by  uuid references app_users(id)
+);
+create index if not exists idx_operators_activo on operators(activo);
+drop trigger if exists trg_operators_updated on operators;
+create trigger trg_operators_updated before update on operators
+  for each row execute function set_updated_at();
+
+-- PLANIFICACIÓN DEL PEDIDO.
+-- Tres fechas distintas y explícitas, porque significan cosas distintas:
+--   fecha_solicitada_cliente → cuándo lo necesita el cliente
+--   fecha_objetivo_interna   → cuándo estimamos terminarlo
+--   fecha_real_fin           → cuándo se terminó de verdad
+-- `due_date` (ya existente) se mantiene como la fecha comprometida de entrega.
+alter table production_cards add column if not exists semana_produccion        text;          -- 'YYYY-Www'
+alter table production_cards add column if not exists horas_estimadas          numeric(8,2) not null default 0;
+alter table production_cards add column if not exists horas_reales             numeric(8,2) not null default 0;
+alter table production_cards add column if not exists responsable_operator_id  uuid references operators(id);
+alter table production_cards add column if not exists fecha_solicitada_cliente date;
+alter table production_cards add column if not exists fecha_objetivo_interna   date;
+alter table production_cards add column if not exists fecha_real_fin           date;
+alter table production_cards add column if not exists listo_para_producir      boolean not null default false;
+alter table production_cards add column if not exists sale_id                  uuid references sales(id);
+alter table production_cards add column if not exists client_id                uuid references clients(id);
+alter table production_cards add column if not exists costo_estimado           numeric(12,2) not null default 0;
+create index if not exists idx_production_semana on production_cards(semana_produccion);
+create index if not exists idx_production_cola on production_cards(listo_para_producir);
+
+-- SUBTAREAS. El gerente de producción parte el pedido (corte, soldadura, pintura…)
+-- y cada operario arranca / pausa / termina la suya.
+create table if not exists production_subtasks (
+  id                 uuid primary key default gen_random_uuid(),
+  card_id            text not null references production_cards(id) on delete cascade,
+  nombre             text not null,
+  display_order      int not null default 0,
+  operator_id        uuid references operators(id),
+  horas_estimadas    numeric(8,2) not null default 0,
+  estado             text not null default 'pendiente'
+    check (estado in ('pendiente','en_curso','pausada','terminada','cancelada')),
+  started_at         timestamptz,      -- primer inicio
+  last_started_at    timestamptz,      -- inicio del tramo en curso (null si no corre)
+  finished_at        timestamptz,
+  segundos_trabajados int not null default 0,   -- acumulado de tramos cerrados
+  comentarios        text,
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+create index if not exists idx_subtasks_card on production_subtasks(card_id, display_order);
+create index if not exists idx_subtasks_operator on production_subtasks(operator_id);
+drop trigger if exists trg_subtasks_updated on production_subtasks;
+create trigger trg_subtasks_updated before update on production_subtasks
+  for each row execute function set_updated_at();
+
+-- BITÁCORA DE TIEMPOS. Cada tramo inicio→pausa/fin queda registrado: de acá
+-- salen las horas reales y la productividad, no de un campo editable a mano.
+create table if not exists subtask_time_logs (
+  id          uuid primary key default gen_random_uuid(),
+  subtask_id  uuid not null references production_subtasks(id) on delete cascade,
+  card_id     text references production_cards(id) on delete cascade,
+  operator_id uuid references operators(id),
+  started_at  timestamptz not null,
+  ended_at    timestamptz,
+  segundos    int not null default 0,
+  motivo_fin  text,                    -- 'pausa' | 'fin'
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_timelogs_subtask on subtask_time_logs(subtask_id);
+create index if not exists idx_timelogs_card on subtask_time_logs(card_id);
+create index if not exists idx_timelogs_fecha on subtask_time_logs(started_at);
+
+-- CAPACIDAD SEMANAL Y SEMÁFORO.
+-- La herrería trabaja con personas en proceso de inserción laboral: la asistencia
+-- y el rendimiento varían. Por eso la capacidad de cada semana se carga a mano y
+-- el semáforo compara PLAN contra CAPACIDAD REAL, no contra un ideal fijo.
+create table if not exists production_weeks (
+  semana                   text primary key,             -- 'YYYY-Www' (ISO)
+  capacidad_prevista_horas numeric(8,2) not null default 0,
+  capacidad_real_horas     numeric(8,2) not null default 0,
+  operarios_previstos      int not null default 0,
+  operarios_reales         int not null default 0,
+  semaforo_manual          text check (semaforo_manual in ('verde','amarillo','rojo')),
+  notas                    text,
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now(),
+  updated_by               uuid references app_users(id)
+);
+drop trigger if exists trg_weeks_updated on production_weeks;
+create trigger trg_weeks_updated before update on production_weeks
+  for each row execute function set_updated_at();
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 4 · PROVEEDORES, ÓRDENES DE COMPRA Y STOCK
+-- ─────────────────────────────────────────────────────────────────────
+
+create table if not exists suppliers (
+  id                uuid primary key default gen_random_uuid(),
+  nombre            text not null,
+  contacto          text,
+  telefono          text,
+  email             text,
+  materiales        text,                -- qué suministra (texto libre)
+  condiciones_pago  text,
+  cuenta_corriente  boolean not null default false,
+  saldo             numeric(12,2) not null default 0,   -- deuda con el proveedor
+  observaciones     text,
+  activo            boolean not null default true,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+create index if not exists idx_suppliers_activo on suppliers(activo);
+drop trigger if exists trg_suppliers_updated on suppliers;
+create trigger trg_suppliers_updated before update on suppliers
+  for each row execute function set_updated_at();
+
+-- Los proveedores que ya venían escritos a mano en los materiales se dan de alta
+-- una sola vez, y el material queda apuntando a la ficha.
+insert into suppliers (nombre)
+select distinct on (lower(trim(m.proveedor))) trim(m.proveedor)
+from materials m
+where coalesce(trim(m.proveedor),'') <> ''
+  and not exists (select 1 from suppliers s where lower(s.nombre) = lower(trim(m.proveedor)))
+order by lower(trim(m.proveedor));
+
+update materials m set proveedor_id = s.id
+from suppliers s
+where m.proveedor_id is null and lower(trim(coalesce(m.proveedor,''))) = lower(s.nombre);
+
+-- ÓRDENES DE COMPRA
+create table if not exists purchase_orders (
+  id              text primary key,                 -- 'OC-000123'
+  numero          int,
+  supplier_id     uuid references suppliers(id),
+  proveedor_nombre text,                            -- snapshot
+  fecha           date not null default current_date,
+  estado          text not null default 'borrador'
+    check (estado in ('borrador','enviada','confirmada','recibida_parcial','recibida','cancelada')),
+  fecha_esperada  date,
+  fecha_recibida  date,
+  forma_pago      text,
+  total           numeric(12,2) not null default 0,
+  observaciones   text,
+  created_by      uuid references app_users(id),
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+create index if not exists idx_po_supplier on purchase_orders(supplier_id);
+create index if not exists idx_po_estado on purchase_orders(estado);
+create index if not exists idx_po_fecha on purchase_orders(fecha);
+drop trigger if exists trg_po_updated on purchase_orders;
+create trigger trg_po_updated before update on purchase_orders
+  for each row execute function set_updated_at();
+
+create table if not exists purchase_order_lines (
+  id                 uuid primary key default gen_random_uuid(),
+  purchase_order_id  text not null references purchase_orders(id) on delete cascade,
+  material_id        uuid references materials(id),
+  descripcion        text,
+  unidad             text,
+  cantidad           numeric(12,3) not null default 0,
+  costo_unit         numeric(12,4) not null default 0,
+  costo_total        numeric(12,2) not null default 0,
+  cantidad_recibida  numeric(12,3) not null default 0,
+  display_order      int not null default 0
+);
+create index if not exists idx_pol_po on purchase_order_lines(purchase_order_id);
+create index if not exists idx_pol_material on purchase_order_lines(material_id);
+
+-- Numeración de OC con el mismo criterio que las cotizaciones: la da la base.
+create sequence if not exists purchase_orders_numero_seq;
+do $ciren$
+declare m int;
+begin
+  select coalesce(max(numero), 0) into m from purchase_orders;
+  if m >= 1 then perform setval('purchase_orders_numero_seq', m, true);
+  else            perform setval('purchase_orders_numero_seq', 1, false);
+  end if;
+end $ciren$;
+alter table purchase_orders alter column numero set default nextval('purchase_orders_numero_seq');
+
+create or replace function po_asignar_id() returns trigger language plpgsql as $ciren$
+declare intentos int := 0;
+begin
+  if new.id is not null and new.id <> '' then return new; end if;
+  if new.numero is null then new.numero := nextval('purchase_orders_numero_seq'); end if;
+  new.id := 'OC-' || lpad(new.numero::text, 5, '0');
+  while exists (select 1 from purchase_orders p where p.id = new.id) and intentos < 10000 loop
+    new.numero := nextval('purchase_orders_numero_seq');
+    new.id := 'OC-' || lpad(new.numero::text, 5, '0');
+    intentos := intentos + 1;
+  end loop;
+  return new;
+end $ciren$;
+drop trigger if exists trg_po_asignar_id on purchase_orders;
+create trigger trg_po_asignar_id before insert on purchase_orders
+  for each row execute function po_asignar_id();
+
+-- MOVIMIENTOS DE STOCK. Historial completo: la recepción de una OC entra,
+-- el consumo en producción sale, y los ajustes quedan asentados igual.
+create table if not exists stock_movements (
+  id                 uuid primary key default gen_random_uuid(),
+  material_id        uuid not null references materials(id),
+  tipo               text not null check (tipo in ('entrada','salida','ajuste')),
+  cantidad           numeric(12,3) not null,        -- siempre positiva; el signo lo da `tipo`
+  costo_unit         numeric(12,4),
+  motivo             text,                          -- 'compra' | 'produccion' | 'ajuste' | 'devolucion'
+  purchase_order_id  text references purchase_orders(id) on delete set null,
+  production_card_id text references production_cards(id) on delete set null,
+  subtask_id         uuid references production_subtasks(id) on delete set null,
+  stock_resultante   numeric(12,3),
+  fecha              date not null default current_date,
+  notas              text,
+  registrado_por     uuid references app_users(id),
+  created_at         timestamptz not null default now()
+);
+create index if not exists idx_stockmov_material on stock_movements(material_id, fecha desc);
+create index if not exists idx_stockmov_card on stock_movements(production_card_id);
+create index if not exists idx_stockmov_po on stock_movements(purchase_order_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 5 · FINANZAS: cuentas a cobrar, gastos, reintegros, activos
+-- ─────────────────────────────────────────────────────────────────────
+
+-- FACTURA INTERNA / CUENTA A COBRAR. No es un comprobante fiscal: es el registro
+-- económico de cada pedido que entra a Producción. Uno por tarjeta (UNIQUE).
+create table if not exists receivables (
+  id                    uuid primary key default gen_random_uuid(),
+  production_card_id    text unique references production_cards(id) on delete cascade,
+  sale_id               uuid references sales(id),
+  quote_id              text references quotes(id),
+  client_id             uuid references clients(id),
+  cliente_nombre        text,
+  monto                 numeric(12,2) not null default 0,
+  fecha                 date not null default current_date,
+  forma_cobro           text not null default 'credito_entrega'
+    check (forma_cobro in ('sena_saldo','credito_entrega','fecha_pactada')),
+  monto_sena            numeric(12,2) not null default 0,
+  fecha_sena            date,
+  fecha_esperada_cobro  date,          -- por defecto = fecha de entrega
+  fecha_esperada_saldo  date,
+  cobrado               numeric(12,2) not null default 0,
+  saldo                 numeric(12,2) not null default 0,
+  estado                text not null default 'a_cobrar'
+    check (estado in ('a_cobrar','parcial','cobrado','vencido','anulado')),
+  notas                 text,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+create index if not exists idx_receivables_estado on receivables(estado);
+create index if not exists idx_receivables_fecha on receivables(fecha_esperada_cobro);
+create index if not exists idx_receivables_client on receivables(client_id);
+drop trigger if exists trg_receivables_updated on receivables;
+create trigger trg_receivables_updated before update on receivables
+  for each row execute function set_updated_at();
+
+-- Los cobros siguen viviendo en `job_payments`; ahora también apuntan a la cuenta.
+alter table job_payments add column if not exists receivable_id uuid references receivables(id) on delete set null;
+create index if not exists idx_job_payments_receivable on job_payments(receivable_id);
+
+-- CARGAS SOCIALES / APORTES configurables (no cableados en el frontend).
+create table if not exists payroll_charges (
+  id           uuid primary key default gen_random_uuid(),
+  nombre       text not null unique,
+  porcentaje   numeric(6,3) not null default 0,   -- % sobre el salario nominal
+  aplica_a     text not null default 'nominal',
+  activo       boolean not null default true,
+  display_order int not null default 0,
+  notas        text,
+  updated_at   timestamptz not null default now(),
+  updated_by   uuid references app_users(id)
+);
+drop trigger if exists trg_payroll_updated on payroll_charges;
+create trigger trg_payroll_updated before update on payroll_charges
+  for each row execute function set_updated_at();
+
+-- Valores de arranque para Uruguay. Se editan desde Administración: son
+-- parámetros, no reglas del código.
+insert into payroll_charges (nombre, porcentaje, display_order, notas) values
+  ('Aporte jubilatorio patronal', 7.5,  10, 'Editable desde Administración'),
+  ('FONASA patronal',             5.0,  20, 'Editable desde Administración'),
+  ('FRL patronal',                0.1,  30, 'Editable desde Administración'),
+  ('Aguinaldo (provisión)',       8.33, 40, 'Provisión mensual'),
+  ('Licencia + salario vacacional (provisión)', 11.0, 50, 'Provisión mensual')
+on conflict (nombre) do nothing;
+
+-- GASTOS. Categoría + cómo se pagó (organización, funcionario a reintegrar, o
+-- cuenta corriente con el proveedor).
+create table if not exists expenses (
+  id                 uuid primary key default gen_random_uuid(),
+  fecha              date not null default current_date,
+  categoria          text not null default 'Otros',
+  descripcion        text,
+  monto              numeric(12,2) not null default 0,
+  supplier_id        uuid references suppliers(id),
+  purchase_order_id  text references purchase_orders(id) on delete set null,
+  material_id        uuid references materials(id),
+  production_card_id text references production_cards(id) on delete set null,
+
+  forma_pago         text not null default 'organizacion'
+    check (forma_pago in ('organizacion','funcionario_reintegro','cuenta_corriente')),
+  pagado_por_user_id uuid references app_users(id),
+  pagado_por_nombre  text,
+  estado_reintegro   text check (estado_reintegro in ('pendiente','reintegrado','anulado')),
+  fecha_reintegro    date,
+
+  -- Sueldos: nominal + cargas calculadas con `payroll_charges`
+  es_sueldo          boolean not null default false,
+  salario_nominal    numeric(12,2),
+  cargas_sociales    numeric(12,2),
+  periodo            text,                        -- 'YYYY-MM'
+
+  notas              text,
+  registrado_por     uuid references app_users(id),
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+create index if not exists idx_expenses_fecha on expenses(fecha);
+create index if not exists idx_expenses_categoria on expenses(categoria);
+create index if not exists idx_expenses_reintegro on expenses(estado_reintegro);
+create index if not exists idx_expenses_supplier on expenses(supplier_id);
+drop trigger if exists trg_expenses_updated on expenses;
+create trigger trg_expenses_updated before update on expenses
+  for each row execute function set_updated_at();
+
+-- CUENTA CORRIENTE CON PROVEEDORES: cargos (compras a crédito) y pagos.
+create table if not exists supplier_ledger (
+  id                uuid primary key default gen_random_uuid(),
+  supplier_id       uuid not null references suppliers(id) on delete cascade,
+  tipo              text not null check (tipo in ('cargo','pago')),
+  monto             numeric(12,2) not null default 0,
+  fecha             date not null default current_date,
+  purchase_order_id text references purchase_orders(id) on delete set null,
+  expense_id        uuid references expenses(id) on delete set null,
+  metodo            text,
+  notas             text,
+  registrado_por    uuid references app_users(id),
+  created_at        timestamptz not null default now()
+);
+create index if not exists idx_ledger_supplier on supplier_ledger(supplier_id, fecha);
+
+-- ACTIVOS Y AMORTIZACIÓN (lineal).
+create table if not exists assets (
+  id                     uuid primary key default gen_random_uuid(),
+  nombre                 text not null,
+  categoria              text,
+  fecha_compra           date not null default current_date,
+  costo                  numeric(12,2) not null default 0,
+  vida_util_meses        int not null default 60,
+  valor_residual         numeric(12,2) not null default 0,
+  metodo                 text not null default 'lineal' check (metodo in ('lineal')),
+  estado                 text not null default 'activo'
+    check (estado in ('activo','vendido','baja')),
+  fecha_baja             date,
+  notas                  text,
+  created_at             timestamptz not null default now(),
+  updated_at             timestamptz not null default now()
+);
+create index if not exists idx_assets_estado on assets(estado);
+drop trigger if exists trg_assets_updated on assets;
+create trigger trg_assets_updated before update on assets
+  for each row execute function set_updated_at();
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 6 · GESTIÓN: impacto social
+-- ─────────────────────────────────────────────────────────────────────
+
+-- Bloque manual: cuántas personas pasaron por la herrería y cuántas están hoy
+-- en proceso. Se guarda un registro por fecha para poder mostrar la evolución.
+create table if not exists social_impact (
+  id                  uuid primary key default gen_random_uuid(),
+  fecha               date not null default current_date,
+  personas_historico  int not null default 0,
+  personas_actuales   int not null default 0,
+  notas               text,
+  registrado_por      uuid references app_users(id),
+  created_at          timestamptz not null default now()
+);
+create unique index if not exists ux_social_impact_fecha on social_impact(fecha);
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- FASE 7 · NPS
+-- ─────────────────────────────────────────────────────────────────────
+
+-- Un formulario por cliente/pedido. Las respuestas viven en la misma fila
+-- (relación 1 a 1): así el estado "enviado / respondido" es una sola verdad.
+create table if not exists nps_surveys (
+  id                 uuid primary key default gen_random_uuid(),
+  client_id          uuid references clients(id),
+  cliente_nombre     text,
+  production_card_id text references production_cards(id) on delete set null,
+  sale_id            uuid references sales(id),
+  vendedor           text,
+  vendedor_user_id   uuid references app_users(id),
+  token              text unique,
+  estado             text not null default 'pendiente'
+    check (estado in ('pendiente','enviada','respondida','anulada')),
+  enviada_at         timestamptz,
+  respondida_at      timestamptz,
+
+  -- Respuestas
+  recomendacion      int check (recomendacion between 0 and 10),
+  impacto_social     int check (impacto_social between 0 and 10),
+  aspectos           jsonb default '[]'::jsonb,
+  mejoras            text,
+  como_conocio       text,
+  comentarios        text,
+
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+create index if not exists idx_nps_estado on nps_surveys(estado);
+create index if not exists idx_nps_client on nps_surveys(client_id);
+create unique index if not exists ux_nps_card on nps_surveys(production_card_id)
+  where production_card_id is not null;
+drop trigger if exists trg_nps_updated on nps_surveys;
+create trigger trg_nps_updated before update on nps_surveys
+  for each row execute function set_updated_at();
+
+-- Listas administrables del formulario (aspectos valorados, cómo nos conoció).
+create table if not exists nps_options (
+  id            uuid primary key default gen_random_uuid(),
+  tipo          text not null check (tipo in ('aspecto','canal')),
+  valor         text not null,
+  display_order int not null default 0,
+  activo        boolean not null default true,
+  unique (tipo, valor)
+);
+insert into nps_options (tipo, valor, display_order) values
+  ('aspecto','Calidad del producto',10),
+  ('aspecto','Cumplimiento de plazos',20),
+  ('aspecto','Atención y comunicación',30),
+  ('aspecto','Precio',40),
+  ('aspecto','Diseño y terminación',50),
+  ('aspecto','Impacto social del proyecto',60),
+  ('canal','Recomendación de un conocido',10),
+  ('canal','Instagram',20),
+  ('canal','Facebook',30),
+  ('canal','Google',40),
+  ('canal','Ya era cliente',50),
+  ('canal','Otro',60)
+on conflict (tipo, valor) do nothing;
+
+
+-- ─────────────────────────────────────────────────────────────────────
+-- NOTIFICACIONES / CENTRO DE ACTIVIDAD
+-- ─────────────────────────────────────────────────────────────────────
+create table if not exists notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references app_users(id) on delete cascade,
+  tipo        text not null default 'comentario',
+  titulo      text not null,
+  cuerpo      text,
+  url         text,
+  entity_type text,
+  entity_id   text,
+  leida       boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_notif_user on notifications(user_id, leida, created_at desc);

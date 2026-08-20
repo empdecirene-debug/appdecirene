@@ -11,17 +11,32 @@
 <style>
   .wrap { max-width: 100%; padding: 14px 16px 40px; }
   .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
-  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; }
-  .seg button { border: none; background: transparent; padding: 7px 14px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+  .seg button { border: none; background: transparent; padding: 7px 13px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
   .seg button.active { background: #0A0A0A; color: #fff; }
+  /* dashboard */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .kpi .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-3); font-weight: 700; }
+  .kpi .v { font-size: 24px; font-weight: 800; line-height: 1.2; margin-top: 2px; }
+  .kpi .s { font-size: 11px; color: var(--tinta-3); }
+  .kpi.alert { border-color: #A33A3A; } .kpi.alert .v { color: #A33A3A; }
+  .semaforo { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; grid-column: span 2; }
+  .semaforo .top { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; }
+  .semaforo .bars { margin-top: 8px; }
+  .bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin: 3px 0 6px; }
+  .bar > i { display: block; height: 100%; }
+  .semaforo .lin { display: flex; justify-content: space-between; font-size: 11px; color: var(--tinta-2); }
+  @media (max-width: 700px) { .semaforo { grid-column: span 1; } }
+  /* kanban */
   .board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
   .col { flex: 0 0 260px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-height: 120px; }
   .col.drop { border-color: #0A0A0A; box-shadow: 0 0 0 2px #0A0A0A; }
   .col h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); padding: 4px 6px 8px; display: flex; justify-content: space-between; }
   .col h3 .cnt { background: #0A0A0A; color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; }
-  .tk { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; margin-bottom: 8px; cursor: grab; }
+  .tk { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; margin-bottom: 8px; cursor: grab; border-left: 3px solid transparent; }
   .tk:hover { border-color: #0A0A0A; }
-  .tk.noprice { border-left: 3px solid #A33A3A; }
+  .tk.noprice { border-left-color: #A33A3A; }
   .warn { color: #A33A3A; font-weight: 700; }
   .cmt { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; }
   .cmt .who { font-weight: 700; font-size: 11px; } .cmt .when { color: var(--tinta-3); font-size: 10px; }
@@ -30,10 +45,12 @@
   .tk .mt { font-size: 11px; color: var(--tinta-2); display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px; }
   .pay { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
   .pay-NO { background: #FDECEE; color: #A33A3A; } .pay-SEÑA { background: #FAEFD6; color: #8A6D1B; } .pay-SI { background: #E1F5EE; color: #1F6B45; }
+  .chip { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  .chip.urg { background: #FDECEE; color: #A33A3A; }
   table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); cursor: pointer; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
   table.grid td { padding: 8px 10px; border-bottom: 1px solid var(--surface-3); }
-  table.grid tr:hover td { background: var(--surface-2); cursor: pointer; }
+  table.grid tbody tr:hover td { background: var(--surface-2); cursor: pointer; }
   td.num, th.num { text-align: right; }
   /* calendario */
   .calhd { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -43,9 +60,10 @@
   .cal .day.empty { background: transparent; border: none; }
   .cal .day .dn { font-size: 11px; color: var(--tinta-3); font-weight: 700; }
   .cal .day.today { border-color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A; }
-  .cal .ev { background: #0A0A0A; color: #fff; border-radius: 5px; padding: 2px 5px; font-size: 10px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cal .ev.np { background: #A33A3A; }
-  /* lista por secciones (Asana) */
+  .cal .ev { color: #fff; border-radius: 5px; padding: 2px 5px; font-size: 10px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #0A0A0A; }
+  .leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--tinta-2); margin-top: 10px; }
+  .leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; }
+  /* lista por secciones */
   .sect { margin-bottom: 18px; }
   .sect-h { font-weight: 700; font-size: 13px; padding: 6px 2px; display: flex; gap: 8px; align-items: center; border-bottom: 2px solid #0A0A0A; margin-bottom: 6px; }
   .sect-h .cnt { background: var(--surface-3); color: var(--tinta-2); border-radius: 999px; padding: 0 8px; font-size: 11px; }
@@ -58,19 +76,46 @@
   .btn { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
-  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 30px 16px; z-index: 100; overflow: auto; }
+  .btn.go { background: #2E7D46; color: #fff; border-color: #2E7D46; }
+  .btn.pause { background: #C9A227; color: #fff; border-color: #C9A227; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 24px 16px; z-index: 100; overflow: auto; }
   .ov.show { display: flex; }
-  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 540px; padding: 22px 24px; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 640px; padding: 22px 24px; }
   .modal h2 { font-size: 16px; margin-bottom: 4px; } .modal .sub { font-size: 12px; color: var(--tinta-3); margin-bottom: 14px; }
   .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 4px; }
   .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .row2, .row3 { grid-template-columns: 1fr; } }
   .lines { background: var(--surface-2); border-radius: 9px; padding: 8px 10px; font-size: 13px; margin: 6px 0 12px; }
   .lines .l { display: flex; justify-content: space-between; padding: 2px 0; }
+  .lines .lspec { font-size: 11px; color: var(--tinta-3); padding: 0 0 3px 2px; line-height: 1.5; }
+  .lines .lspec.nota { color: var(--tinta-2); border-left: 2px solid var(--border-2); padding-left: 7px; margin: 2px 0 5px; }
   .mact { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .muted { color: var(--tinta-3); font-size: 12px; }
-  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  .bloque { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+  .bloque > label, .blabel { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin-bottom: 8px; }
+  /* subtareas */
+  .st { border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; margin-bottom: 7px; background: #fff; }
+  .st .l1 { display: flex; gap: 8px; align-items: center; }
+  .st .l1 input.nm { flex: 1; border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px; font: inherit; font-weight: 600; }
+  .st .l1 input.nm:focus { border-color: #0A0A0A; background: #fff; }
+  .st .l2 { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; font-size: 12px; }
+  .st .l2 select, .st .l2 input { padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: 12px; }
+  .st .crono { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 15px; min-width: 62px; }
+  .st.en_curso { border-color: #2E7D46; box-shadow: 0 0 0 1px #2E7D46; }
+  .st.terminada { opacity: .62; }
+  .est { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  .est.en_curso { background: #E1F5EE; color: #1F6B45; }
+  .est.terminada { background: #0A0A0A; color: #fff; }
+  .est.pausada { background: #FAEFD6; color: #8A6D1B; }
+  .traza { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+  .traza a { color: var(--tinta); text-decoration: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; }
+  .traza a:hover { border-color: #0A0A0A; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
 </style>
 </head>
 <body>
@@ -81,27 +126,36 @@
     <div class="seg" id="viewSeg">
       <button data-v="kanban" class="active">Kanban</button>
       <button data-v="lista">Lista</button>
+      <button data-v="semana">Semana</button>
       <button data-v="cal">Calendario</button>
+      <button data-v="cola">Listos para producir</button>
     </div>
   </div>
+  <div id="tablero"></div>
   <div id="view"></div>
 </div>
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { money, n } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n, dimsText } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
-const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const toast = (m, err = false) => {
+  const t = $('#toast'); t.textContent = m;
+  t.className = 'show' + (err ? ' err' : '');
+  setTimeout(() => { t.className = ''; }, err ? 4200 : 1900);
+};
+const fail = (e, ctx) => { console.error('[produccion]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let stages = [], cards = [], commentCounts = {};
+let stages = [], cards = [], commentCounts = {}, operarios = [], semanas = [];
 let view = 'kanban', calMode = 'entrega', calDate = new Date();
-let listSort = { k: 'client_name', dir: 1 };
+let semanaSel = data.semanaISO();
+let cronoTimer = null;
 
 $('#view').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando producción…</div>';
 document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
@@ -111,24 +165,72 @@ document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => {
 await requireAuth();
 renderNavbar('production');
 try {
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout). Puede ser la conexión o el proyecto Supabase. Probá Reintentar.')), 15000));
-  [stages, cards] = await Promise.race([Promise.all([data.listStages(), data.listProductionCards()]), timeout]);
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado. Probá Reintentar.')), 20000));
+  [stages, cards, operarios, semanas] = await Promise.race([Promise.all([
+    data.listStages(), data.listProductionCards(),
+    data.listOperators().catch(() => []), data.listWeeks().catch(() => []),
+  ]), timeout]);
   stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
 } catch (e) {
-  $('#view').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Producción.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  $('#view').innerHTML = `<div class="kpi" style="color:#A33A3A;padding:18px">No se pudo cargar Producción.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
   throw e;
 }
-render();
-// conteo de comentarios en segundo plano (no bloquea el tablero)
+renderTablero(); render();
 data.countCommentsByCard().then(m => { commentCounts = m; render(); }).catch(() => {});
 const cid = new URLSearchParams(location.search).get('card');
 if (cid && cards.find(c => c.id === cid)) openCard(cid);
 
 function render() {
-  try { ({ kanban: renderKanban, lista: renderLista, cal: renderCal }[view] || renderKanban)(); }
-  catch (e) { $('#view').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">Error al mostrar el tablero: ${esc(e.message || e)}<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`; console.error(e); }
+  try {
+    ({ kanban: renderKanban, lista: renderLista, semana: renderSemana, cal: renderCal, cola: renderCola }[view] || renderKanban)();
+  } catch (e) {
+    $('#view').innerHTML = `<div class="kpi" style="color:#A33A3A;padding:18px">Error al mostrar el tablero: ${esc(e.message || e)}
+      <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+    console.error(e);
+  }
 }
 const noPrice = c => !n(c.total_venta);
+const activo = c => !['entregado', 'cancelado'].includes(c.stage_key);
+const hoyStr = () => new Date().toISOString().slice(0, 10);
+const atrasado = c => {
+  const lim = c.fecha_objetivo_interna || c.due_date;
+  return !!(lim && lim < hoyStr() && activo(c));
+};
+
+/* ── TABLERO DE PRODUCCIÓN (dashboard superior) ── */
+function renderTablero() {
+  const enCurso = cards.filter(activo);
+  const unidades = enCurso.reduce((s, c) => s + (c.product_lines || []).reduce((a, l) => a + (n(l.cantidad) || 1), 0), 0);
+  const horas = enCurso.reduce((s, c) => s + Math.max(0, n(c.horas_estimadas) - n(c.horas_reales)), 0);
+  const tarde = enCurso.filter(atrasado);
+  const valor = enCurso.reduce((s, c) => s + n(c.total_venta), 0);
+  const week = semanas.find(w => w.semana === semanaSel);
+  const s = data.semaforoSemana({ semana: semanaSel, week, cards });
+  const sem = data.SEMAFORO[s.estado];
+  const pctPlan = s.real ? Math.min(100, (s.planificadas / s.real) * 100) : (s.planificadas ? 100 : 0);
+
+  $('#tablero').innerHTML = `<div class="kpis">
+    <div class="kpi"><div class="k">Productos a producir</div><div class="v">${unidades}</div>
+      <div class="s">${enCurso.length} pedido${enCurso.length === 1 ? '' : 's'} en curso</div></div>
+    <div class="kpi"><div class="k">Horas hombre estimadas</div><div class="v">${horas.toFixed(1)} h</div>
+      <div class="s">pendientes de fabricar</div></div>
+    <div class="kpi ${tarde.length ? 'alert' : ''}"><div class="k">Productos atrasados</div><div class="v">${tarde.length}</div>
+      <div class="s">${tarde.length ? 'fecha comprometida vencida' : 'todo al día'}</div></div>
+    <div class="kpi"><div class="k">Valor en producción</div><div class="v" style="font-size:20px">${money(valor)}</div>
+      <div class="s">venta de los pedidos en curso</div></div>
+    <div class="semaforo">
+      <div class="top"><span>${sem.emoji}</span><span>${sem.label}</span>
+        <span class="muted" style="font-weight:500;margin-left:auto">${esc(semanaSel)} · ${esc(data.etiquetaSemana(semanaSel))}</span></div>
+      <div class="s muted">${sem.ayuda}</div>
+      <div class="bars">
+        <div class="lin"><span>Planificado ${s.planificadas.toFixed(1)} h</span><span>Capacidad real ${s.real.toFixed(1)} h</span></div>
+        <div class="bar"><i style="width:${pctPlan}%;background:${sem.color}"></i></div>
+        <div class="lin"><span>Realizado ${s.realizadas.toFixed(1)} h${s.adicional > 0 ? ` · <b>+${s.adicional.toFixed(1)} h adicional</b>` : ''}</span>
+          <span>Cumplimiento ${s.cumplimiento.toFixed(0)}%</span></div>
+      </div>
+    </div>
+  </div>`;
+}
 
 /* ── KANBAN ── */
 function renderKanban() {
@@ -140,12 +242,17 @@ function renderKanban() {
 }
 function tkHtml(c) {
   const resumen = (c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ');
-  return `<div class="tk ${noPrice(c) ? 'noprice' : ''}" draggable="true" data-id="${c.id}">
+  const u = data.urgenciaPorFecha(c.due_date);
+  return `<div class="tk ${noPrice(c) ? 'noprice' : ''}" draggable="true" data-id="${c.id}" style="${c.due_date ? `border-left-color:${u.color}` : ''}">
     <div class="nm">${esc(c.client_name || 'Sin cliente')}</div>
     <div class="ds">${esc(resumen || c.description || '')}</div>
     <div class="mt"><span>${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</span>
       <span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></div>
-    <div class="mt"><span>${c.due_date ? '📅 ' + c.due_date : ''} ${esc(c.entrega || '')}</span><span>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</span></div>
+    <div class="mt"><span>${c.due_date ? '📅 ' + c.due_date : ''} ${esc(c.entrega || '')}</span>
+      <span>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</span></div>
+    <div class="mt"><span>${c.semana_produccion ? `<span class="chip">${esc(c.semana_produccion)}</span>` : ''}
+      ${n(c.horas_estimadas) ? `<span class="chip">${n(c.horas_estimadas)} h</span>` : ''}
+      ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</span></div>
   </div>`;
 }
 function bindKanban() {
@@ -158,8 +265,10 @@ function bindKanban() {
       e.preventDefault(); col.classList.remove('drop');
       const id = dragId, stage = col.dataset.stage; if (!id) return;
       const c = cards.find(x => x.id === id); if (!c || c.stage_key === stage) return;
+      const previo = c.stage_key;
       c.stage_key = stage; renderKanban();
-      try { await data.moveProductionStage(id, stage); } catch { toast('Error al mover'); }
+      try { Object.assign(c, await data.moveProductionStage(id, stage)); renderTablero(); }
+      catch (err) { c.stage_key = previo; renderKanban(); fail(err, 'No se pudo mover'); }
     };
   });
 }
@@ -171,59 +280,226 @@ function renderLista() {
     <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
     <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
     <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
-    <td>${c.due_date || ''} ${esc(c.entrega || '')}</td>
+    <td>${esc(c.semana_produccion || '—')}</td>
+    <td class="num">${n(c.horas_estimadas)} / ${n(c.horas_reales)} h</td>
+    <td>${c.due_date || ''} ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</td>
     <td>${(c.attachments || []).length ? '📎' + (c.attachments || []).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td></tr>`;
   let html = '';
   for (const st of stages) {
     const cs = cards.filter(c => (c.stage_key || 'procesar') === st.key);
     if (!cs.length) continue;
     html += `<div class="sect"><div class="sect-h">${esc(st.label)} <span class="cnt">${cs.length}</span></div>
-      <table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Pago</th><th>Entrega</th><th></th></tr></thead>
+      <table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Pago</th>
+        <th>Semana</th><th class="num">Horas est./real</th><th>Entrega</th><th></th></tr></thead>
       <tbody>${cs.map(rowHtml).join('')}</tbody></table></div>`;
   }
   $('#view').innerHTML = html || '<p class="muted">Sin trabajos.</p>';
   $('#view').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
 }
 
-/* ── CALENDARIO (Entrega / Producción) ── */
+/* ── SEMANA: planificación + capacidad ──
+   Acá se carga la capacidad real de la semana (cuánta gente hubo y cuánto se
+   pudo trabajar de verdad) y se ve si el plan entra o hay que reprogramar. */
+function renderSemana() {
+  const week = semanas.find(w => w.semana === semanaSel) || { semana: semanaSel };
+  const s = data.semaforoSemana({ semana: semanaSel, week, cards });
+  const sem = data.SEMAFORO[s.estado];
+  const opciones = data.semanasAlrededor(10, -2);
+  if (!opciones.includes(semanaSel)) opciones.unshift(semanaSel);
+
+  $('#view').innerHTML = `
+    <div class="calhd">
+      <label class="muted">Semana</label>
+      <select id="w-sel" class="btn" style="font-weight:500">${opciones.map(w => `<option value="${w}" ${w === semanaSel ? 'selected' : ''}>${w} · ${data.etiquetaSemana(w)}</option>`).join('')}</select>
+      <span class="chip">${sem.emoji} ${esc(sem.label)}</span>
+    </div>
+
+    <div class="kpi" style="margin-bottom:12px">
+      <div class="blabel">Capacidad de la semana</div>
+      <div class="row3">
+        <div class="fg"><label>Capacidad prevista (h)</label><input id="w-prev" type="number" step="0.5" value="${n(week.capacidad_prevista_horas)}"></div>
+        <div class="fg"><label>Capacidad disponible real (h)</label><input id="w-real" type="number" step="0.5" value="${n(week.capacidad_real_horas)}"></div>
+        <div class="fg"><label>Semáforo</label><select id="w-sem">
+          <option value="">Automático (${sem.label})</option>
+          <option value="verde" ${week.semaforo_manual === 'verde' ? 'selected' : ''}>🟢 Capacidad normal</option>
+          <option value="amarillo" ${week.semaforo_manual === 'amarillo' ? 'selected' : ''}>🟡 Capacidad reducida</option>
+          <option value="rojo" ${week.semaforo_manual === 'rojo' ? 'selected' : ''}>🔴 Capacidad crítica</option>
+        </select></div>
+      </div>
+      <div class="row3">
+        <div class="fg"><label>Operarios previstos</label><input id="w-op" type="number" min="0" value="${n(week.operarios_previstos)}"></div>
+        <div class="fg"><label>Operarios reales</label><input id="w-opr" type="number" min="0" value="${n(week.operarios_reales)}"></div>
+        <div class="fg"><label>Notas de la semana</label><input id="w-notas" value="${esc(week.notas)}" placeholder="Faltas, feriados, imprevistos…"></div>
+      </div>
+      <button class="btn primary" id="w-save">Guardar capacidad</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k">Capacidad prevista</div><div class="v">${s.prevista.toFixed(1)} h</div></div>
+      <div class="kpi"><div class="k">Capacidad real</div><div class="v">${s.real.toFixed(1)} h</div></div>
+      <div class="kpi"><div class="k">Horas planificadas</div><div class="v">${s.planificadas.toFixed(1)} h</div>
+        <div class="s">${s.holgura >= 0 ? `sobran ${s.holgura.toFixed(1)} h` : `faltan ${(-s.holgura).toFixed(1)} h`}</div></div>
+      <div class="kpi"><div class="k">Horas realizadas</div><div class="v">${s.realizadas.toFixed(1)} h</div>
+        <div class="s">${s.adicional > 0 ? `+${s.adicional.toFixed(1)} h de producción adicional` : 'sin producción adicional'}</div></div>
+      <div class="kpi"><div class="k">Cumplimiento del plan</div><div class="v">${s.cumplimiento.toFixed(0)}%</div>
+        <div class="s">${s.terminadas} de ${s.total} trabajos planificados</div></div>
+      <div class="kpi ${s.atrasados.length ? 'alert' : ''}"><div class="k">Pedidos atrasados</div><div class="v">${s.atrasados.length}</div></div>
+    </div>
+
+    <p class="muted" style="margin:4px 0 12px">
+      Un cumplimiento bajo no significa bajo rendimiento: hay que leerlo contra la capacidad real de la semana
+      (${s.real.toFixed(1)} h disponibles frente a ${s.planificadas.toFixed(1)} h planificadas).
+    </p>
+
+    <div class="sect"><div class="sect-h">Pedidos de la semana <span class="cnt">${s.cards.length}</span></div>
+      ${s.cards.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Etapa</th><th class="num">Horas est.</th>
+        <th class="num">Horas reales</th><th>Objetivo interno</th><th>Entrega</th><th>Responsable</th></tr></thead>
+        <tbody>${s.cards.map(c => `<tr data-id="${c.id}">
+          <td><b>${esc(c.client_name || '—')}</b>${c.priority === 'urgente' ? ' <span class="chip urg">urgente</span>' : ''}</td>
+          <td>${esc((stages.find(x => x.key === c.stage_key) || {}).label || c.stage_key)}</td>
+          <td class="num">${n(c.horas_estimadas)}</td><td class="num">${n(c.horas_reales)}</td>
+          <td>${esc(c.fecha_objetivo_interna || '—')}</td>
+          <td>${esc(c.due_date || '—')} ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</td>
+          <td>${esc((operarios.find(o => o.id === c.responsable_operator_id) || {}).nombre || '—')}</td>
+        </tr>`).join('')}</tbody></table>` : '<p class="muted">Todavía no hay pedidos planificados para esta semana.</p>'}
+    </div>
+
+    ${s.atrasados.length ? `<div class="sect"><div class="sect-h" style="border-color:#A33A3A">Necesitan reprogramación <span class="cnt">${s.atrasados.length}</span></div>
+      <table class="grid"><tbody>${s.atrasados.map(c => `<tr data-id="${c.id}">
+        <td><b>${esc(c.client_name)}</b></td><td>${esc(c.fecha_objetivo_interna || c.due_date)}</td>
+        <td class="num">${n(c.horas_estimadas)} h</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+
+  $('#w-sel').onchange = e => { semanaSel = e.target.value; renderTablero(); renderSemana(); };
+  $('#w-save').onclick = async () => {
+    const btn = $('#w-save'); btn.disabled = true;
+    try {
+      const saved = await data.upsertWeek({
+        semana: semanaSel,
+        capacidad_prevista_horas: n($('#w-prev').value), capacidad_real_horas: n($('#w-real').value),
+        operarios_previstos: parseInt($('#w-op').value, 10) || 0, operarios_reales: parseInt($('#w-opr').value, 10) || 0,
+        semaforo_manual: $('#w-sem').value || null, notas: $('#w-notas').value || null,
+      });
+      semanas = [saved, ...semanas.filter(w => w.semana !== saved.semana)];
+      renderTablero(); renderSemana(); toast('Capacidad guardada');
+    } catch (e) { fail(e, 'No se pudo guardar'); }
+    finally { btn.disabled = false; }
+  };
+  $('#view').querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
+}
+
+/* ── COLA: listos para producir ──
+   Trabajos aprobados, con información y materiales, que todavía no están dentro
+   del compromiso de la semana. Si se termina antes, se toma el siguiente. */
+function renderCola() {
+  const enCola = cards.filter(c => c.listo_para_producir && activo(c) && !c.semana_produccion);
+  const candidatos = cards.filter(c => !c.listo_para_producir && activo(c));
+  $('#view').innerHTML = `
+    <p class="muted" style="margin-bottom:12px">Pedidos aprobados, con diseño y materiales definidos, que todavía no están comprometidos en una semana.
+      Si la producción planificada se termina antes, el gerente toma el siguiente de esta lista.</p>
+    <div class="sect"><div class="sect-h">Listos para producir <span class="cnt">${enCola.length}</span></div>
+      ${enCola.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Horas est.</th>
+        <th class="num">Valor</th><th>Entrega pedida</th><th></th></tr></thead><tbody>
+        ${enCola.map(c => `<tr data-id="${c.id}">
+          <td><b>${esc(c.client_name || '—')}</b></td>
+          <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', '))}</td>
+          <td class="num">${n(c.horas_estimadas)}</td><td class="num">${money(c.total_venta)}</td>
+          <td>${esc(c.fecha_solicitada_cliente || c.due_date || '—')}</td>
+          <td style="text-align:right"><button class="btn sm" data-plan="${c.id}">Planificar en ${esc(semanaSel)}</button></td>
+        </tr>`).join('')}</tbody></table>` : '<p class="muted">La cola está vacía.</p>'}
+    </div>
+    <div class="sect"><div class="sect-h">Otros pedidos en curso <span class="cnt">${candidatos.length}</span></div>
+      ${candidatos.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Etapa</th><th>Semana</th><th></th></tr></thead><tbody>
+        ${candidatos.map(c => `<tr data-id="${c.id}">
+          <td><b>${esc(c.client_name || '—')}</b></td>
+          <td>${esc((stages.find(x => x.key === c.stage_key) || {}).label || c.stage_key)}</td>
+          <td>${esc(c.semana_produccion || '—')}</td>
+          <td style="text-align:right"><button class="btn sm" data-cola="${c.id}">Marcar listo</button></td>
+        </tr>`).join('')}</tbody></table>` : '<p class="muted">Sin pedidos.</p>'}
+    </div>`;
+  $('#view').querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = e => { if (e.target.tagName !== 'BUTTON') openCard(tr.dataset.id); });
+  $('#view').querySelectorAll('[data-cola]').forEach(b => b.onclick = async () => {
+    await patchCard(b.dataset.cola, { listo_para_producir: true }, 'Marcado como listo para producir');
+    renderCola();
+  });
+  $('#view').querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => {
+    await patchCard(b.dataset.plan, { semana_produccion: semanaSel }, 'Planificado en ' + semanaSel);
+    renderTablero(); renderCola();
+  });
+}
+async function patchCard(id, patch, msg) {
+  const c = cards.find(x => x.id === id); if (!c) return;
+  try { Object.assign(c, await data.saveProductionCard({ id, ...patch })); toast(msg || 'Guardado'); }
+  catch (e) { fail(e, 'No se pudo guardar'); }
+}
+
+/* ── CALENDARIO (Entrega con escala de urgencia / Producción) ── */
 function renderCal() {
   const y = calDate.getFullYear(), m = calDate.getMonth();
-  const first = new Date(y, m, 1), startDow = (first.getDay() + 6) % 7; // lunes=0
+  const first = new Date(y, m, 1), startDow = (first.getDay() + 6) % 7;
   const days = new Date(y, m + 1, 0).getDate();
   const dateField = calMode === 'entrega' ? 'due_date' : 'production_date';
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = hoyStr();
   const byDay = {};
-  cards.forEach(c => { const d = c[dateField]; if (d && d.slice(0, 7) === `${y}-${String(m + 1).padStart(2, '0')}`) (byDay[+d.slice(8, 10)] = byDay[+d.slice(8, 10)] || []).push(c); });
+  cards.forEach(c => {
+    const d = c[dateField];
+    if (d && d.slice(0, 7) === `${y}-${String(m + 1).padStart(2, '0')}`) (byDay[+d.slice(8, 10)] = byDay[+d.slice(8, 10)] || []).push(c);
+  });
   const dows = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   let cells = dows.map(d => `<div class="dow">${d}</div>`).join('');
   for (let i = 0; i < startDow; i++) cells += '<div class="day empty"></div>';
   for (let d = 1; d <= days; d++) {
     const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const evs = (byDay[d] || []).map(c => `<div class="ev ${noPrice(c) ? 'np' : ''}" data-id="${c.id}" title="${esc(c.client_name)}">${esc(c.client_name || '—')}</div>`).join('');
+    const evs = (byDay[d] || []).map(c => {
+      // El color sale de la cercanía de la fecha. NO cambia el estado del pedido.
+      const u = calMode === 'entrega' ? data.urgenciaPorFecha(c[dateField]) : { color: '#0A0A0A', label: '' };
+      return `<div class="ev" data-id="${c.id}" style="background:${u.color}" title="${esc(c.client_name)} · ${esc(u.label)}">${esc(c.client_name || '—')}</div>`;
+    }).join('');
     cells += `<div class="day ${ds === todayStr ? 'today' : ''}"><div class="dn">${d}</div>${evs}</div>`;
   }
   const monthName = calDate.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' });
   $('#view').innerHTML = `
     <div class="calhd">
-      <div class="seg"><button id="cm-ent" class="${calMode === 'entrega' ? 'active' : ''}">Entrega</button><button id="cm-pro" class="${calMode === 'produccion' ? 'active' : ''}">Producción</button></div>
+      <div class="seg"><button id="cm-ent" class="${calMode === 'entrega' ? 'active' : ''}">Entregas</button><button id="cm-pro" class="${calMode === 'produccion' ? 'active' : ''}">Producción</button></div>
       <button class="btn sm" id="cprev">‹</button><b style="min-width:150px;text-align:center;text-transform:capitalize">${monthName}</b><button class="btn sm" id="cnext">›</button>
-      <span class="muted">Mostrando fecha de <b>${calMode === 'entrega' ? 'entrega' : 'producción'}</b></span>
+      <button class="btn sm" id="choy">Hoy</button>
     </div>
-    <div class="cal">${cells}</div>`;
+    <div class="cal">${cells}</div>
+    ${calMode === 'entrega' ? `<div class="leyenda">
+      <span><i style="background:#2E7D46"></i>Falta bastante</span>
+      <span><i style="background:#C9A227"></i>Entrega cercana (≤ 7 días)</span>
+      <span><i style="background:#D2691E"></i>Muy próxima (≤ 2 días)</span>
+      <span><i style="background:#A33A3A"></i>Vencida</span>
+      <span class="muted">El color es solo una alerta visual: el estado del pedido no cambia solo.</span>
+    </div>` : ''}`;
   $('#cm-ent').onclick = () => { calMode = 'entrega'; renderCal(); };
   $('#cm-pro').onclick = () => { calMode = 'produccion'; renderCal(); };
   $('#cprev').onclick = () => { calDate = new Date(y, m - 1, 1); renderCal(); };
   $('#cnext').onclick = () => { calDate = new Date(y, m + 1, 1); renderCal(); };
+  $('#choy').onclick = () => { calDate = new Date(); renderCal(); };
   $('#view').querySelectorAll('.ev').forEach(e => e.onclick = () => openCard(e.dataset.id));
 }
 
-/* ── MODAL ── */
-function openCard(id) {
+/* ── MODAL DE TARJETA ── */
+async function openCard(id) {
   const c = cards.find(x => x.id === id); if (!c) return;
   const lines = c.product_lines || [];
-  $('#modal').innerHTML = `<h2>${esc(c.client_name || 'Trabajo')}</h2><div class="sub">${esc(c.id)} ${c.quote_id ? '· ' + esc(c.quote_id) : ''} · ${esc(c.vendor || '')}</div>
+  const opts = (sel) => operarios.map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
+  const semOpts = data.semanasAlrededor(12, -3);
+  if (c.semana_produccion && !semOpts.includes(c.semana_produccion)) semOpts.unshift(c.semana_produccion);
+
+  $('#modal').innerHTML = `<h2>${esc(c.client_name || 'Trabajo')}</h2>
+    <div class="sub">${esc(c.id)} ${c.quote_id ? '· ' + esc(c.quote_id) : ''} · ${esc(c.vendor || '')}</div>
     ${noPrice(c) ? '<div class="fg"><div class="warn" style="font-size:13px">⚠ Esta tarea no tiene precio cargado.</div></div>' : ''}
-    <div class="lines">${lines.map(l => `<div class="l"><span>${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</span><span>${l.precio ? money(l.precio * (l.cantidad || 1)) : '—'}</span></div>`).join('') || '<div class="muted" style="font-size:12px">Sin ítems</div>'}</div>
+    <div class="lines">${lines.map(l => {
+      // Lo que el taller necesita para fabricar: medidas, terminación y los
+      // comentarios que dejó el comercial en la cotización.
+      const dims = dimsText(l.dimensiones || l);
+      const ficha = [dims, l.tamano || '', l.terminacion ? '🎨 ' + l.terminacion : ''].filter(Boolean).join(' · ');
+      return `<div class="l"><span>${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</span><span>${l.precio ? money(l.precio * (l.cantidad || 1)) : '—'}</span></div>
+        ${ficha ? `<div class="lspec">${esc(ficha)}</div>` : ''}
+        ${l.comentarios_produccion ? `<div class="lspec nota">📋 ${esc(l.comentarios_produccion)}</div>` : ''}`;
+    }).join('') || '<div class="muted" style="font-size:12px">Sin ítems</div>'}</div>
+
     <div class="row2">
       <div class="fg"><label>Total del trabajo $</label><input id="e-total" type="number" value="${n(c.total_venta)}"></div>
       <div class="fg"><label>Estado de pago</label><select id="e-pago">
@@ -231,44 +507,120 @@ function openCard(id) {
         <option value="SEÑA" ${c.estado_pago === 'SEÑA' ? 'selected' : ''}>Seña</option>
         <option value="SI" ${c.estado_pago === 'SI' ? 'selected' : ''}>Pagado</option></select></div>
     </div>
-    <div class="fg"><label>Descripción / notas</label><textarea id="e-desc">${esc(c.description)}</textarea></div>
+    <div class="fg"><label>Descripción / notas de fabricación</label><textarea id="e-desc">${esc(c.description)}</textarea></div>
     <div class="row2">
       <div class="fg"><label>Teléfono</label><input id="e-tel" value="${esc(c.client_phone_e164)}"></div>
       <div class="fg"><label>Dirección</label><input id="e-dir" value="${esc(c.direccion)}"></div>
     </div>
     <div class="row2">
-      <div class="fg"><label>Entrega</label><input id="e-ent" list="entregas" value="${esc(c.entrega)}"><datalist id="entregas"><option>RETIRO SE</option><option>Flete</option><option>Instalación</option></datalist></div>
+      <div class="fg"><label>Entrega</label><input id="e-ent" list="entregas" value="${esc(c.entrega)}"><datalist id="entregas"><option>Retiro en el taller</option><option>Flete</option><option>Instalación</option></datalist></div>
       <div class="fg"><label>Etapa</label><select id="e-stage">${stages.map(s => `<option value="${s.key}" ${c.stage_key === s.key ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></div>
     </div>
-    <div class="row2">
-      <div class="fg"><label>Fecha de entrega</label><input id="e-due" type="date" value="${esc(c.due_date)}"></div>
-      <div class="fg"><label>Fecha de producción</label><input id="e-prod" type="date" value="${esc(c.production_date)}"></div>
+
+    <div class="bloque">
+      <label class="blabel">Planificación</label>
+      <div class="row3">
+        <div class="fg"><label>Semana de producción</label><select id="e-sem">
+          <option value="">— sin planificar —</option>
+          ${semOpts.map(w => `<option value="${w}" ${w === c.semana_produccion ? 'selected' : ''}>${w} · ${data.etiquetaSemana(w)}</option>`).join('')}</select></div>
+        <div class="fg"><label>Horas estimadas</label><input id="e-hest" type="number" step="0.5" value="${n(c.horas_estimadas)}"></div>
+        <div class="fg"><label>Prioridad</label><select id="e-prio">
+          ${['baja', 'normal', 'urgente'].map(p => `<option value="${p}" ${(c.priority || 'normal') === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      </div>
+      <div class="row3">
+        <div class="fg"><label>Responsable</label><select id="e-resp"><option value="">— sin asignar —</option>${opts(c.responsable_operator_id)}</select></div>
+        <div class="fg"><label>Horas reales (de las subtareas)</label><input value="${n(c.horas_reales)} h" disabled></div>
+        <div class="fg" style="display:flex;align-items:flex-end">
+          <label style="display:flex;align-items:center;gap:7px;text-transform:none;font-size:13px;font-weight:600">
+            <input type="checkbox" id="e-cola" style="width:auto" ${c.listo_para_producir ? 'checked' : ''}> Listo para producir</label></div>
+      </div>
+      <div class="row3">
+        <div class="fg"><label>Fecha solicitada por el cliente</label><input id="e-fsol" type="date" value="${esc(c.fecha_solicitada_cliente)}"></div>
+        <div class="fg"><label>Fecha objetivo interna</label><input id="e-fobj" type="date" value="${esc(c.fecha_objetivo_interna)}"></div>
+        <div class="fg"><label>Fecha real de finalización</label><input id="e-freal" type="date" value="${esc(c.fecha_real_fin)}"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Fecha comprometida de entrega</label><input id="e-due" type="date" value="${esc(c.due_date)}"></div>
+        <div class="fg"><label>Fecha de fabricación</label><input id="e-prod" type="date" value="${esc(c.production_date)}"></div>
+      </div>
     </div>
-    <div class="mact"><button class="btn primary" id="e-save">Guardar</button><button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>
-    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
-      <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--tinta-2)">Adjuntos</label>
+
+    <div class="mact"><button class="btn primary" id="e-save">Guardar</button>
+      <button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>
+
+    <div class="bloque">
+      <label class="blabel">Subtareas y horas reales</label>
+      <div id="subtareas" class="muted">Cargando…</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn sm" id="st-add">+ Subtarea</button>
+        <button class="btn sm" id="st-tpl">Cargar las 7 etapas del taller</button>
+      </div>
+    </div>
+
+    <div class="bloque">
+      <label class="blabel">Materiales del pedido</label>
+      <div id="materiales" class="muted">—</div>
+    </div>
+
+    <div class="bloque">
+      <label class="blabel">Trazabilidad</label>
+      <div class="traza">
+        ${c.intake_card_id ? `<a href="/intake.html">Lead ${esc(c.intake_card_id)}</a>` : ''}
+        ${c.quote_id ? `<a href="/index.html?quote=${esc(c.quote_id)}">Cotización ${esc(c.quote_id)}</a>` : ''}
+        ${c.sale_id ? `<a href="/ventas.html">Venta</a>` : ''}
+        <a href="/contabilidad.html">Cuenta a cobrar</a>
+        <a href="/nps.html">Encuesta NPS</a>
+      </div>
+    </div>
+
+    <div class="bloque">
+      <label class="blabel">Adjuntos</label>
       <div class="att" id="attList"></div>
       <input type="file" id="attInput" multiple style="display:none">
       <button class="btn sm" id="attAdd">📎 Adjuntar archivo</button>
     </div>
-    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-      <label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--tinta-2)">Comentarios</label>
+    <div class="bloque">
+      <label class="blabel">Comentarios · Comercial ↔ Producción</label>
       <div id="comments" class="muted" style="margin:8px 0">Cargando…</div>
       <div style="display:flex;gap:8px"><input id="cmt-input" placeholder="Escribir un comentario…" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font:inherit"><button class="btn" id="cmt-add">Enviar</button></div>
     </div>`;
   $('#ov').classList.add('show');
-  $('#e-close').onclick = () => $('#ov').classList.remove('show');
+  $('#e-close').onclick = cerrar;
   $('#e-save').onclick = async () => {
-    const patch = { id, total_venta: n($('#e-total').value), estado_pago: $('#e-pago').value, description: $('#e-desc').value || null, client_phone_e164: $('#e-tel').value || null, direccion: $('#e-dir').value || null, entrega: $('#e-ent').value || null, due_date: $('#e-due').value || null, production_date: $('#e-prod').value || null, stage_key: $('#e-stage').value };
-    Object.assign(c, patch);
-    try { await data.saveProductionCard(patch); $('#ov').classList.remove('show'); render(); toast('Guardado'); } catch (e) { toast('Error: ' + (e.message || e)); }
+    const patch = {
+      id, total_venta: n($('#e-total').value), estado_pago: $('#e-pago').value,
+      description: $('#e-desc').value || null, client_phone_e164: $('#e-tel').value || null,
+      direccion: $('#e-dir').value || null, entrega: $('#e-ent').value || null,
+      due_date: $('#e-due').value || null, production_date: $('#e-prod').value || null,
+      stage_key: $('#e-stage').value,
+      semana_produccion: $('#e-sem').value || null, horas_estimadas: n($('#e-hest').value),
+      priority: $('#e-prio').value, responsable_operator_id: $('#e-resp').value || null,
+      listo_para_producir: $('#e-cola').checked,
+      fecha_solicitada_cliente: $('#e-fsol').value || null,
+      fecha_objetivo_interna: $('#e-fobj').value || null,
+      fecha_real_fin: $('#e-freal').value || null,
+    };
+    const btn = $('#e-save'); btn.disabled = true;
+    try {
+      const cambioEtapa = patch.stage_key !== c.stage_key;
+      Object.assign(c, await data.saveProductionCard(patch));
+      if (cambioEtapa && patch.stage_key === 'entregado') Object.assign(c, await data.moveProductionStage(id, 'entregado'));
+      cerrar(); renderTablero(); render(); toast('Guardado');
+    } catch (e) { fail(e, 'No se pudo guardar'); }
+    finally { btn.disabled = false; }
   };
+
+  pintarSubtareas(c);
+  pintarMateriales(c);
   loadComments(id);
   $('#cmt-add').onclick = async () => {
     const txt = $('#cmt-input').value.trim(); if (!txt) return;
-    try { await data.addComment(id, txt); $('#cmt-input').value = ''; commentCounts[id] = (commentCounts[id] || 0) + 1; loadComments(id); } catch (e) { toast('Error: ' + (e.message || e)); }
+    const btn = $('#cmt-add'); btn.disabled = true;
+    try { await data.addComment(id, txt); $('#cmt-input').value = ''; commentCounts[id] = (commentCounts[id] || 0) + 1; loadComments(id); }
+    catch (e) { fail(e, 'No se pudo comentar'); }
+    finally { btn.disabled = false; }
   };
-  // adjuntos
+
   const attHtml = () => (c.attachments || []).map((f, i) => {
     const isImg = (f.type || '').startsWith('image/');
     const inner = isImg ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt=""></a>` : `<a class="file" href="${esc(f.url)}" target="_blank">📄 ${esc((f.name || 'archivo').slice(0, 16))}</a>`;
@@ -279,7 +631,8 @@ function openCard(id) {
     $('#attList').querySelectorAll('[data-att]').forEach(b => b.onclick = async () => {
       const i = +b.dataset.att, f = c.attachments[i];
       c.attachments.splice(i, 1);
-      try { await data.saveProductionCard({ id, attachments: c.attachments }); if (f?.path) data.deleteAttachment(f.path); paintAtt(); render(); } catch (e) { toast('Error: ' + (e.message || e)); }
+      try { await data.saveProductionCard({ id, attachments: c.attachments }); if (f?.path) data.deleteAttachment(f.path); paintAtt(); }
+      catch (e) { fail(e, 'No se pudo quitar'); }
     });
   };
   paintAtt();
@@ -290,17 +643,136 @@ function openCard(id) {
     try {
       for (const f of files) { const meta = await data.uploadAttachment(f, id); c.attachments = [...(c.attachments || []), meta]; }
       await data.saveProductionCard({ id, attachments: c.attachments });
-      paintAtt(); render(); toast('Adjuntado');
-    } catch (err) { toast('Error: ' + (err.message || err)); }
+      paintAtt(); toast('Adjuntado');
+    } catch (err) { fail(err, 'No se pudo adjuntar'); }
   };
 }
+function cerrar() {
+  $('#ov').classList.remove('show');
+  if (cronoTimer) { clearInterval(cronoTimer); cronoTimer = null; }
+}
+$('#ov').onclick = e => { if (e.target === $('#ov')) cerrar(); };
+
+/* ── Subtareas: iniciar / pausar / finalizar ──
+   Los timestamps son reales: de ahí sale la productividad, no de un campo a mano. */
+async function pintarSubtareas(card) {
+  const cont = $('#subtareas'); if (!cont) return;
+  let tareas = [];
+  try { tareas = await data.listSubtasks(card.id); }
+  catch (e) { cont.innerHTML = `<span class="warn">No se pudieron cargar las subtareas: ${esc(e.message)}</span>`; return; }
+
+  const opts = (sel) => '<option value="">— sin asignar —</option>' +
+    operarios.map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
+  cont.innerHTML = tareas.length ? tareas.map(t => `
+    <div class="st ${esc(t.estado)}" data-id="${t.id}">
+      <div class="l1">
+        <input class="nm" data-f="nombre" value="${esc(t.nombre)}">
+        <span class="est ${esc(t.estado)}">${esc(t.estado.replace('_', ' '))}</span>
+        <span class="crono" data-crono="${t.id}">${data.hhmm(data.segundosSubtarea(t))}</span>
+      </div>
+      <div class="l2">
+        <select data-f="operator_id">${opts(t.operator_id)}</select>
+        <input data-f="horas_estimadas" type="number" step="0.5" style="width:74px" value="${n(t.horas_estimadas)}" title="Horas estimadas">
+        <span class="muted">h est.</span>
+        ${t.estado === 'terminada' ? '' : (t.estado === 'en_curso'
+          ? `<button class="btn sm pause" data-act="pause">⏸ Pausar</button>`
+          : `<button class="btn sm go" data-act="start">▶ ${t.started_at ? 'Reanudar' : 'Iniciar'}</button>`)}
+        ${t.estado === 'terminada' ? '' : `<button class="btn sm" data-act="finish">✓ Finalizar</button>`}
+        <button class="btn sm" data-act="del" style="margin-left:auto">✕</button>
+      </div>
+      <div class="l2"><input data-f="comentarios" placeholder="Comentarios de la subtarea…" value="${esc(t.comentarios)}" style="flex:1"></div>
+    </div>`).join('') : '<span class="muted">Sin subtareas. Dividí el pedido para repartir el trabajo y medir las horas reales.</span>';
+
+  // Cronómetro en vivo de las subtareas en curso.
+  if (cronoTimer) clearInterval(cronoTimer);
+  if (tareas.some(t => t.estado === 'en_curso')) {
+    cronoTimer = setInterval(() => {
+      tareas.forEach(t => {
+        const el = document.querySelector(`[data-crono="${t.id}"]`);
+        if (el) el.textContent = data.hhmm(data.segundosSubtarea(t));
+      });
+    }, 1000);
+  }
+
+  cont.querySelectorAll('.st').forEach(el => {
+    const t = tareas.find(x => x.id === el.dataset.id);
+    el.querySelectorAll('[data-f]').forEach(inp => inp.onchange = async () => {
+      const f = inp.dataset.f;
+      const val = f === 'horas_estimadas' ? n(inp.value) : (inp.value || null);
+      try { await data.saveSubtask({ id: t.id, [f]: val }); t[f] = val; toast('Guardado'); }
+      catch (e) { fail(e, 'No se pudo guardar la subtarea'); }
+    });
+    el.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => {
+      const act = b.dataset.act;
+      b.disabled = true;
+      try {
+        if (act === 'start') await data.startSubtask(t);
+        else if (act === 'pause') await data.pauseSubtask(t);
+        else if (act === 'finish') { if (!confirm('¿Finalizar la subtarea?')) { b.disabled = false; return; } await data.finishSubtask(t); }
+        else if (act === 'del') { if (!confirm('¿Eliminar la subtarea y sus tiempos?')) { b.disabled = false; return; } await data.deleteSubtask(t.id); }
+        const c2 = cards.find(x => x.id === card.id);
+        if (c2) c2.horas_reales = (await data.listSubtasks(card.id)).reduce((s, x) => s + n(x.segundos_trabajados), 0) / 3600;
+        await pintarSubtareas(card);
+        renderTablero();
+      } catch (e) { fail(e, 'No se pudo actualizar'); b.disabled = false; }
+    });
+  });
+
+  $('#st-add').onclick = async () => {
+    try {
+      await data.saveSubtask({ card_id: card.id, nombre: 'Nueva subtarea', display_order: tareas.length * 10 });
+      await pintarSubtareas(card);
+    } catch (e) { fail(e, 'No se pudo crear'); }
+  };
+  $('#st-tpl').onclick = async () => {
+    if (tareas.length && !confirm('Ya hay subtareas. ¿Agregar igual las 7 etapas del taller?')) return;
+    const btn = $('#st-tpl'); btn.disabled = true;
+    try {
+      let i = tareas.length;
+      for (const nombre of data.SUBTAREAS_ESTANDAR) {
+        await data.saveSubtask({ card_id: card.id, nombre, display_order: (i++) * 10 });
+      }
+      await pintarSubtareas(card); toast('Subtareas creadas');
+    } catch (e) { fail(e, 'No se pudieron crear'); }
+    finally { btn.disabled = false; }
+  };
+}
+
+/* ── Materiales del pedido y su consumo real ── */
+async function pintarMateriales(card) {
+  const cont = $('#materiales'); if (!cont) return;
+  const necesarios = data.materialesDePedido(card);
+  let consumidos = [];
+  try { consumidos = (await data.listStockMovements({ limite: 500 })).filter(m => m.production_card_id === card.id); } catch {}
+  const yaConsumido = consumidos.some(m => m.motivo === 'produccion');
+  cont.innerHTML = necesarios.length ? `
+    <table class="grid"><thead><tr><th>Material</th><th class="num">Cantidad</th><th class="num">Costo</th></tr></thead>
+    <tbody>${necesarios.map(m => `<tr><td>${esc(m.descripcion || m.material_id)}</td>
+      <td class="num">${m.cantidad.toFixed(2)}</td><td class="num">${money(m.cantidad * n(m.costoUnit))}</td></tr>`).join('')}</tbody></table>
+    <div style="margin-top:8px">
+      ${yaConsumido
+        ? '<span class="muted">✓ El consumo ya se descontó del stock.</span>'
+        : '<button class="btn sm" id="mat-consumir">Descontar del stock</button> <span class="muted">Registra la salida de materiales de este pedido.</span>'}
+    </div>` : '<span class="muted">La cotización de este pedido no detalla materiales.</span>';
+
+  const btn = $('#mat-consumir');
+  if (btn) btn.onclick = async () => {
+    if (!confirm('¿Descontar del stock los materiales de este pedido? Queda registrado en el historial.')) return;
+    btn.disabled = true;
+    try {
+      const r = await data.consumirMaterialesDePedido(card, necesarios);
+      toast(r.yaConsumido ? 'Ya estaba descontado' : `${r.movimientos} materiales descontados`);
+      await pintarMateriales(card);
+    } catch (e) { fail(e, 'No se pudo descontar'); btn.disabled = false; }
+  };
+}
+
 async function loadComments(id) {
   try {
     const cs = await data.listComments(id);
     $('#comments').innerHTML = cs.length ? cs.map(c => `<div class="cmt"><div class="who">${esc(c.user_label || 'Usuario')} <span class="when">${(c.occurred_at || '').slice(0, 16).replace('T', ' ')}</span></div>${esc(c.notes)}</div>`).join('') : '<span class="muted">Sin comentarios.</span>';
   } catch { $('#comments').innerHTML = '<span class="muted">No se pudieron cargar.</span>'; }
 }
-$('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
 </script>
 </body>
 </html>

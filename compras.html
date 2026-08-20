@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Compras</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 80px; }
+  .tabbar { display: inline-flex; gap: 4px; background: var(--surface-3); padding: 3px; border-radius: 10px; margin-bottom: 18px; }
+  .tabbar button { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .tabbar button.active { background: #0A0A0A; color: #fff; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.grid input, table.grid select { width: 100%; border: 1px solid transparent; background: transparent; padding: 5px 6px; border-radius: 6px; font: inherit; font-size: 13px; color: var(--tinta); }
+  table.grid input:focus, table.grid select:focus { outline: none; border-color: #0A0A0A; background: #fff; }
+  td.num, th.num { text-align: right; } td.num input { text-align: right; }
+  .clickable tbody tr:hover td { background: var(--surface-2); cursor: pointer; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input[type=search], .toolbar select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.ok { background: #2E7D46; color: #fff; border-color: #2E7D46; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 12px; }
+  .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg select, .fg textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin: 16px 0 6px; }
+  .est { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  .est.recibida { background: #E1F5EE; color: #1F6B45; }
+  .est.cancelada { background: #FDECEE; color: #A33A3A; }
+  .est.enviada, .est.confirmada { background: #EDF3F9; color: #2E5C86; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .kpi .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-3); font-weight: 700; }
+  .kpi .v { font-size: 22px; font-weight: 800; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; max-width: 92vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <h1 style="font-family:'Raleway';margin-bottom:14px;">Compras</h1>
+  <div class="tabbar">
+    <button data-tab="oc" class="active">Órdenes de compra</button>
+    <button data-tab="prov">Proveedores</button>
+  </div>
+  <div id="pane"><p class="muted">Cargando…</p></div>
+</div>
+<div id="toast"></div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAdmin } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n } from './js/quote-engine.js?v=5';
+
+const $ = s => document.querySelector(s);
+const pane = $('#pane');
+const toast = (m, err = false) => { const t = $('#toast'); t.textContent = m; t.className = 'show' + (err ? ' err' : ''); setTimeout(() => { t.className = ''; }, err ? 4200 : 1900); };
+const fail = (e, ctx) => { console.error('[compras]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hoy = () => new Date().toISOString().slice(0, 10);
+
+let proveedores = [], materiales = [], ordenes = [], gastos = [];
+
+if (!(await requireAdmin())) throw new Error('sin permisos');
+renderNavbar('compras');
+try {
+  [proveedores, materiales, ordenes, gastos] = await Promise.all([
+    data.listSuppliers({ incluirInactivos: true }),
+    data.listMaterials(),
+    data.listPurchaseOrders(),
+    data.listExpenses().catch(() => []),
+  ]);
+} catch (e) {
+  pane.innerHTML = `<div class="card" style="color:#A33A3A">No se pudo cargar Compras.<br><span class="muted">${esc(e.message || e)}</span>
+    <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b));
+  b.dataset.tab === 'prov' ? renderProveedores() : renderOCs();
+});
+renderOCs();
+
+/* ───────── Proveedores + estadísticas ───────── */
+function statsProveedor(id) {
+  const ocs = ordenes.filter(o => o.supplier_id === id && o.estado !== 'cancelada');
+  const monto = ocs.reduce((s, o) => s + n(o.total), 0);
+  const ultima = ocs.map(o => o.fecha).sort().pop() || null;
+  return { cantidad: ocs.length, monto, ultima };
+}
+function renderProveedores(filter = '') {
+  const rows = proveedores.filter(p => !filter || (p.nombre + ' ' + (p.materiales || '')).toLowerCase().includes(filter.toLowerCase()));
+  pane.innerHTML = `
+    <div class="toolbar">
+      <input type="search" id="pSearch" placeholder="Buscar proveedor…" value="${esc(filter)}" style="flex:1;min-width:200px">
+      <span class="muted">${rows.length} proveedores</span>
+      <button class="btn primary" id="pAdd">+ Proveedor</button>
+    </div>
+    <div style="overflow-x:auto"><table class="grid"><thead><tr>
+      <th style="width:18%">Nombre</th><th>Contacto</th><th>Teléfono</th><th>Email</th>
+      <th>Materiales que provee</th><th>Condiciones de pago</th>
+      <th class="num" style="width:60px">OC</th><th class="num" style="width:110px">Comprado</th>
+      <th style="width:95px">Última</th><th class="num" style="width:110px">Cta. cte.</th><th style="width:60px">Activo</th>
+    </tr></thead><tbody id="pBody">${rows.map(p => {
+      const s = statsProveedor(p.id);
+      return `<tr data-id="${p.id}" style="${p.activo ? '' : 'opacity:.5'}">
+        <td><input data-f="nombre" value="${esc(p.nombre)}"></td>
+        <td><input data-f="contacto" value="${esc(p.contacto)}"></td>
+        <td><input data-f="telefono" value="${esc(p.telefono)}"></td>
+        <td><input data-f="email" value="${esc(p.email)}"></td>
+        <td><input data-f="materiales" value="${esc(p.materiales)}" placeholder="Hierro, chapa…"></td>
+        <td><input data-f="condiciones_pago" value="${esc(p.condiciones_pago)}" placeholder="Contado / 30 días"></td>
+        <td class="num">${s.cantidad}</td>
+        <td class="num">${money(s.monto)}</td>
+        <td>${esc(s.ultima || '—')}</td>
+        <td class="num" style="${n(p.saldo) > 0 ? 'color:#A33A3A;font-weight:700' : ''}">${money(p.saldo)}</td>
+        <td style="text-align:center"><input type="checkbox" data-f="activo" ${p.activo ? 'checked' : ''}></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+    <p class="muted" style="margin-top:10px">La columna <b>Cta. cte.</b> es la deuda pendiente con el proveedor: se carga sola
+      cuando un gasto se paga con "cuenta corriente" y baja cuando se registra el pago desde Contabilidad.</p>`;
+  $('#pSearch').oninput = e => renderProveedores(e.target.value);
+  $('#pAdd').onclick = async () => {
+    try { const p = await data.upsertSupplier({ nombre: 'Nuevo proveedor', activo: true }); proveedores.unshift(p); renderProveedores(filter); }
+    catch (e) { fail(e, 'No se pudo crear'); }
+  };
+  $('#pBody').querySelectorAll('tr').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {
+      const p = proveedores.find(x => x.id === id); if (!p) return;
+      const f = el.dataset.f;
+      p[f] = f === 'activo' ? el.checked : el.value;
+      try {
+        const saved = await data.upsertSupplier({
+          id, nombre: p.nombre, contacto: p.contacto || null, telefono: p.telefono || null, email: p.email || null,
+          materiales: p.materiales || null, condiciones_pago: p.condiciones_pago || null, activo: !!p.activo,
+        });
+        Object.assign(p, saved); toast('Guardado');
+      } catch (e) { fail(e, 'No se pudo guardar'); }
+    });
+  });
+}
+
+/* ───────── Órdenes de compra ───────── */
+function renderOCs(filtroEstado = '') {
+  const rows = ordenes.filter(o => !filtroEstado || o.estado === filtroEstado);
+  const abiertas = ordenes.filter(o => ['borrador', 'enviada', 'confirmada', 'recibida_parcial'].includes(o.estado));
+  const delAnio = ordenes.filter(o => o.estado !== 'cancelada' && (o.fecha || '').slice(0, 4) === String(new Date().getFullYear()));
+  pane.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">OC abiertas</div><div class="v">${abiertas.length}</div></div>
+      <div class="kpi"><div class="k">Comprometido</div><div class="v" style="font-size:19px">${money(abiertas.reduce((s, o) => s + n(o.total), 0))}</div></div>
+      <div class="kpi"><div class="k">Comprado este año</div><div class="v" style="font-size:19px">${money(delAnio.reduce((s, o) => s + n(o.total), 0))}</div></div>
+      <div class="kpi"><div class="k">Proveedores activos</div><div class="v">${proveedores.filter(p => p.activo).length}</div></div>
+    </div>
+    <div class="toolbar">
+      <select id="oFiltro">
+        <option value="">Todos los estados</option>
+        ${['borrador', 'enviada', 'confirmada', 'recibida_parcial', 'recibida', 'cancelada'].map(e => `<option value="${e}" ${e === filtroEstado ? 'selected' : ''}>${e.replace('_', ' ')}</option>`).join('')}
+      </select>
+      <span class="muted">${rows.length} órdenes</span>
+      <button class="btn primary" id="oNew" style="margin-left:auto">+ Nueva orden de compra</button>
+    </div>
+    <table class="grid clickable"><thead><tr><th>OC</th><th>Proveedor</th><th>Fecha</th>
+      <th>Estado</th><th>Esperada</th><th>Recibida</th><th class="num">Total</th></tr></thead>
+      <tbody>${rows.map(o => `<tr data-id="${o.id}">
+        <td><b>${esc(o.id)}</b></td>
+        <td>${esc(o.proveedor_nombre || (proveedores.find(p => p.id === o.supplier_id) || {}).nombre || '—')}</td>
+        <td>${esc(o.fecha)}</td>
+        <td><span class="est ${esc(o.estado)}">${esc(o.estado.replace('_', ' '))}</span></td>
+        <td>${esc(o.fecha_esperada || '—')}</td>
+        <td>${esc(o.fecha_recibida || '—')}</td>
+        <td class="num">${money(o.total)}</td>
+      </tr>`).join('') || '<tr><td colspan="7" class="muted" style="padding:18px">Todavía no hay órdenes de compra.</td></tr>'}
+      </tbody></table>`;
+  $('#oFiltro').onchange = e => renderOCs(e.target.value);
+  $('#oNew').onclick = () => editarOC(null);
+  pane.querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = () => editarOC(tr.dataset.id));
+}
+
+async function editarOC(id) {
+  let oc = { fecha: hoy(), estado: 'borrador', supplier_id: '', forma_pago: '' };
+  let lineas = [];
+  if (id) {
+    try { const r = await data.getPurchaseOrder(id); oc = r.oc; lineas = r.lines.map(l => ({ ...l })); }
+    catch (e) { fail(e, 'No se pudo abrir'); return; }
+  }
+  let guardando = false;
+
+  const matOpts = (sel) => '<option value="">— libre —</option>' +
+    materiales.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join('');
+
+  function total() { return lineas.reduce((s, l) => s + n(l.cantidad) * n(l.costo_unit), 0); }
+
+  function draw() {
+    const recibida = oc.estado === 'recibida';
+    pane.innerHTML = `
+      <button class="btn sm" id="oBack">← Volver</button>
+      <div class="card" style="margin-top:12px">
+        <h3 style="font-family:'Raleway';margin-bottom:12px">${id ? 'Orden ' + esc(id) : 'Nueva orden de compra'}
+          ${id ? `<span class="est ${esc(oc.estado)}" style="margin-left:8px">${esc(oc.estado.replace('_', ' '))}</span>` : ''}</h3>
+        <div class="fgrid">
+          <div class="fg"><label>Proveedor</label><select id="f-prov" ${recibida ? 'disabled' : ''}>
+            <option value="">— elegir —</option>
+            ${proveedores.filter(p => p.activo || p.id === oc.supplier_id).map(p => `<option value="${p.id}" ${p.id === oc.supplier_id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}
+          </select></div>
+          <div class="fg"><label>Fecha</label><input id="f-fecha" type="date" value="${esc(oc.fecha)}" ${recibida ? 'disabled' : ''}></div>
+          <div class="fg"><label>Estado</label><select id="f-estado" ${recibida ? 'disabled' : ''}>
+            ${['borrador', 'enviada', 'confirmada', 'recibida_parcial', 'cancelada'].map(e => `<option value="${e}" ${e === oc.estado ? 'selected' : ''}>${e.replace('_', ' ')}</option>`).join('')}
+            ${recibida ? '<option value="recibida" selected>recibida</option>' : ''}
+          </select></div>
+          <div class="fg"><label>Fecha esperada</label><input id="f-esp" type="date" value="${esc(oc.fecha_esperada)}"></div>
+          <div class="fg"><label>Forma de pago</label><select id="f-pago">
+            <option value="">— sin definir —</option>
+            <option value="organizacion" ${oc.forma_pago === 'organizacion' ? 'selected' : ''}>Organización</option>
+            <option value="cuenta_corriente" ${oc.forma_pago === 'cuenta_corriente' ? 'selected' : ''}>Cuenta corriente con el proveedor</option>
+            <option value="funcionario_reintegro" ${oc.forma_pago === 'funcionario_reintegro' ? 'selected' : ''}>La pagó un funcionario (a reintegrar)</option>
+          </select></div>
+          <div class="fg"><label>Fecha recibida</label><input id="f-rec" type="date" value="${esc(oc.fecha_recibida)}" disabled></div>
+        </div>
+        <div class="fg" style="margin-top:10px"><label>Observaciones</label><input id="f-obs" value="${esc(oc.observaciones)}"></div>
+
+        <div class="sub">Materiales</div>
+        <table class="grid"><thead><tr><th style="width:34%">Material</th><th>Descripción</th>
+          <th class="num" style="width:90px">Cantidad</th><th class="num" style="width:110px">Costo unit.</th>
+          <th class="num" style="width:110px">Total</th><th class="num" style="width:90px">Recibido</th><th></th></tr></thead>
+          <tbody id="lBody">${lineas.map((l, i) => `<tr data-i="${i}">
+            <td><select data-f="material_id" ${recibida ? 'disabled' : ''}>${matOpts(l.material_id)}</select></td>
+            <td><input data-f="descripcion" value="${esc(l.descripcion)}" ${recibida ? 'disabled' : ''}></td>
+            <td class="num"><input data-f="cantidad" type="number" step="0.01" value="${n(l.cantidad)}" ${recibida ? 'disabled' : ''}></td>
+            <td class="num"><input data-f="costo_unit" type="number" step="0.01" value="${n(l.costo_unit)}" ${recibida ? 'disabled' : ''}></td>
+            <td class="num">${money(n(l.cantidad) * n(l.costo_unit))}</td>
+            <td class="num">${n(l.cantidad_recibida)}</td>
+            <td>${recibida ? '' : '<button class="btn sm" data-del>✕</button>'}</td>
+          </tr>`).join('')}</tbody></table>
+        ${recibida ? '' : '<button class="btn sm" id="lAdd" style="margin-top:8px">+ Material</button>'}
+
+        <div style="display:flex;justify-content:flex-end;font-size:19px;font-weight:800;margin-top:12px">Total: ${money(total())}</div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          ${recibida ? '' : '<button class="btn primary" id="oSave">Guardar</button>'}
+          ${id && !recibida ? '<button class="btn ok" id="oRecv">Recibir y actualizar stock</button>' : ''}
+        </div>
+        ${recibida ? `<p class="muted" style="margin-top:10px">Recibida el ${esc(oc.fecha_recibida)}. El stock ya se actualizó y quedó el gasto asociado; por eso no se puede editar.</p>` : ''}
+      </div>`;
+    wire(recibida);
+  }
+
+  function wire(recibida) {
+    $('#oBack').onclick = () => renderOCs();
+    if (recibida) return;
+    $('#lBody').querySelectorAll('tr').forEach(tr => {
+      const i = +tr.dataset.i;
+      tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
+        const f = el.dataset.f;
+        if (f === 'material_id') {
+          lineas[i].material_id = el.value || null;
+          const mm = materiales.find(x => x.id === el.value);
+          if (mm) { lineas[i].descripcion = mm.nombre; lineas[i].unidad = mm.unidad; if (!n(lineas[i].costo_unit)) lineas[i].costo_unit = n(mm.precio_unit); }
+        } else lineas[i][f] = (f === 'descripcion') ? el.value : n(el.value);
+        draw();
+      });
+      const del = tr.querySelector('[data-del]');
+      if (del) del.onclick = () => { lineas.splice(i, 1); draw(); };
+    });
+    $('#lAdd').onclick = () => { lineas.push({ material_id: null, descripcion: '', cantidad: 1, costo_unit: 0, cantidad_recibida: 0 }); draw(); };
+    $('#oSave').onclick = guardar;
+    if ($('#oRecv')) $('#oRecv').onclick = recibir;
+  }
+
+  function leer() {
+    const prov = proveedores.find(p => p.id === $('#f-prov').value);
+    return {
+      ...(id ? { id } : {}),
+      supplier_id: $('#f-prov').value || null, proveedor_nombre: prov?.nombre || null,
+      fecha: $('#f-fecha').value || hoy(), estado: $('#f-estado').value,
+      fecha_esperada: $('#f-esp').value || null, forma_pago: $('#f-pago').value || null,
+      observaciones: $('#f-obs').value || null,
+    };
+  }
+  async function guardar() {
+    if (guardando) return;
+    if (!lineas.length) { toast('Agregá al menos un material', true); return; }
+    guardando = true; $('#oSave').disabled = true;
+    try {
+      const saved = await data.savePurchaseOrder(leer(), lineas);
+      ordenes = await data.listPurchaseOrders();
+      oc = saved; id = saved.id;
+      toast('Orden guardada: ' + saved.id);
+      draw();
+    } catch (e) { fail(e, 'No se pudo guardar'); }
+    finally { guardando = false; }
+  }
+  async function recibir() {
+    if (!confirm('Recibir la orden completa.\n\nEsto suma el stock de cada material, actualiza su costo en el catálogo y registra el gasto. ¿Confirmás?')) return;
+    const btn = $('#oRecv'); btn.disabled = true;
+    try {
+      await data.savePurchaseOrder(leer(), lineas);
+      const r = await data.receivePurchaseOrder(id, { fecha: hoy(), forma_pago: $('#f-pago').value || null });
+      oc = r.oc;
+      ordenes = await data.listPurchaseOrders();
+      materiales = await data.listMaterials();
+      toast(r.yaRecibida ? 'Ya estaba recibida' : 'Recibida · stock actualizado');
+      draw();
+    } catch (e) { fail(e, 'No se pudo recibir'); btn.disabled = false; }
+  }
+
+  draw();
+}
+</script>
+</body>
+</html>

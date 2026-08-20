@@ -37,7 +37,18 @@
   .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 4px; }
   .fg input, .fg select { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
   .muted { color: var(--tinta-3); font-size: 12px; }
-  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  /* calendario de cobros */
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .dow { font-size: 10px; text-transform: uppercase; color: var(--tinta-3); text-align: center; padding: 4px; font-weight: 700; }
+  .cal .day { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; min-height: 78px; padding: 4px 5px; }
+  .cal .day.empty { background: transparent; border: none; }
+  .cal .day .dn { font-size: 11px; color: var(--tinta-3); font-weight: 700; }
+  .cal .day.today { border-color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A; }
+  .cal .ev { color: #fff; border-radius: 5px; padding: 2px 5px; font-size: 10px; margin-top: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--tinta-2); margin-top: 10px; }
+  .leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; }
+  .kpi span { display: block; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
 </style>
 </head>
@@ -46,8 +57,14 @@
 <div class="wrap">
   <h1 style="font-family:'Raleway';margin-bottom:14px">Contabilidad</h1>
   <div class="tabbar">
-    <button data-tab="caja" class="active">Caja del día</button>
+    <button data-tab="cuentas" class="active">Cuentas a cobrar</button>
+    <button data-tab="calcobros">Calendario de cobros</button>
     <button data-tab="cobros">Cobros por trabajo</button>
+    <button data-tab="gastos">Gastos</button>
+    <button data-tab="reintegros">Reintegros</button>
+    <button data-tab="ctacte">Cuenta corriente</button>
+    <button data-tab="activos">Activos</button>
+    <button data-tab="caja">Caja del día</button>
     <button data-tab="mov">Movimientos</button>
     <button data-tab="balance">Balance</button>
   </div>
@@ -57,10 +74,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth, isAdmin } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { money, n } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth, isAdmin } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
 const pane = $('#pane');
@@ -71,9 +88,28 @@ const today = () => new Date().toISOString().slice(0, 10);
 await requireAuth();
 renderNavbar('contabilidad');
 if (!(await isAdmin())) { pane.innerHTML = '<div class="card">Esta sección es solo para administración.</div>'; document.querySelector('.tabbar').style.display = 'none'; }
-else { document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b)); render(b.dataset.tab); }); render('caja'); }
+else { document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b)); render(b.dataset.tab); }); render('cuentas'); }
 
-function render(tab) { ({ caja: renderCaja, cobros: renderCobros, mov: renderMov, balance: renderBalance }[tab] || renderCaja)(); }
+const fail = (e, ctx) => { console.error('[contabilidad]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e)); };
+const guard = async (fn) => {
+  pane.innerHTML = '<div class="card">Cargando…</div>';
+  try { await fn(); }
+  catch (e) {
+    console.error('[contabilidad]', e);
+    pane.innerHTML = `<div class="card" style="color:#A33A3A">No se pudo cargar.<br><span class="muted">${esc(e.message || e)}</span>
+      <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  }
+};
+
+function render(tab) {
+  ({
+    cuentas: () => guard(renderCuentas), calcobros: () => guard(renderCalCobros),
+    cobros: () => guard(renderCobros), gastos: () => guard(renderGastos),
+    reintegros: () => guard(renderReintegros), ctacte: () => guard(renderCtaCte),
+    activos: () => guard(renderActivos), caja: () => guard(renderCaja),
+    mov: () => guard(renderMov), balance: () => guard(renderBalance),
+  }[tab] || (() => guard(renderCuentas)))();
+}
 
 /* ── Caja del día ── */
 async function renderCaja() {
@@ -186,6 +222,401 @@ async function renderBalance() {
     <table class="grid"><tbody>${Object.entries(rep.porCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${money(v)}</td></tr>`).join('') || '<tr><td class="muted">Sin datos en el período.</td></tr>'}</tbody></table></div>`;
   $('#bfilter').onclick = () => { blFrom = $('#bf').value; blTo = $('#bt').value; renderBalance(); };
 }
+/* ══════════════════════════════════════════════════════════════════════
+   CUENTAS A COBRAR / FACTURA INTERNA
+   Cada pedido que entra a Producción abre su cuenta. No es un comprobante
+   fiscal: es el registro económico del trabajo. SIN IVA.
+   ══════════════════════════════════════════════════════════════════════ */
+const ESTADOS_COBRO = {
+  a_cobrar: { label: 'A cobrar', color: '#5A5F66', bg: '#EFEFEF' },
+  parcial:  { label: 'Parcialmente cobrado', color: '#8A6D1B', bg: '#FAEFD6' },
+  cobrado:  { label: 'Cobrado', color: '#1F6B45', bg: '#E1F5EE' },
+  vencido:  { label: 'Vencido', color: '#A33A3A', bg: '#FDECEE' },
+  anulado:  { label: 'Anulado', color: '#9AA0A6', bg: '#F2F2F2' },
+};
+const chipEstado = (e) => {
+  const x = ESTADOS_COBRO[e] || ESTADOS_COBRO.a_cobrar;
+  return `<span class="pay" style="background:${x.bg};color:${x.color}">${x.label}</span>`;
+};
+
+let receivables = [], prodCards = [];
+async function cargarCuentas() {
+  [receivables, prodCards] = await Promise.all([data.listReceivables(), data.listProductionCards()]);
+}
+async function renderCuentas() {
+  await cargarCuentas();
+  const tot = receivables.reduce((a, r) => { a.monto += n(r.monto); a.cobrado += n(r.cobrado); a.saldo += n(r.saldo); return a; },
+    { monto: 0, cobrado: 0, saldo: 0 });
+  const vencidas = receivables.filter(r => r.estado === 'vencido');
+  pane.innerHTML = `
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi"><span>Facturado interno</span><b>${money(tot.monto)}</b></div>
+      <div class="kpi"><span>Cobrado</span><b>${money(tot.cobrado)}</b></div>
+      <div class="kpi"><span>Pendiente de cobro</span><b>${money(tot.saldo)}</b></div>
+      <div class="kpi" style="background:${vencidas.length ? '#A33A3A' : '#0A0A0A'}"><span>Vencidas</span><b>${vencidas.length}</b></div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:14px;margin-bottom:10px">Cuentas a cobrar (${receivables.length})</h2>
+      <div style="overflow-x:auto"><table class="grid"><thead><tr>
+        <th>Cliente</th><th>Pedido</th><th class="num">Monto</th><th class="num">Cobrado</th><th class="num">Saldo</th>
+        <th>Forma de cobro</th><th>Fecha esperada</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${receivables.map(r => `<tr data-id="${r.id}">
+        <td><b>${esc(r.cliente_nombre || '—')}</b></td>
+        <td><a href="/production.html?card=${esc(r.production_card_id)}" style="color:var(--tinta)">${esc(r.production_card_id || '—')}</a></td>
+        <td class="num">${money(r.monto)}</td><td class="num">${money(r.cobrado)}</td>
+        <td class="num"><b>${money(r.saldo)}</b></td>
+        <td>${esc({ sena_saldo: 'Seña + saldo', credito_entrega: 'Crédito hasta la entrega', fecha_pactada: 'Fecha pactada' }[r.forma_cobro] || r.forma_cobro)}</td>
+        <td>${esc(r.fecha_esperada_cobro || '—')}</td>
+        <td>${chipEstado(r.estado)}</td>
+        <td><button class="btn sm" data-edit="${r.id}">Editar</button></td>
+      </tr>`).join('') || '<tr><td colspan="9" class="muted">Todavía no hay cuentas a cobrar. Se crean solas cuando un lead ganado pasa a Producción.</td></tr>'}
+      </tbody></table></div>
+    </div>`;
+  pane.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => cuentaModal(receivables.find(r => r.id === b.dataset.edit)));
+}
+function cuentaModal(r) {
+  if (!r) return;
+  $('#modal').innerHTML = `<h2>Cuenta a cobrar</h2>
+    <div class="muted" style="margin-bottom:10px">${esc(r.cliente_nombre || '')} · ${esc(r.production_card_id || '')} · ${money(r.monto)}</div>
+    <div class="fg"><label>Forma de cobro</label><select id="r-forma">
+      <option value="credito_entrega" ${r.forma_cobro === 'credito_entrega' ? 'selected' : ''}>Crédito hasta la entrega</option>
+      <option value="sena_saldo" ${r.forma_cobro === 'sena_saldo' ? 'selected' : ''}>Seña + saldo a la entrega</option>
+      <option value="fecha_pactada" ${r.forma_cobro === 'fecha_pactada' ? 'selected' : ''}>Fecha de cobro establecida</option>
+    </select></div>
+    <div id="r-sena" style="display:${r.forma_cobro === 'sena_saldo' ? 'block' : 'none'}">
+      <div class="fg"><label>Importe de la seña</label><input id="r-msena" type="number" value="${n(r.monto_sena)}"></div>
+      <div class="fg"><label>Fecha de la seña</label><input id="r-fsena" type="date" value="${esc(r.fecha_sena)}"></div>
+      <div class="fg"><label>Fecha esperada del saldo</label><input id="r-fsaldo" type="date" value="${esc(r.fecha_esperada_saldo)}"></div>
+    </div>
+    <div class="fg"><label>Fecha esperada de cobro</label><input id="r-fecha" type="date" value="${esc(r.fecha_esperada_cobro)}">
+      <span class="muted">Por defecto es la fecha de entrega del pedido; se puede cambiar.</span></div>
+    <div class="fg"><label>Monto total</label><input id="r-monto" type="number" value="${n(r.monto)}"></div>
+    <div class="fg"><label>Notas</label><input id="r-notas" value="${esc(r.notas)}"></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn primary" id="r-save">Guardar</button>
+      <button class="btn sm" id="r-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#r-forma').onchange = e => { $('#r-sena').style.display = e.target.value === 'sena_saldo' ? 'block' : 'none'; };
+  $('#r-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#r-save').onclick = async () => {
+    const btn = $('#r-save'); btn.disabled = true;
+    try {
+      const monto = n($('#r-monto').value);
+      await data.saveReceivable({
+        id: r.id, monto, forma_cobro: $('#r-forma').value,
+        monto_sena: n($('#r-msena')?.value), fecha_sena: $('#r-fsena')?.value || null,
+        fecha_esperada_saldo: $('#r-fsaldo')?.value || null,
+        fecha_esperada_cobro: $('#r-fecha').value || null, notas: $('#r-notas').value || null,
+        estado: monto > 0 && n(r.cobrado) >= monto ? 'cobrado' : (n(r.cobrado) > 0 ? 'parcial' : 'a_cobrar'),
+      });
+      $('#ov').classList.remove('show'); toast('Cuenta actualizada'); render('cuentas');
+    } catch (e) { fail(e, 'No se pudo guardar'); btn.disabled = false; }
+  };
+}
+
+/* ── Calendario de cobros ──
+   TODOS los pedidos aparecen acá. El color diferencia próximo, cobrado,
+   vencido y parcialmente cobrado. */
+let calCobroMes = new Date();
+async function renderCalCobros() {
+  await cargarCuentas();
+  const y = calCobroMes.getFullYear(), m = calCobroMes.getMonth();
+  const mesStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const sinFecha = receivables.filter(r => !r.fecha_esperada_cobro);
+  const delMes = receivables.filter(r => (r.fecha_esperada_cobro || '').slice(0, 7) === mesStr);
+  const porDia = {};
+  delMes.forEach(r => (porDia[+r.fecha_esperada_cobro.slice(8, 10)] = porDia[+r.fecha_esperada_cobro.slice(8, 10)] || []).push(r));
+  const first = new Date(y, m, 1), startDow = (first.getDay() + 6) % 7;
+  const days = new Date(y, m + 1, 0).getDate();
+  const hoyS = today();
+  const dows = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  let cells = dows.map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < startDow; i++) cells += '<div class="day empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const ds = `${mesStr}-${String(d).padStart(2, '0')}`;
+    const evs = (porDia[d] || []).map(r => {
+      const x = ESTADOS_COBRO[r.estado] || ESTADOS_COBRO.a_cobrar;
+      return `<div class="ev" data-id="${r.id}" style="background:${x.color}" title="${esc(r.cliente_nombre)} · ${money(r.saldo)} · ${x.label}">${esc(r.cliente_nombre || '—')} ${money(r.saldo)}</div>`;
+    }).join('');
+    cells += `<div class="day ${ds === hoyS ? 'today' : ''}"><div class="dn">${d}</div>${evs}</div>`;
+  }
+  const totalMes = delMes.reduce((s, r) => s + n(r.saldo), 0);
+  pane.innerHTML = `<div class="card">
+    <div class="toolbar">
+      <button class="btn sm" id="ccprev">‹</button>
+      <b style="min-width:160px;text-align:center;text-transform:capitalize">${calCobroMes.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' })}</b>
+      <button class="btn sm" id="ccnext">›</button>
+      <span class="muted">Pendiente del mes: <b>${money(totalMes)}</b></span>
+    </div>
+    <div class="cal">${cells}</div>
+    <div class="leyenda">
+      ${Object.entries(ESTADOS_COBRO).filter(([k]) => k !== 'anulado').map(([k, v]) => `<span><i style="background:${v.color}"></i>${v.label}</span>`).join('')}
+    </div>
+  </div>
+  ${sinFecha.length ? `<div class="card"><h2 style="font-size:14px;margin-bottom:8px">Sin fecha de cobro (${sinFecha.length})</h2>
+    <p class="muted" style="margin-bottom:8px">Todo pedido tiene que tener fecha prevista de cobro. Estos todavía no la tienen.</p>
+    <table class="grid"><tbody>${sinFecha.map(r => `<tr data-id="${r.id}">
+      <td>${esc(r.cliente_nombre)}</td><td class="num">${money(r.saldo)}</td>
+      <td><button class="btn sm" data-edit="${r.id}">Poner fecha</button></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+  $('#ccprev').onclick = () => { calCobroMes = new Date(y, m - 1, 1); render('calcobros'); };
+  $('#ccnext').onclick = () => { calCobroMes = new Date(y, m + 1, 1); render('calcobros'); };
+  pane.querySelectorAll('.ev').forEach(e => e.onclick = () => cuentaModal(receivables.find(r => r.id === e.dataset.id)));
+  pane.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => cuentaModal(receivables.find(r => r.id === b.dataset.edit)));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GASTOS
+   ══════════════════════════════════════════════════════════════════════ */
+let gastoFrom = today().slice(0, 8) + '01', gastoTo = today(), gastoCat = '';
+let proveedoresCache = null, cargasCache = null;
+async function catalogosGasto() {
+  if (!proveedoresCache) proveedoresCache = await data.listSuppliers().catch(() => []);
+  if (!cargasCache) cargasCache = await data.listPayrollCharges().catch(() => []);
+  return { proveedores: proveedoresCache, cargas: cargasCache };
+}
+async function renderGastos() {
+  const [gastos, { proveedores }] = await Promise.all([
+    data.listExpenses({ from: gastoFrom, to: gastoTo, categoria: gastoCat || undefined }),
+    catalogosGasto(),
+  ]);
+  const porCat = {};
+  gastos.forEach(g => { porCat[g.categoria] = (porCat[g.categoria] || 0) + n(g.monto); });
+  const total = gastos.reduce((s, g) => s + n(g.monto), 0);
+  pane.innerHTML = `<div class="card">
+    <div class="toolbar">
+      <label class="muted">Desde</label><input type="date" id="gf" value="${gastoFrom}">
+      <label class="muted">Hasta</label><input type="date" id="gt" value="${gastoTo}">
+      <select id="gc" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font:inherit">
+        <option value="">Todas las categorías</option>
+        ${data.CATEGORIAS_GASTO.map(c => `<option value="${c}" ${c === gastoCat ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+      <button class="btn sm" id="gfilter">Filtrar</button>
+      <button class="btn primary" id="gAdd" style="margin-left:auto">+ Gasto</button>
+    </div>
+    <div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Total del período</span><b>${money(total)}</b></div>
+      ${Object.entries(porCat).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `<div class="kpi" style="background:#1F1F1F"><span>${esc(k)}</span><b style="font-size:19px">${money(v)}</b></div>`).join('')}</div>
+    <div style="overflow-x:auto"><table class="grid"><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th>
+      <th>Proveedor</th><th>Cómo se pagó</th><th class="num">Monto</th><th></th></tr></thead>
+      <tbody>${gastos.map(g => `<tr data-id="${g.id}">
+        <td>${esc(g.fecha)}</td><td>${esc(g.categoria)}</td>
+        <td>${esc(g.descripcion || '')}${g.purchase_order_id ? ` <a href="/compras.html" class="muted">${esc(g.purchase_order_id)}</a>` : ''}</td>
+        <td>${esc((proveedores.find(p => p.id === g.supplier_id) || {}).nombre || '—')}</td>
+        <td>${esc({ organizacion: 'Organización', funcionario_reintegro: 'Funcionario (a reintegrar)', cuenta_corriente: 'Cuenta corriente' }[g.forma_pago] || g.forma_pago)}
+          ${g.estado_reintegro === 'pendiente' ? '<span class="pay pay-NO">pendiente</span>' : ''}</td>
+        <td class="num">${money(g.monto)}</td>
+        <td><button class="btn sm" data-del="${g.id}">✕</button></td>
+      </tr>`).join('') || '<tr><td colspan="7" class="muted">Sin gastos en el período.</td></tr>'}
+      </tbody></table></div></div>`;
+  $('#gfilter').onclick = () => { gastoFrom = $('#gf').value; gastoTo = $('#gt').value; gastoCat = $('#gc').value; render('gastos'); };
+  $('#gAdd').onclick = () => gastoModal();
+  pane.querySelectorAll('[data-del]').forEach(b => b.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (!confirm('¿Eliminar el gasto?')) return;
+    try { await data.deleteExpense(b.dataset.del); toast('Eliminado'); render('gastos'); }
+    catch (e) { fail(e, 'No se pudo eliminar'); }
+  });
+}
+async function gastoModal() {
+  const { proveedores, cargas } = await catalogosGasto();
+  const pctCargas = cargas.filter(c => c.activo).reduce((s, c) => s + n(c.porcentaje), 0);
+  $('#modal').innerHTML = `<h2>Nuevo gasto</h2>
+    <div class="fg"><label>Categoría</label><select id="g-cat">${data.CATEGORIAS_GASTO.map(c => `<option>${c}</option>`).join('')}</select></div>
+    <div class="fg"><label>Fecha</label><input id="g-fecha" type="date" value="${today()}"></div>
+    <div class="fg"><label>Descripción</label><input id="g-desc" placeholder="Detalle del gasto"></div>
+    <div id="g-sueldo" style="display:none">
+      <div class="fg"><label>Salario nominal</label><input id="g-nominal" type="number" value="0"></div>
+      <div class="fg"><label>Período</label><input id="g-periodo" type="month" value="${today().slice(0, 7)}"></div>
+      <div class="muted" style="margin-bottom:10px">Cargas configuradas: <b>${pctCargas.toFixed(2)}%</b> (se editan en Administración).
+        El monto total del gasto se calcula como nominal + cargas.</div>
+    </div>
+    <div class="fg" id="g-montowrap"><label>Monto $</label><input id="g-monto" type="number" value="0"></div>
+    <div class="fg"><label>Proveedor</label><select id="g-prov"><option value="">— sin proveedor —</option>
+      ${proveedores.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select></div>
+    <div class="fg"><label>Cómo fue pagado</label><select id="g-forma">
+      ${data.FORMAS_PAGO_GASTO.map(f => `<option value="${f.key}">${f.label}</option>`).join('')}</select></div>
+    <div class="fg" id="g-funcwrap" style="display:none"><label>Funcionario que lo pagó</label><input id="g-func" placeholder="Nombre"></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn primary" id="g-save">Guardar</button>
+      <button class="btn sm" id="g-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  const sync = () => {
+    const esSueldo = $('#g-cat').value === 'Sueldos';
+    $('#g-sueldo').style.display = esSueldo ? 'block' : 'none';
+    $('#g-funcwrap').style.display = $('#g-forma').value === 'funcionario_reintegro' ? 'block' : 'none';
+    if (esSueldo) $('#g-monto').value = Math.round(n($('#g-nominal').value) * (1 + pctCargas / 100));
+  };
+  $('#g-cat').onchange = sync; $('#g-forma').onchange = sync;
+  $('#g-cancel').onclick = () => $('#ov').classList.remove('show');
+  setTimeout(() => { const el = $('#g-nominal'); if (el) el.oninput = sync; }, 0);
+  $('#g-save').onclick = async () => {
+    const monto = n($('#g-monto').value);
+    if (monto <= 0) { toast('El monto tiene que ser mayor a 0'); return; }
+    const btn = $('#g-save'); btn.disabled = true;
+    try {
+      const esSueldo = $('#g-cat').value === 'Sueldos';
+      await data.saveExpense({
+        fecha: $('#g-fecha').value || today(), categoria: $('#g-cat').value,
+        descripcion: $('#g-desc').value || null, monto,
+        supplier_id: $('#g-prov').value || null, forma_pago: $('#g-forma').value,
+        pagado_por_nombre: $('#g-forma').value === 'funcionario_reintegro' ? ($('#g-func').value || null) : null,
+        es_sueldo: esSueldo,
+        salario_nominal: esSueldo ? n($('#g-nominal').value) : null,
+        cargas_sociales: esSueldo ? monto - n($('#g-nominal').value) : null,
+        periodo: esSueldo ? $('#g-periodo').value : null,
+      });
+      $('#ov').classList.remove('show'); toast('Gasto registrado'); render('gastos');
+    } catch (e) { fail(e, 'No se pudo guardar'); btn.disabled = false; }
+  };
+}
+
+/* ── Reintegros a funcionarios ── */
+async function renderReintegros() {
+  const gastos = await data.listExpenses();
+  const pend = gastos.filter(g => g.forma_pago === 'funcionario_reintegro' && g.estado_reintegro === 'pendiente');
+  const hechos = gastos.filter(g => g.forma_pago === 'funcionario_reintegro' && g.estado_reintegro === 'reintegrado');
+  pane.innerHTML = `
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi" style="background:${pend.length ? '#A33A3A' : '#0A0A0A'}"><span>Pendientes de reintegro</span><b>${money(pend.reduce((s, g) => s + n(g.monto), 0))}</b></div>
+      <div class="kpi"><span>Casos pendientes</span><b>${pend.length}</b></div>
+      <div class="kpi"><span>Ya reintegrado</span><b>${money(hechos.reduce((s, g) => s + n(g.monto), 0))}</b></div>
+    </div>
+    <div class="card"><h2 style="font-size:14px;margin-bottom:10px">Pendientes</h2>
+      <table class="grid"><thead><tr><th>Fecha</th><th>Funcionario</th><th>Concepto</th><th class="num">Importe</th><th></th></tr></thead>
+      <tbody>${pend.map(g => `<tr><td>${esc(g.fecha)}</td><td>${esc(g.pagado_por_nombre || '—')}</td>
+        <td>${esc(g.descripcion || g.categoria)}</td><td class="num">${money(g.monto)}</td>
+        <td><button class="btn sm green" data-ok="${g.id}">Marcar reintegrado</button></td></tr>`).join('')
+        || '<tr><td colspan="5" class="muted">No hay reintegros pendientes.</td></tr>'}</tbody></table></div>
+    <div class="card"><h2 style="font-size:14px;margin-bottom:10px">Reintegrados</h2>
+      <table class="grid"><thead><tr><th>Fecha del gasto</th><th>Funcionario</th><th>Concepto</th><th class="num">Importe</th><th>Reintegrado el</th></tr></thead>
+      <tbody>${hechos.map(g => `<tr><td>${esc(g.fecha)}</td><td>${esc(g.pagado_por_nombre || '—')}</td>
+        <td>${esc(g.descripcion || g.categoria)}</td><td class="num">${money(g.monto)}</td>
+        <td>${esc(g.fecha_reintegro || '—')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Sin registros.</td></tr>'}</tbody></table></div>`;
+  pane.querySelectorAll('[data-ok]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try {
+      await data.saveExpense({ id: b.dataset.ok, estado_reintegro: 'reintegrado', fecha_reintegro: today() });
+      toast('Reintegro registrado'); render('reintegros');
+    } catch (e) { fail(e, 'No se pudo registrar'); b.disabled = false; }
+  });
+}
+
+/* ── Cuenta corriente con proveedores ── */
+async function renderCtaCte() {
+  const proveedores = await data.listSuppliers({ incluirInactivos: true });
+  const conSaldo = proveedores.filter(p => Math.abs(n(p.saldo)) > 0.01);
+  pane.innerHTML = `
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi"><span>Deuda total con proveedores</span><b>${money(conSaldo.reduce((s, p) => s + n(p.saldo), 0))}</b></div>
+      <div class="kpi"><span>Proveedores con saldo</span><b>${conSaldo.length}</b></div>
+    </div>
+    <div class="card"><h2 style="font-size:14px;margin-bottom:10px">Saldos</h2>
+      <table class="grid"><thead><tr><th>Proveedor</th><th>Condiciones</th><th class="num">Saldo</th><th></th></tr></thead>
+      <tbody>${proveedores.map(p => `<tr>
+        <td><b>${esc(p.nombre)}</b></td><td>${esc(p.condiciones_pago || '—')}</td>
+        <td class="num" style="${n(p.saldo) > 0 ? 'color:#A33A3A;font-weight:700' : ''}">${money(p.saldo)}</td>
+        <td><button class="btn sm" data-ver="${p.id}">Movimientos</button>
+          ${n(p.saldo) > 0 ? `<button class="btn sm green" data-pagar="${p.id}">Registrar pago</button>` : ''}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="muted">No hay proveedores.</td></tr>'}</tbody></table></div>
+    <div id="ledger"></div>`;
+  pane.querySelectorAll('[data-ver]').forEach(b => b.onclick = async () => {
+    const movs = await data.listSupplierLedger(b.dataset.ver);
+    const p = proveedores.find(x => x.id === b.dataset.ver);
+    $('#ledger').innerHTML = `<div class="card"><h2 style="font-size:14px;margin-bottom:10px">Movimientos · ${esc(p.nombre)}</h2>
+      <table class="grid"><thead><tr><th>Fecha</th><th>Tipo</th><th>Referencia</th><th>Notas</th><th class="num">Monto</th></tr></thead>
+      <tbody>${movs.map(m => `<tr><td>${esc(m.fecha)}</td>
+        <td>${m.tipo === 'cargo' ? 'Compra a crédito' : 'Pago'}</td>
+        <td>${esc(m.purchase_order_id || '—')}</td><td class="muted">${esc(m.notas || '')}</td>
+        <td class="num" style="color:${m.tipo === 'cargo' ? '#A33A3A' : '#1F6B45'}">${m.tipo === 'cargo' ? '+' : '−'} ${money(m.monto)}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="muted">Sin movimientos.</td></tr>'}</tbody></table></div>`;
+  });
+  pane.querySelectorAll('[data-pagar]').forEach(b => b.onclick = () => {
+    const p = proveedores.find(x => x.id === b.dataset.pagar);
+    $('#modal').innerHTML = `<h2>Pago a ${esc(p.nombre)}</h2>
+      <div class="muted" style="margin-bottom:10px">Saldo actual: ${money(p.saldo)}</div>
+      <div class="fg"><label>Monto</label><input id="sp-monto" type="number" value="${Math.round(n(p.saldo))}"></div>
+      <div class="fg"><label>Fecha</label><input id="sp-fecha" type="date" value="${today()}"></div>
+      <div class="fg"><label>Método</label><select id="sp-metodo"><option>Efectivo</option><option>Transferencia</option></select></div>
+      <div class="fg"><label>Notas</label><input id="sp-notas"></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn green" id="sp-save">Registrar pago</button>
+        <button class="btn sm" id="sp-cancel" style="margin-left:auto">Cancelar</button></div>`;
+    $('#ov').classList.add('show');
+    $('#sp-cancel').onclick = () => $('#ov').classList.remove('show');
+    $('#sp-save').onclick = async () => {
+      const monto = n($('#sp-monto').value);
+      if (monto <= 0) { toast('Monto inválido'); return; }
+      const btn = $('#sp-save'); btn.disabled = true;
+      try {
+        await data.addSupplierLedger({ supplier_id: p.id, tipo: 'pago', monto, fecha: $('#sp-fecha').value, metodo: $('#sp-metodo').value, notas: $('#sp-notas').value || null });
+        await data.registerCashMovement({ tipo: 'egreso', categoria: 'compra_materiales', monto, metodo: $('#sp-metodo').value, fecha: $('#sp-fecha').value, descripcion: 'Pago a ' + p.nombre });
+        $('#ov').classList.remove('show'); toast('Pago registrado'); render('ctacte');
+      } catch (e) { fail(e, 'No se pudo registrar'); btn.disabled = false; }
+    };
+  });
+}
+
+/* ── Activos y amortización lineal ── */
+async function renderActivos() {
+  const assets = await data.listAssets();
+  const tot = assets.reduce((a, x) => {
+    if (x.estado === 'activo') { a.costo += n(x.costo); a.acum += n(x.amortizacion_acumulada); a.contable += n(x.valor_contable); a.mensual += n(x.amortizacion_mensual); }
+    return a;
+  }, { costo: 0, acum: 0, contable: 0, mensual: 0 });
+  pane.innerHTML = `
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi"><span>Costo de los activos</span><b>${money(tot.costo)}</b></div>
+      <div class="kpi"><span>Amortización acumulada</span><b>${money(tot.acum)}</b></div>
+      <div class="kpi"><span>Valor contable</span><b>${money(tot.contable)}</b></div>
+      <div class="kpi"><span>Amortización mensual</span><b>${money(tot.mensual)}</b></div>
+    </div>
+    <div class="card">
+      <div class="toolbar"><h2 style="font-size:14px;margin:0">Activos (${assets.length})</h2>
+        <button class="btn primary" id="aAdd" style="margin-left:auto">+ Activo</button></div>
+      <div style="overflow-x:auto"><table class="grid"><thead><tr><th>Nombre</th><th>Categoría</th><th>Compra</th>
+        <th class="num">Costo</th><th class="num">Vida útil</th><th class="num">Residual</th>
+        <th class="num">Amort./mes</th><th class="num">Acumulada</th><th class="num">Valor contable</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${assets.map(a => `<tr data-id="${a.id}">
+          <td><b>${esc(a.nombre)}</b></td><td>${esc(a.categoria || '—')}</td><td>${esc(a.fecha_compra)}</td>
+          <td class="num">${money(a.costo)}</td><td class="num">${a.vida_util_meses} m</td>
+          <td class="num">${money(a.valor_residual)}</td>
+          <td class="num">${money(a.amortizacion_mensual)}</td><td class="num">${money(a.amortizacion_acumulada)}</td>
+          <td class="num"><b>${money(a.valor_contable)}</b></td><td>${esc(a.estado)}</td>
+          <td><button class="btn sm" data-adel="${a.id}">✕</button></td>
+        </tr>`).join('') || '<tr><td colspan="11" class="muted">Sin activos cargados.</td></tr>'}</tbody></table></div>
+      <p class="muted" style="margin-top:10px">Amortización lineal: (costo − valor residual) ÷ vida útil en meses.
+        El gasto por amortización se imputa al Estado de Resultados del Dashboard.</p>
+    </div>`;
+  $('#aAdd').onclick = () => activoModal();
+  pane.querySelectorAll('[data-adel]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Eliminar el activo?')) return;
+    try { await data.deleteAsset(b.dataset.adel); toast('Eliminado'); render('activos'); }
+    catch (e) { fail(e, 'No se pudo eliminar'); }
+  });
+}
+function activoModal() {
+  $('#modal').innerHTML = `<h2>Nuevo activo</h2>
+    <div class="fg"><label>Nombre</label><input id="a-nombre" placeholder="Soldadora MIG"></div>
+    <div class="fg"><label>Categoría</label><input id="a-cat" placeholder="Maquinaria, herramientas, vehículos…"></div>
+    <div class="fg"><label>Fecha de compra</label><input id="a-fecha" type="date" value="${today()}"></div>
+    <div class="fg"><label>Costo</label><input id="a-costo" type="number" value="0"></div>
+    <div class="fg"><label>Vida útil (meses)</label><input id="a-vida" type="number" value="60"></div>
+    <div class="fg"><label>Valor residual</label><input id="a-res" type="number" value="0"></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn primary" id="a-save">Guardar</button>
+      <button class="btn sm" id="a-cancel" style="margin-left:auto">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#a-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#a-save').onclick = async () => {
+    if (!$('#a-nombre').value.trim()) { toast('Falta el nombre'); return; }
+    const btn = $('#a-save'); btn.disabled = true;
+    try {
+      await data.upsertAsset({
+        nombre: $('#a-nombre').value.trim(), categoria: $('#a-cat').value || null,
+        fecha_compra: $('#a-fecha').value || today(), costo: n($('#a-costo').value),
+        vida_util_meses: parseInt($('#a-vida').value, 10) || 60, valor_residual: n($('#a-res').value),
+        metodo: 'lineal', estado: 'activo',
+      });
+      $('#ov').classList.remove('show'); toast('Activo guardado'); render('activos');
+    } catch (e) { fail(e, 'No se pudo guardar'); btn.disabled = false; }
+  };
+}
+
 $('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
 </script>
 </body>

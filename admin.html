@@ -19,8 +19,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: var(--tinta);
   background: var(--bg); font-size: 14px; line-height: 1.45; min-height: 100vh; }
-.container { max-width: 980px; margin: 0 auto; padding: 16px; }
-h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 12px 0; }
+.container { max-width: 1040px; margin: 0 auto; padding: 16px 16px 60px; }
+h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 12px 0; font-family: 'Raleway'; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
 .subtitle { font-size: 13px; color: var(--tinta-2); margin-top: 2px; }
 .tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
@@ -34,29 +34,33 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
   font-size: 13px; font-weight: 600; cursor: pointer; }
 .btn:hover { background: var(--surface-2); }
 .btn.primary { background: var(--azul); color: #fff; border-color: var(--azul); }
-.btn.primary:hover { background: var(--azul-d); }
 .btn.danger { background: var(--rojo); color: #fff; border-color: var(--rojo); }
 .btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: .55; cursor: default; }
 .fg { margin-bottom: 10px; }
 .label { font-size: 11px; font-weight: 600; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
 input, textarea, select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
   font-size: 14px; font-family: inherit; color: var(--tinta); background: #fff; }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 0, 0,0.12); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0,0,0,0.12); }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 @media (max-width: 600px) { .row2, .row3 { grid-template-columns: 1fr; } }
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl th { text-align: left; padding: 8px 10px; color: var(--tinta-2); font-weight: 600;
   border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
-.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.tbl td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
 .tbl tr:last-child td { border-bottom: none; }
 .tbl .inactive { opacity: 0.5; }
+.tbl input, .tbl select { padding: 5px 7px; font-size: 13px; border-color: transparent; background: transparent; }
+.tbl input:focus, .tbl select:focus { border-color: var(--azul); background: #fff; }
+.tbl td.num, .tbl th.num { text-align: right; } .tbl td.num input { text-align: right; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--tinta-2); }
 .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
 .alert.err { background: var(--err-bg); color: var(--err-text); border-left: 3px solid #A32D2D; }
 .alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
 .alert.info { background: #EFEFEF; color: #222222; border-left: 3px solid var(--azul); }
 .empty { padding: 30px 20px; text-align: center; color: var(--tinta-3); }
+code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -65,12 +69,14 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 
 <div class="container">
   <h1>Administración</h1>
-  <p class="subtitle">Gestión de talleres, etapas, campos y usuarios. (Las modificaciones avanzadas se hacen desde el panel de Supabase.)</p>
+  <p class="subtitle">Operarios, cargas sociales, impacto social, etapas del kanban y usuarios.</p>
 
   <div id="msg"></div>
 
   <div class="tab-bar">
-    <button data-t="workshops" class="active">Talleres</button>
+    <button data-t="operarios" class="active">Operarios</button>
+    <button data-t="cargas">Cargas sociales</button>
+    <button data-t="impacto">Impacto social</button>
     <button data-t="stages">Etapas Kanban</button>
     <button data-t="fields">Campos personalizados</button>
     <button data-t="users">Usuarios</button>
@@ -80,260 +86,303 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAdmin } from './js/auth.js?v=3';
-import { getSupa } from './js/supa.js?v=3';
-import { listWorkshops, createWorkshop, updateWorkshop, deactivateWorkshop } from './js/workshops.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAdmin } from './js/auth.js?v=5';
+import { getSupa, api } from './js/supa.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n } from './js/quote-engine.js?v=5';
 
 const $ = id => document.getElementById(id);
-const esc = s => (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc = s => (s ?? '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-UY', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
 
-const state = {
-  tab: 'workshops',
-  workshops: [],
-  stages: [],
-  fields: [],
-  users: [],
-  editingId: null,
-  msg: null,
-};
+const state = { tab: 'operarios', operarios: [], cargas: [], impacto: [], stages: [], fields: [], users: [], msg: null };
 
-function showError(t) { state.msg = { kind: 'err', text: t }; render(); }
-function showOk(t) { state.msg = { kind: 'ok', text: t }; render(); setTimeout(() => { state.msg = null; render(); }, 2500); }
+function showError(t) { state.msg = { kind: 'err', text: t }; pintarMsg(); }
+function showOk(t) { state.msg = { kind: 'ok', text: t }; pintarMsg(); setTimeout(() => { state.msg = null; pintarMsg(); }, 2800); }
+function pintarMsg() { $('msg').innerHTML = state.msg ? `<div class="alert ${state.msg.kind}">${esc(state.msg.text)}</div>` : ''; }
 
 async function load() {
+  $('content').innerHTML = '<div class="empty">Cargando…</div>';
   try {
     const supa = getSupa();
-    if (state.tab === 'workshops') state.workshops = await listWorkshops();
-    if (state.tab === 'stages') {
-      const { data } = await supa.from('kanban_stages').select('*').order('display_order');
-      state.stages = data || [];
-    }
-    if (state.tab === 'fields') {
-      const { data } = await supa.from('custom_fields').select('*').order('applies_to, display_order');
-      state.fields = data || [];
-    }
-    if (state.tab === 'users') {
-      const { data } = await supa.from('user_profiles').select('*').order('full_name');
-      state.users = data || [];
-    }
+    if (state.tab === 'operarios') state.operarios = await data.listOperators({ incluirInactivos: true });
+    if (state.tab === 'cargas')    state.cargas = await data.listPayrollCharges();
+    if (state.tab === 'impacto')   state.impacto = await data.listSocialImpact();
+    if (state.tab === 'stages')  { const { data: d } = await supa.from('kanban_stages').select('*').order('display_order'); state.stages = d || []; }
+    if (state.tab === 'fields')  { const { data: d } = await supa.from('custom_fields').select('*').order('display_order'); state.fields = d || []; }
+    if (state.tab === 'users')   { const { data: d } = await supa.from('user_profiles').select('*').order('full_name'); state.users = d || []; }
   } catch (e) {
-    showError('Error al cargar: ' + e.message);
+    $('content').innerHTML = `<div class="alert err">No se pudo cargar: ${esc(e.message || e)}
+      <button class="btn sm" style="margin-left:10px" onclick="location.reload()">Reintentar</button></div>`;
+    return;
   }
   render();
 }
 
 document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
   state.tab = b.dataset.t;
-  state.editingId = null;
   document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('active', x.dataset.t === state.tab));
   load();
 });
 
-function renderWorkshops() {
-  if (state.editingId === 'new' || (state.editingId && state.editingId !== null)) {
-    const w = state.editingId === 'new' ? {} : state.workshops.find(x => x.id === state.editingId);
-    return `
-      <div class="card">
-        <h2>${state.editingId === 'new' ? 'Nuevo taller' : 'Editar taller'}</h2>
-        <div class="row2">
-          <div class="fg"><label class="label">Nombre *</label><input id="w_name" value="${esc(w.name)}" /></div>
-          <div class="fg"><label class="label">Contacto</label><input id="w_contact" value="${esc(w.contact_name)}" /></div>
-        </div>
-        <div class="row2">
-          <div class="fg"><label class="label">Teléfono</label><input id="w_phone" value="${esc(w.contact_phone)}" /></div>
-          <div class="fg"><label class="label">Email</label><input id="w_email" value="${esc(w.contact_email)}" /></div>
-        </div>
-        <div class="fg">
-          <label class="label">Técnicas (separadas por coma)</label>
-          <input id="w_tec" value="${esc((w.tecnicas || []).join(', '))}" placeholder="bordado, estampado, sublimación" />
-        </div>
-        <div class="fg"><label class="label">Notas</label><textarea id="w_notes">${esc(w.notes)}</textarea></div>
-        ${state.editingId === 'new' ? `
-          <div class="fg">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
-              <input type="checkbox" id="w_odoo" style="width:auto" /> Sincronizar como proveedor en Odoo
-            </label>
-          </div>
-        ` : (w.odoo_partner_id ? `<div class="alert info" style="margin-top:6px;">Sincronizado con Odoo · partner #${w.odoo_partner_id}</div>` : '')}
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn primary" id="btnSaveW">Guardar</button>
-          <button class="btn" id="btnCancelW">Cancelar</button>
-          ${state.editingId !== 'new' && w.active !== false ? `<button class="btn danger" id="btnDeactW">Desactivar</button>` : ''}
-        </div>
-      </div>
-    `;
-  }
+/* ───────── Operarios ─────────
+   Quiénes trabajan en el taller y cuánto cuesta su hora. De acá salen los
+   responsables de cada subtarea y el costo real de mano de obra. */
+function renderOperarios() {
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <h2>Talleres (${state.workshops.length})</h2>
-      <button class="btn primary" id="btnNewW">+ Nuevo taller</button>
+      <h2>Operarios (${state.operarios.filter(o => o.activo).length} activos)</h2>
+      <button class="btn primary" id="btnNewOp">+ Operario</button>
     </div>
-    <div class="card" style="padding:0;">
-      ${state.workshops.length ? `
-        <table class="tbl">
-          <thead><tr><th>Nombre</th><th>Técnicas</th><th>Contacto</th><th>Odoo</th><th></th></tr></thead>
-          <tbody>
-            ${state.workshops.map(w => `
-              <tr class="${!w.active ? 'inactive' : ''}">
-                <td><strong>${esc(w.name)}</strong></td>
-                <td>${(w.tecnicas || []).map(t => `<span class="badge">${esc(t)}</span>`).join(' ') || '—'}</td>
-                <td style="font-size:12px;">${esc(w.contact_phone)} ${w.contact_email ? '· ' + esc(w.contact_email) : ''}</td>
-                <td>${w.odoo_partner_id ? `<span class="badge" style="background:var(--ok-bg);color:var(--ok-text);">#${w.odoo_partner_id}</span>` : '—'}</td>
-                <td style="text-align:right;"><button class="btn sm" data-edit="${w.id}">Editar</button></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      ` : '<div class="empty">No hay talleres. Creá el primero con "+ Nuevo taller".</div>'}
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th style="width:26%">Nombre</th><th>Función / rol</th><th class="num" style="width:120px">Costo/hora</th>
+          <th style="width:22%">Usuario de la app</th><th style="width:130px">Actualizado</th><th style="width:70px">Activo</th><th></th></tr></thead>
+        <tbody>${state.operarios.map(o => `
+          <tr data-id="${o.id}" class="${o.activo ? '' : 'inactive'}">
+            <td><input data-f="nombre" value="${esc(o.nombre)}"></td>
+            <td><input data-f="funcion" value="${esc(o.funcion)}" placeholder="Herrero, ayudante…"></td>
+            <td class="num"><input data-f="costo_hora" type="number" step="1" value="${n(o.costo_hora)}"></td>
+            <td><select data-f="user_id"><option value="">— sin usuario —</option>
+              ${state.users.map(u => `<option value="${u.id}" ${u.id === o.user_id ? 'selected' : ''}>${esc(u.full_name || u.email)}</option>`).join('')}</select></td>
+            <td style="font-size:11px;color:var(--tinta-3)">${fechaHora(o.updated_at)}</td>
+            <td style="text-align:center"><input type="checkbox" data-f="activo" style="width:auto" ${o.activo ? 'checked' : ''}></td>
+            <td style="text-align:right"><button class="btn sm" data-del>✕</button></td>
+          </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay operarios cargados.</td></tr>'}
+        </tbody>
+      </table>
     </div>
-  `;
+    <div class="alert info">Los operarios sin usuario de la app igual pueden tener subtareas asignadas: el gerente de producción marca inicio, pausa y fin por ellos.</div>`;
+}
+function bindOperarios() {
+  $('btnNewOp').onclick = async () => {
+    try {
+      const o = await data.upsertOperator({ nombre: 'Nuevo operario', costo_hora: 0, activo: true });
+      state.operarios.unshift(o); render(); showOk('Operario creado');
+    } catch (e) { showError('No se pudo crear: ' + e.message); }
+  };
+  document.querySelectorAll('#content tbody tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {
+      const o = state.operarios.find(x => x.id === id); if (!o) return;
+      const f = el.dataset.f;
+      o[f] = f === 'activo' ? el.checked : (f === 'costo_hora' ? n(el.value) : (el.value || null));
+      try {
+        const saved = await data.upsertOperator({ id, nombre: o.nombre, funcion: o.funcion, costo_hora: n(o.costo_hora), user_id: o.user_id || null, activo: !!o.activo });
+        Object.assign(o, saved); showOk('Guardado');
+      } catch (e) { showError('No se pudo guardar: ' + e.message); }
+    });
+    tr.querySelector('[data-del]').onclick = async () => {
+      if (!confirm('¿Eliminar el operario? Si ya tiene horas registradas, mejor desactivalo.')) return;
+      try {
+        await getSupa().from('operators').delete().eq('id', id);
+        state.operarios = state.operarios.filter(x => x.id !== id); render(); showOk('Eliminado');
+      } catch (e) { showError('No se pudo eliminar (puede tener trabajo registrado): ' + e.message); }
+    };
+  });
 }
 
+/* ───────── Cargas sociales ─────────
+   Parámetros, no reglas del código: se editan acá para adaptarse a las
+   obligaciones vigentes sin tocar el frontend. */
+function renderCargas() {
+  const total = state.cargas.filter(c => c.activo).reduce((s, c) => s + n(c.porcentaje), 0);
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2>Cargas sociales y provisiones</h2>
+      <button class="btn primary" id="btnNewCarga">+ Concepto</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <table class="tbl">
+        <thead><tr><th style="width:40%">Concepto</th><th class="num" style="width:130px">% sobre nominal</th>
+          <th>Notas</th><th style="width:140px">Actualizado</th><th style="width:70px">Activo</th></tr></thead>
+        <tbody>${state.cargas.map(c => `
+          <tr data-id="${c.id}" class="${c.activo ? '' : 'inactive'}">
+            <td><input data-f="nombre" value="${esc(c.nombre)}"></td>
+            <td class="num"><input data-f="porcentaje" type="number" step="0.01" value="${n(c.porcentaje)}"></td>
+            <td><input data-f="notas" value="${esc(c.notas)}"></td>
+            <td style="font-size:11px;color:var(--tinta-3)">${fechaHora(c.updated_at)}</td>
+            <td style="text-align:center"><input type="checkbox" data-f="activo" style="width:auto" ${c.activo ? 'checked' : ''}></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="alert info">Total activo: <b>${total.toFixed(2)}%</b> sobre el salario nominal.
+      Contabilidad usa este porcentaje para calcular las cargas de cada sueldo.</div>`;
+}
+function bindCargas() {
+  $('btnNewCarga').onclick = async () => {
+    try {
+      const c = await data.upsertPayrollCharge({ nombre: 'Nuevo concepto ' + (state.cargas.length + 1), porcentaje: 0, display_order: (state.cargas.length + 1) * 10, activo: true });
+      state.cargas.push(c); render(); showOk('Concepto creado');
+    } catch (e) { showError('No se pudo crear (el nombre no puede repetirse): ' + e.message); }
+  };
+  document.querySelectorAll('#content tbody tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {
+      const c = state.cargas.find(x => x.id === id); if (!c) return;
+      const f = el.dataset.f;
+      c[f] = f === 'activo' ? el.checked : (f === 'porcentaje' ? n(el.value) : el.value);
+      try {
+        const saved = await data.upsertPayrollCharge({ id, nombre: c.nombre, porcentaje: n(c.porcentaje), notas: c.notas || null, activo: !!c.activo });
+        Object.assign(c, saved); render(); showOk('Guardado');
+      } catch (e) { showError('No se pudo guardar: ' + e.message); }
+    });
+  });
+}
+
+/* ───────── Impacto social ─────────
+   Bloque manual con histórico por fecha para poder mostrar la evolución. */
+function renderImpacto() {
+  const ultimo = state.impacto[0] || {};
+  return `
+    <div class="card">
+      <h2>Personas en la herrería</h2>
+      <p class="subtitle">De Cirene genera oportunidades de inserción laboral. Estos dos números se cargan a mano y alimentan el Dashboard.</p>
+      <div class="row3" style="margin-top:12px">
+        <div class="fg"><label class="label">Fecha del registro</label><input id="i-fecha" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label class="label">Personas que pasaron (histórico)</label><input id="i-hist" type="number" min="0" value="${n(ultimo.personas_historico)}"></div>
+        <div class="fg"><label class="label">Personas actualmente en proceso</label><input id="i-act" type="number" min="0" value="${n(ultimo.personas_actuales)}"></div>
+      </div>
+      <div class="fg"><label class="label">Notas</label><input id="i-notas" placeholder="(opcional)"></div>
+      <button class="btn primary" id="btnImpacto">Guardar registro</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="tbl">
+        <thead><tr><th>Fecha</th><th class="num">Histórico</th><th class="num">En proceso</th><th>Notas</th></tr></thead>
+        <tbody>${state.impacto.map(r => `<tr>
+          <td>${esc(r.fecha)}</td><td class="num">${r.personas_historico}</td>
+          <td class="num">${r.personas_actuales}</td><td>${esc(r.notas)}</td></tr>`).join('')
+          || '<tr><td colspan="4" class="empty">Sin registros todavía.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+function bindImpacto() {
+  $('btnImpacto').onclick = async () => {
+    const btn = $('btnImpacto'); btn.disabled = true;
+    try {
+      await data.saveSocialImpact({
+        fecha: $('i-fecha').value, personas_historico: $('i-hist').value,
+        personas_actuales: $('i-act').value, notas: $('i-notas').value,
+      });
+      state.impacto = await data.listSocialImpact();
+      render(); showOk('Registro guardado');
+    } catch (e) { showError('No se pudo guardar: ' + e.message); }
+    finally { btn.disabled = false; }
+  };
+}
+
+/* ───────── Etapas y campos (consulta) ───────── */
 function renderStages() {
   const byCat = {};
   for (const s of state.stages) (byCat[s.category] ||= []).push(s);
-  const cats = Object.keys(byCat);
-  return `
-    <div class="card">
-      <h2>Etapas del Kanban</h2>
-      <p class="subtitle">Estos estados aparecen como columnas en producción. Para editarlos (renombrar, agregar, reordenar) usá <strong>Supabase Studio</strong> → tabla <code>kanban_stages</code>.</p>
-      ${cats.map(cat => `
-        <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(cat)}</h3>
-        <table class="tbl">
-          <thead><tr><th>Key</th><th>Etiqueta</th><th>Orden</th><th>Activa</th><th>Match Asana</th></tr></thead>
-          <tbody>
-            ${byCat[cat].map(s => `
-              <tr class="${!s.active ? 'inactive' : ''}">
-                <td><code style="font-size:11px;">${esc(s.key)}</code></td>
-                <td>${esc(s.label)}</td>
-                <td>${s.display_order}</td>
-                <td>${s.active ? '✓' : '—'}</td>
-                <td style="font-size:11px;color:var(--tinta-3);">${esc(s.triggers_status) || '—'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `).join('')}
-    </div>
-  `;
+  return `<div class="card"><h2>Etapas del kanban</h2>
+    <p class="subtitle">Columnas del CRM y de Producción. Se agregan desde <code>db/schema.sql</code> para que queden versionadas.</p>
+    ${Object.keys(byCat).map(cat => `
+      <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(cat)}</h3>
+      <table class="tbl"><thead><tr><th>Key</th><th>Etiqueta</th><th class="num">Orden</th><th>Activa</th></tr></thead>
+      <tbody>${byCat[cat].map(s => `<tr class="${s.active ? '' : 'inactive'}">
+        <td><code>${esc(s.key)}</code></td><td>${esc(s.label)}</td>
+        <td class="num">${s.display_order}</td><td>${s.active ? '✓' : '—'}</td></tr>`).join('')}</tbody></table>`).join('')}
+    </div>`;
 }
-
 function renderFields() {
   const byApp = {};
   for (const f of state.fields) (byApp[f.applies_to] ||= []).push(f);
-  return `
-    <div class="card">
-      <h2>Campos personalizados</h2>
-      <p class="subtitle">Campos extra que aparecen en las tarjetas. Para editar/agregar usá <strong>Supabase Studio</strong> → tabla <code>custom_fields</code>.</p>
-      ${Object.keys(byApp).map(applies => `
-        <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(applies)}</h3>
-        <table class="tbl">
-          <thead><tr><th>Key</th><th>Etiqueta</th><th>Tipo</th><th>Opciones</th><th>Requerido</th></tr></thead>
-          <tbody>
-            ${byApp[applies].map(f => `
-              <tr class="${!f.active ? 'inactive' : ''}">
-                <td><code style="font-size:11px;">${esc(f.field_key)}</code></td>
-                <td>${esc(f.label)}</td>
-                <td><span class="badge">${esc(f.field_type)}</span></td>
-                <td style="font-size:11px;color:var(--tinta-3);">${f.options ? esc(JSON.stringify(f.options)) : '—'}</td>
-                <td>${f.required ? '✓' : '—'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `).join('')}
-    </div>
-  `;
+  const claves = Object.keys(byApp);
+  return `<div class="card"><h2>Campos personalizados</h2>
+    <p class="subtitle">Campos extra de las tarjetas. Se definen en <code>db/schema.sql</code>.</p>
+    ${claves.length ? claves.map(applies => `
+      <h3 style="margin-top:14px;font-size:13px;color:var(--tinta-2);text-transform:uppercase;letter-spacing:0.04em;">${esc(applies)}</h3>
+      <table class="tbl"><thead><tr><th>Key</th><th>Etiqueta</th><th>Tipo</th><th>Requerido</th></tr></thead>
+      <tbody>${byApp[applies].map(f => `<tr class="${f.active ? '' : 'inactive'}">
+        <td><code>${esc(f.field_key)}</code></td><td>${esc(f.label)}</td>
+        <td><span class="badge">${esc(f.field_type)}</span></td><td>${f.required ? '✓' : '—'}</td></tr>`).join('')}</tbody></table>`).join('')
+      : '<div class="empty">No hay campos personalizados definidos.</div>'}
+    </div>`;
 }
 
+/* ───────── Usuarios ─────────
+   El alta va por la API (POST /api/auth/usuarios): devuelve la contraseña
+   generada una sola vez, para entregársela a la persona. */
 function renderUsers() {
   return `
     <div class="card">
-      <h2>Usuarios (${state.users.length})</h2>
-      <p class="subtitle">Para crear usuarios nuevos: <strong>Supabase → Authentication → Users → "Add user"</strong>. Después acá podés actualizar el perfil (vendedor, rol).</p>
+      <h2>Nuevo usuario</h2>
+      <div class="row3">
+        <div class="fg"><label class="label">Email</label><input id="u-email" type="email" placeholder="nombre@decirene.uy"></div>
+        <div class="fg"><label class="label">Nombre completo</label><input id="u-nombre"></div>
+        <div class="fg"><label class="label">Rol</label><select id="u-rol">
+          <option value="comercial">Comercial</option><option value="produccion">Producción</option>
+          <option value="admin">Admin</option><option value="director">Director</option></select></div>
+      </div>
+      <button class="btn primary" id="btnNewUser">Crear usuario</button>
+      <div id="u-result"></div>
+    </div>
+    <div class="card" style="padding:0;">
       <table class="tbl">
-        <thead><tr><th>Email</th><th>Nombre</th><th>Vendedor</th><th>Rol</th><th>Activo</th></tr></thead>
-        <tbody>
-          ${state.users.length ? state.users.map(u => `
-            <tr class="${!u.active ? 'inactive' : ''}">
-              <td>${esc(u.email)}</td>
-              <td>${esc(u.full_name)}</td>
-              <td>${esc(u.vendor_name) || '—'}</td>
-              <td><span class="badge">${esc(u.role)}</span></td>
-              <td>${u.active ? '✓' : '—'}</td>
-            </tr>
-          `).join('') : '<tr><td colspan="5" class="empty">No hay perfiles. Crear desde Supabase Auth.</td></tr>'}
+        <thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th style="width:70px">Activo</th></tr></thead>
+        <tbody>${state.users.length ? state.users.map(u => `
+          <tr data-uid="${u.id}" class="${u.active ? '' : 'inactive'}">
+            <td>${esc(u.email)}</td>
+            <td><input data-f="full_name" value="${esc(u.full_name)}"></td>
+            <td><select data-f="role">
+              ${['comercial','produccion','admin','director'].map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></td>
+            <td style="text-align:center"><input type="checkbox" data-f="active" style="width:auto" ${u.active ? 'checked' : ''}></td>
+          </tr>`).join('') : '<tr><td colspan="4" class="empty">No hay usuarios.</td></tr>'}
         </tbody>
       </table>
-      <div class="alert info" style="margin-top:14px;">
-        <strong>Setup inicial</strong>: después de crear usuarios en Supabase Auth, insertar perfiles con SQL:
-        <pre style="background:var(--surface-2);padding:8px;margin-top:8px;border-radius:6px;font-size:11px;overflow-x:auto;">insert into user_profiles (id, email, full_name, vendor_name, role)
-values
-  ('uuid-de-timoteo', 'timoteo@cirene.uy', 'Timoteo Artucio', 'Timoteo Artucio', 'director'),
-  ('uuid-de-lucia',   'lucia@cirene.uy',   'Lucia Sainz',      'Lucia Sainz',      'admin'),
-  ('uuid-de-santi',   'santi@cirene.uy',   'Santiago Gurmendez','Santiago Gurmendez','vendor'),
-  ('uuid-de-tomas',   'tomas@cirene.uy',   'Tomas Casamayou', 'Tomas Casamayou', 'vendor');</pre>
-      </div>
-    </div>
-  `;
+    </div>`;
+}
+function bindUsers() {
+  $('btnNewUser').onclick = async () => {
+    const email = $('u-email').value.trim().toLowerCase();
+    if (!email) { showError('Falta el email'); return; }
+    const btn = $('btnNewUser'); btn.disabled = true;
+    try {
+      const r = await api.pedir('/auth/usuarios', {
+        method: 'POST',
+        body: JSON.stringify({ email, full_name: $('u-nombre').value.trim() || null, role: $('u-rol').value }),
+      });
+      if (r.error) throw new Error(r.error);
+      $('u-result').innerHTML = `<div class="alert ok" style="margin-top:12px">Usuario <b>${esc(r.email)}</b> creado.
+        Contraseña inicial: <code style="font-size:14px">${esc(r.password)}</code> — anotala y pasásela ahora,
+        no se vuelve a mostrar. La va a tener que cambiar al entrar.</div>`;
+      await load();
+    } catch (e) { showError('No se pudo crear: ' + e.message); }
+    finally { btn.disabled = false; }
+  };
+  document.querySelectorAll('#content tbody tr[data-uid]').forEach(tr => {
+    const id = tr.dataset.uid;
+    tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {
+      const patch = {};
+      const f = el.dataset.f;
+      patch[f] = f === 'active' ? el.checked : el.value;
+      try {
+        const { error } = await getSupa().from('user_profiles').update(patch).eq('id', id);
+        if (error) throw new Error(error.message);
+        showOk('Guardado');
+      } catch (e) { showError('No se pudo guardar: ' + e.message); }
+    });
+  });
 }
 
 function render() {
   renderNavbar('admin');
-  $('msg').innerHTML = state.msg ? `<div class="alert ${state.msg.kind}">${esc(state.msg.text)}</div>` : '';
-  if (state.tab === 'workshops') $('content').innerHTML = renderWorkshops();
-  else if (state.tab === 'stages') $('content').innerHTML = renderStages();
-  else if (state.tab === 'fields') $('content').innerHTML = renderFields();
-  else if (state.tab === 'users') $('content').innerHTML = renderUsers();
-
-  // workshop bindings
-  const newBtn = $('btnNewW');
-  if (newBtn) newBtn.onclick = () => { state.editingId = 'new'; render(); };
-  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { state.editingId = b.dataset.edit; render(); });
-  if ($('btnCancelW')) $('btnCancelW').onclick = () => { state.editingId = null; render(); };
-  if ($('btnSaveW')) $('btnSaveW').onclick = saveWorkshop;
-  if ($('btnDeactW')) $('btnDeactW').onclick = deactivateW;
+  pintarMsg();
+  if (state.tab === 'operarios') { $('content').innerHTML = renderOperarios(); bindOperarios(); }
+  else if (state.tab === 'cargas')  { $('content').innerHTML = renderCargas(); bindCargas(); }
+  else if (state.tab === 'impacto') { $('content').innerHTML = renderImpacto(); bindImpacto(); }
+  else if (state.tab === 'stages')  { $('content').innerHTML = renderStages(); }
+  else if (state.tab === 'fields')  { $('content').innerHTML = renderFields(); }
+  else if (state.tab === 'users')   { $('content').innerHTML = renderUsers(); bindUsers(); }
 }
 
-async function saveWorkshop() {
-  const fields = {
-    name: $('w_name').value.trim(),
-    contact_name: $('w_contact').value.trim() || null,
-    contact_phone: $('w_phone').value.trim() || null,
-    contact_email: $('w_email').value.trim() || null,
-    tecnicas: $('w_tec').value.split(',').map(s => s.trim()).filter(Boolean),
-    notes: $('w_notes').value.trim() || null,
-  };
-  if (!fields.name) return showError('Nombre requerido');
-  try {
-    if (state.editingId === 'new') {
-      await createWorkshop({ ...fields, syncOdoo: $('w_odoo')?.checked });
-      showOk('Taller creado');
-    } else {
-      await updateWorkshop(state.editingId, fields);
-      showOk('Taller actualizado');
-    }
-    state.editingId = null;
-    await load();
-  } catch (e) {
-    showError('Error: ' + e.message);
-  }
-}
-
-async function deactivateW() {
-  if (!confirm('Desactivar este taller? No se borra, queda inactivo.')) return;
-  try {
-    await deactivateWorkshop(state.editingId);
-    showOk('Desactivado');
-    state.editingId = null;
-    await load();
-  } catch (e) { showError(e.message); }
-}
-
-// Boot
 (async () => {
   if (!(await requireAdmin())) return;
+  // Los operarios se enlazan con usuarios: la lista de perfiles se precarga siempre.
+  try { const { data: d } = await getSupa().from('user_profiles').select('*').order('full_name'); state.users = d || []; } catch {}
   await load();
 })();
 </script>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Stock</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 80px; }
+  .tabbar { display: inline-flex; gap: 4px; background: var(--surface-3); padding: 3px; border-radius: 10px; margin-bottom: 16px; }
+  .tabbar button { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .tabbar button.active { background: #0A0A0A; color: #fff; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .kpi .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-3); font-weight: 700; }
+  .kpi .v { font-size: 23px; font-weight: 800; }
+  .kpi.alert { border-color: #A33A3A; } .kpi.alert .v { color: #A33A3A; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.grid th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  td.num, th.num { text-align: right; }
+  tr.bajo td { background: #FDF3F3; }
+  tr.falta td { background: #FBEAEA; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input[type=search], .toolbar select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .tag { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+  .tag.bajo { background: #FAEFD6; color: #8A6D1B; }
+  .tag.falta { background: #FDECEE; color: #A33A3A; }
+  .tag.ok { background: #E1F5EE; color: #1F6B45; }
+  .tag.entrada { background: #E1F5EE; color: #1F6B45; }
+  .tag.salida { background: #FDECEE; color: #A33A3A; }
+  .tag.ajuste { background: var(--surface-3); color: var(--tinta-2); }
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+  .ov.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 20px 22px; width: min(460px, 100%); }
+  .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 4px; }
+  .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .mact { display: flex; gap: 8px; margin-top: 14px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; max-width: 92vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <h1 style="font-family:'Raleway';margin-bottom:14px;">Stock</h1>
+  <div class="tabbar">
+    <button data-tab="stock" class="active">Existencias</button>
+    <button data-tab="movs">Movimientos</button>
+  </div>
+  <div id="pane"><p class="muted">Cargando…</p></div>
+</div>
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth, isAdmin } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n } from './js/quote-engine.js?v=5';
+
+const $ = s => document.querySelector(s);
+const pane = $('#pane');
+const toast = (m, err = false) => { const t = $('#toast'); t.textContent = m; t.className = 'show' + (err ? ' err' : ''); setTimeout(() => { t.className = ''; }, err ? 4200 : 1900); };
+const fail = (e, ctx) => { console.error('[stock]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let filas = [], movimientos = [], admin = false;
+
+await requireAuth();
+renderNavbar('stock');
+admin = await isAdmin().catch(() => false);
+try {
+  filas = await data.stockReport();
+} catch (e) {
+  pane.innerHTML = `<div class="kpi" style="color:#A33A3A">No se pudo cargar el stock.<br><span class="muted">${esc(e.message || e)}</span>
+    <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = async () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b));
+  if (b.dataset.tab === 'movs') await renderMovs(); else renderStock();
+});
+renderStock();
+
+/* ───────── Existencias ─────────
+   Disponible real = stock actual − comprometido en producción.
+   La "necesidad de compra" ya descuenta lo que está por llegar por una OC. */
+function renderStock(filter = '', soloAlerta = false) {
+  let rows = filas.filter(m => !filter || (m.nombre + ' ' + (m.tipo || '') + ' ' + (m.proveedor || '')).toLowerCase().includes(filter.toLowerCase()));
+  if (soloAlerta) rows = rows.filter(m => m.bajo_minimo || m.falta_para_produccion || m.necesidad_compra > 0);
+  const bajos = filas.filter(m => m.bajo_minimo).length;
+  const faltan = filas.filter(m => m.falta_para_produccion).length;
+  const aComprar = filas.filter(m => m.necesidad_compra > 0).length;
+  const valorizado = filas.reduce((s, m) => s + n(m.stock_actual) * n(m.precio_unit), 0);
+
+  pane.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">Materiales</div><div class="v">${filas.length}</div></div>
+      <div class="kpi ${bajos ? 'alert' : ''}"><div class="k">Bajo stock mínimo</div><div class="v">${bajos}</div></div>
+      <div class="kpi ${faltan ? 'alert' : ''}"><div class="k">No alcanza para producción</div><div class="v">${faltan}</div></div>
+      <div class="kpi"><div class="k">Hay que comprar</div><div class="v">${aComprar}</div></div>
+      <div class="kpi"><div class="k">Stock valorizado</div><div class="v" style="font-size:19px">${money(valorizado)}</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="sSearch" placeholder="Buscar material…" value="${esc(filter)}" style="flex:1;min-width:200px">
+      <label class="muted" style="display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="sAlerta" ${soloAlerta ? 'checked' : ''}> Solo los que necesitan atención</label>
+      <span class="muted">${rows.length} de ${filas.length}</span>
+    </div>
+    <div style="overflow-x:auto"><table class="grid"><thead><tr>
+      <th style="width:22%">Material</th><th>Unidad</th>
+      <th class="num">Stock actual</th><th class="num">Mínimo</th>
+      <th class="num">Comprometido</th><th class="num">Disponible</th>
+      <th class="num">Pendiente OC</th><th class="num">Necesita comprar</th>
+      <th>Proveedor</th><th></th>${admin ? '<th></th>' : ''}
+    </tr></thead><tbody>${rows.map(m => `
+      <tr class="${m.falta_para_produccion ? 'falta' : (m.bajo_minimo ? 'bajo' : '')}">
+        <td><b>${esc(m.nombre)}</b><div class="muted">${esc(m.tipo || '')}</div></td>
+        <td>${esc(m.unidad)}</td>
+        <td class="num">${n(m.stock_actual).toFixed(2)}</td>
+        <td class="num">${n(m.stock_minimo).toFixed(2)}</td>
+        <td class="num">${m.comprometido.toFixed(2)}</td>
+        <td class="num"><b>${m.disponible.toFixed(2)}</b></td>
+        <td class="num">${m.pendiente_oc ? m.pendiente_oc.toFixed(2) : '—'}</td>
+        <td class="num">${m.necesidad_compra ? '<b>' + m.necesidad_compra.toFixed(2) + '</b>' : '—'}</td>
+        <td>${esc(m.proveedor || '—')}</td>
+        <td>${m.falta_para_produccion ? '<span class="tag falta">falta</span>' : (m.bajo_minimo ? '<span class="tag bajo">bajo mínimo</span>' : '<span class="tag ok">ok</span>')}</td>
+        ${admin ? `<td><button class="btn sm" data-mov="${m.id}">Movimiento</button></td>` : ''}
+      </tr>`).join('') || `<tr><td colspan="${admin ? 11 : 10}" class="muted" style="padding:18px">Sin materiales que mostrar.</td></tr>`}
+    </tbody></table></div>
+    <p class="muted" style="margin-top:10px">
+      <b>Disponible</b> = stock actual − comprometido por los pedidos en producción.
+      <b>Necesita comprar</b> = lo que falta para llegar al mínimo contando lo que ya viene por una orden de compra.
+    </p>`;
+  $('#sSearch').oninput = e => renderStock(e.target.value, $('#sAlerta').checked);
+  $('#sAlerta').onchange = e => renderStock($('#sSearch').value, e.target.checked);
+  pane.querySelectorAll('[data-mov]').forEach(b => b.onclick = () => abrirMovimiento(b.dataset.mov));
+}
+
+/* ───────── Historial de movimientos ───────── */
+async function renderMovs() {
+  pane.innerHTML = '<p class="muted">Cargando movimientos…</p>';
+  try { movimientos = await data.listStockMovements({ limite: 400 }); }
+  catch (e) { pane.innerHTML = `<div class="kpi" style="color:#A33A3A">No se pudieron cargar: ${esc(e.message)}</div>`; return; }
+  const nombre = (id) => (filas.find(m => m.id === id) || {}).nombre || '—';
+  pane.innerHTML = `
+    <p class="muted" style="margin-bottom:10px">Cada entrada por compra, cada salida por producción y cada ajuste queda registrado acá.</p>
+    <table class="grid"><thead><tr><th>Fecha</th><th>Material</th><th>Tipo</th>
+      <th class="num">Cantidad</th><th class="num">Stock resultante</th><th>Motivo</th><th>Origen</th><th>Notas</th></tr></thead>
+      <tbody>${movimientos.map(m => `<tr>
+        <td>${esc(m.fecha)}</td>
+        <td>${esc(nombre(m.material_id))}</td>
+        <td><span class="tag ${esc(m.tipo)}">${esc(m.tipo)}</span></td>
+        <td class="num">${m.tipo === 'salida' ? '−' : (m.tipo === 'entrada' ? '+' : '=')}${n(m.cantidad).toFixed(2)}</td>
+        <td class="num">${m.stock_resultante === null ? '—' : n(m.stock_resultante).toFixed(2)}</td>
+        <td>${esc(m.motivo || '—')}</td>
+        <td>${m.purchase_order_id ? `<a href="/compras.html">${esc(m.purchase_order_id)}</a>` : (m.production_card_id ? `<a href="/production.html?card=${esc(m.production_card_id)}">${esc(m.production_card_id)}</a>` : '—')}</td>
+        <td class="muted">${esc(m.notas || '')}</td>
+      </tr>`).join('') || '<tr><td colspan="8" class="muted" style="padding:18px">Sin movimientos todavía.</td></tr>'}
+      </tbody></table>`;
+}
+
+/* ───────── Ajuste / movimiento manual ───────── */
+function abrirMovimiento(materialId) {
+  const m = filas.find(x => x.id === materialId); if (!m) return;
+  $('#modal').innerHTML = `
+    <h3 style="font-family:'Raleway';margin-bottom:4px">${esc(m.nombre)}</h3>
+    <p class="muted" style="margin-bottom:12px">Stock actual: <b>${n(m.stock_actual).toFixed(2)} ${esc(m.unidad)}</b></p>
+    <div class="fg"><label>Tipo de movimiento</label><select id="mv-tipo">
+      <option value="entrada">Entrada (compra, devolución)</option>
+      <option value="salida">Salida (consumo, rotura)</option>
+      <option value="ajuste">Ajuste de inventario (fijar el stock)</option>
+    </select></div>
+    <div class="fg"><label id="mv-lbl">Cantidad</label><input id="mv-cant" type="number" step="0.01" value="0"></div>
+    <div class="fg"><label>Motivo</label><input id="mv-motivo" placeholder="Recuento, rotura, compra suelta…"></div>
+    <div class="fg"><label>Fecha</label><input id="mv-fecha" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+    <div class="mact"><button class="btn primary" id="mv-save">Registrar</button><button class="btn" id="mv-cancel">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  const lbl = () => { $('#mv-lbl').textContent = $('#mv-tipo').value === 'ajuste' ? 'Stock real contado' : 'Cantidad'; };
+  $('#mv-tipo').onchange = lbl; lbl();
+  $('#mv-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#mv-save').onclick = async () => {
+    const btn = $('#mv-save'); btn.disabled = true;
+    try {
+      await data.registerStockMovement({
+        material_id: materialId, tipo: $('#mv-tipo').value, cantidad: n($('#mv-cant').value),
+        costo_unit: n(m.precio_unit), motivo: $('#mv-motivo').value || 'ajuste', fecha: $('#mv-fecha').value,
+      });
+      filas = await data.stockReport();
+      $('#ov').classList.remove('show');
+      renderStock(); toast('Movimiento registrado');
+    } catch (e) { fail(e, 'No se pudo registrar'); btn.disabled = false; }
+  };
+}
+$('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
+</script>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Dashboard</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 90px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+  .seg button { border: none; background: transparent; padding: 6px 12px; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg button.active { background: #0A0A0A; color: #fff; }
+  .rango { display: flex; gap: 6px; align-items: center; }
+  .rango input { padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; font: inherit; font-size: 12px; }
+  h2.sec { font-family: 'Raleway'; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--tinta-2); margin: 26px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #0A0A0A; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px,1fr)); gap: 12px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .kpi span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); font-weight: 700; }
+  .kpi b { font-size: 22px; font-family: 'Raleway'; display: block; line-height: 1.25; margin-top: 3px; }
+  .kpi .s { font-size: 11px; color: var(--tinta-3); }
+  .kpi.dark { background: #0A0A0A; color: #fff; } .kpi.dark span { color: rgba(255,255,255,.65); } .kpi.dark .s { color: rgba(255,255,255,.55); }
+  .kpi.pos b { color: #1F6B45; } .kpi.neg b { color: #A33A3A; }
+  .grid2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h3 { font-size: 14px; margin-bottom: 12px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th { text-align: left; padding: 6px 8px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 6px 8px; border-bottom: 1px solid var(--surface-3); }
+  td.num, th.num { text-align: right; }
+  tr.tot td { border-top: 2px solid #0A0A0A; font-weight: 800; font-size: 15px; border-bottom: none; padding-top: 10px; }
+  tr.neg td { color: #A33A3A; } tr.head td { font-weight: 700; }
+  .desv.pos { color: #A33A3A; font-weight: 700; } .desv.neg { color: #1F6B45; font-weight: 700; }
+  .bar { height: 9px; background: #0A0A0A; border-radius: 5px; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .btn { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .impacto { background: #0A0A0A; color: #fff; border-radius: 14px; padding: 20px 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 20px; }
+  .impacto .n { font-size: 40px; font-family: 'Raleway'; font-weight: 700; line-height: 1; }
+  .impacto .l { font-size: 12px; opacity: .75; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">Dashboard general</h1>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="seg" id="period">
+        <button data-p="mes" class="active">Mes actual</button>
+        <button data-p="anterior">Mes anterior</button>
+        <button data-p="anio">Año</button>
+        <button data-p="custom">Rango</button>
+      </div>
+      <div class="rango" id="rango" style="display:none">
+        <input type="date" id="r-desde"><input type="date" id="r-hasta">
+        <button class="btn" id="r-ok">Aplicar</button>
+      </div>
+    </div>
+  </div>
+  <div id="dash"><div class="card">Cargando…</div></div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAdmin } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, pct, n } from './js/quote-engine.js?v=5';
+
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let sales = [], cards = [], quotes = [], clientes = [], expenses = [], receivables = [],
+    assets = [], movimientos = [], subtareas = [], operarios = [], impacto = [], surveys = [], timeLogs = [];
+let periodo = 'mes', desde = '', hasta = '';
+
+if (!(await requireAdmin())) throw new Error('sin permisos');
+renderNavbar('dashboard');
+
+document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#period button').forEach(x => x.classList.toggle('active', x === b));
+  periodo = b.dataset.p;
+  $('#rango').style.display = periodo === 'custom' ? 'flex' : 'none';
+  if (periodo !== 'custom') render();
+});
+$('#r-ok').onclick = () => { desde = $('#r-desde').value; hasta = $('#r-hasta').value; render(); };
+
+try {
+  [sales, cards, quotes, clientes, expenses, receivables, assets, movimientos, subtareas, operarios, impacto, surveys] =
+    await Promise.all([
+      data.listSales().catch(() => []), data.listProductionCards().catch(() => []),
+      data.listQuotes().catch(() => []), data.listClients().catch(() => []),
+      data.listExpenses().catch(() => []), data.listReceivables().catch(() => []),
+      data.listAssets().catch(() => []), data.listStockMovements({ limite: 2000 }).catch(() => []),
+      data.listAllSubtasks().catch(() => []), data.listOperators({ incluirInactivos: true }).catch(() => []),
+      data.listSocialImpact().catch(() => []), data.listNpsSurveys().catch(() => []),
+    ]);
+  // Los tiempos fichados alimentan la productividad; si son muchos, se acotan.
+  const { data: tl } = await (await import('./js/supa.js?v=5')).getSupa()
+    .from('subtask_time_logs').select('*').order('started_at', { ascending: false }).limit(4000);
+  timeLogs = tl || [];
+} catch (e) {
+  $('#dash').innerHTML = `<div class="card" style="color:#A33A3A">No se pudo cargar el Dashboard.<br>
+    <span class="muted">${esc(e.message || e)}</span><br>
+    <button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+render();
+
+/* ───────── Período ───────── */
+function rango() {
+  const hoy = new Date();
+  if (periodo === 'mes') {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return { d: iso(d), h: iso(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)), etiqueta: mesLabel(d) };
+  }
+  if (periodo === 'anterior') {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    return { d: iso(d), h: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 0)), etiqueta: mesLabel(d) };
+  }
+  if (periodo === 'anio') return { d: `${hoy.getFullYear()}-01-01`, h: iso(hoy), etiqueta: 'Año ' + hoy.getFullYear() };
+  return { d: desde || iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), h: hasta || iso(hoy), etiqueta: 'Rango personalizado' };
+}
+const iso = d => d.toISOString().slice(0, 10);
+const mesLabel = d => d.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' });
+const enRango = (f, r) => !!f && f >= r.d && f <= r.h;
+// Período anterior de la misma longitud, para comparar.
+function rangoAnterior(r) {
+  const d1 = new Date(r.d + 'T00:00:00'), d2 = new Date(r.h + 'T00:00:00');
+  const dias = Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+  const h = new Date(d1); h.setDate(h.getDate() - 1);
+  const d = new Date(h); d.setDate(d.getDate() - dias + 1);
+  return { d: iso(d), h: iso(h) };
+}
+
+function render() {
+  try { pintar(); }
+  catch (e) { $('#dash').innerHTML = `<div class="card" style="color:#A33A3A">Error al mostrar: ${esc(e.message || e)}</div>`; console.error(e); }
+}
+
+function pintar() {
+  const r = rango();
+  const rAnt = rangoAnterior(r);
+
+  /* ── Ventas y cobros ── */
+  const ventasP = sales.filter(s => s.estado !== 'anulada' && enRango(s.fecha, r));
+  const facturado = ventasP.reduce((s, x) => s + n(x.monto), 0);
+  const recP = receivables.filter(x => enRango(x.fecha, r));
+  const cobrado = recP.reduce((s, x) => s + n(x.cobrado), 0);
+  const pendiente = receivables.reduce((s, x) => s + (x.estado === 'anulado' ? 0 : n(x.saldo)), 0);
+
+  /* ── Clientes ── */
+  const ventasPorCliente = {};
+  sales.filter(s => s.estado !== 'anulada').forEach(s => {
+    const k = s.client_id || ('n:' + (s.cliente_nombre || '—'));
+    ventasPorCliente[k] = (ventasPorCliente[k] || 0) + 1;
+  });
+  const clavesP = [...new Set(ventasP.map(s => s.client_id || ('n:' + (s.cliente_nombre || '—'))))];
+  const idsInternos = clientes.filter(c => c.es_interno).map(c => c.id);
+  const cli = {
+    total: clientes.length,
+    nuevos: clavesP.filter(k => ventasPorCliente[k] === 1).length,
+    recurrentes: clavesP.filter(k => ventasPorCliente[k] > 1).length,
+    internos: clientes.filter(c => c.es_interno).length,
+    internosP: clavesP.filter(k => idsInternos.includes(k)).length,
+  };
+
+  /* ── Costos: presupuestado vs real ── */
+  const cardsP = cards.filter(c => enRango((c.billing_month ? c.billing_month + '-01' : (c.created_at || '').slice(0, 10)), r) ||
+    ventasP.some(v => v.production_card_id === c.id));
+  const pvr = data.presupuestadoVsReal({ cards: cardsP, quotes, movimientos, subtareas, operarios });
+
+  /* ── Gastos del período ── */
+  const gastosP = expenses.filter(g => enRango(g.fecha, r));
+  const porCat = {};
+  gastosP.forEach(g => { porCat[g.categoria] = (porCat[g.categoria] || 0) + n(g.monto); });
+  const gastoDe = (...cats) => cats.reduce((s, c) => s + (porCat[c] || 0), 0);
+
+  /* ── Estado de resultados ── */
+  const periodoMes = r.d.slice(0, 7);
+  const amort = data.amortizacionDelMes(assets, periodoMes);
+  const er = {
+    ingresos: facturado,
+    materiales: gastoDe('Materiales') || pvr.materiales.real,
+    manoObra: pvr.manoObra.real,
+    transporte: gastoDe('Transporte') + pvr.transporte.real,
+    colocacion: pvr.colocacion.real,
+    operativos: gastoDe('Servicios', 'Mantenimiento', 'Otros'),
+    sueldos: gastoDe('Sueldos', 'Cargas sociales'),
+    amortizaciones: amort,
+  };
+  er.total = er.materiales + er.manoObra + er.transporte + er.colocacion + er.operativos + er.sueldos + er.amortizaciones;
+  er.resultado = er.ingresos - er.total;
+  er.margen = er.ingresos ? er.resultado / er.ingresos : 0;
+
+  // Mes anterior para comparar
+  const ventasAnt = sales.filter(s => s.estado !== 'anulada' && enRango(s.fecha, rAnt));
+  const factAnt = ventasAnt.reduce((s, x) => s + n(x.monto), 0);
+  const gastosAnt = expenses.filter(g => enRango(g.fecha, rAnt)).reduce((s, g) => s + n(g.monto), 0);
+  const resAnt = factAnt - gastosAnt - data.amortizacionDelMes(assets, rAnt.d.slice(0, 7));
+  const varRes = resAnt ? ((er.resultado - resAnt) / Math.abs(resAnt)) * 100 : null;
+
+  /* ── Productividad ── */
+  const logsP = timeLogs.filter(l => enRango((l.started_at || '').slice(0, 10), r));
+  // Horas pagadas: las que salen de los sueldos del período, a costo/hora del operario.
+  const costoHoraProm = operarios.filter(o => o.activo && n(o.costo_hora) > 0);
+  const promHora = costoHoraProm.length ? costoHoraProm.reduce((s, o) => s + n(o.costo_hora), 0) / costoHoraProm.length : 0;
+  const horasPagadas = promHora ? er.sueldos / promHora : 0;
+  const prod = data.productividad({ timeLogs: logsP, operarios, horasPagadas });
+
+  /* ── Horas presupuestadas vs reales ── */
+  const horasPres = cardsP.reduce((s, c) => s + n(c.horas_estimadas), 0);
+  const horasReales = cardsP.reduce((s, c) => s + n(c.horas_reales), 0);
+
+  /* ── Impacto social y NPS ── */
+  const imp = impacto[0] || { personas_historico: 0, personas_actuales: 0 };
+  const nps = data.npsMetrics(surveys);
+
+  const evolucion = ultimos12();
+
+  $('#dash').innerHTML = `
+    <p class="muted">Período: <b>${esc(r.etiqueta)}</b> · ${esc(r.d)} a ${esc(r.h)} · sin IVA</p>
+
+    <h2 class="sec">Resultado del período</h2>
+    <div class="kpis">
+      <div class="kpi dark"><span>Ventas</span><b>${money(er.ingresos)}</b><span class="s">${ventasP.length} ventas confirmadas</span></div>
+      <div class="kpi"><span>Cobrado</span><b>${money(cobrado)}</b></div>
+      <div class="kpi"><span>Pendiente de cobro</span><b>${money(pendiente)}</b><span class="s">total acumulado</span></div>
+      <div class="kpi"><span>Costos y gastos</span><b>${money(er.total)}</b></div>
+      <div class="kpi ${er.resultado >= 0 ? 'pos' : 'neg'}"><span>Resultado</span><b>${money(er.resultado)}</b>
+        <span class="s">${er.resultado >= 0 ? 'ganó' : 'perdió'} · margen ${pct(er.margen)}</span></div>
+      <div class="kpi"><span>vs. período anterior</span><b>${varRes === null ? '—' : (varRes >= 0 ? '+' : '') + varRes.toFixed(0) + '%'}</b>
+        <span class="s">antes: ${money(resAnt)}</span></div>
+    </div>
+
+    <div class="grid2" style="margin-top:16px">
+      <div class="card">
+        <h3>Estado de resultados · ${esc(r.etiqueta)}</h3>
+        <table class="grid"><tbody>
+          <tr class="head"><td>Ingresos por ventas</td><td class="num">${money(er.ingresos)}</td></tr>
+          <tr class="neg"><td>− Costos de materiales</td><td class="num">${money(er.materiales)}</td></tr>
+          <tr class="neg"><td>− Mano de obra de producción</td><td class="num">${money(er.manoObra)}</td></tr>
+          <tr class="neg"><td>− Transporte</td><td class="num">${money(er.transporte)}</td></tr>
+          <tr class="neg"><td>− Colocaciones y viáticos</td><td class="num">${money(er.colocacion)}</td></tr>
+          <tr class="neg"><td>− Gastos operativos</td><td class="num">${money(er.operativos)}</td></tr>
+          <tr class="neg"><td>− Sueldos y cargas</td><td class="num">${money(er.sueldos)}</td></tr>
+          <tr class="neg"><td>− Amortizaciones</td><td class="num">${money(er.amortizaciones)}</td></tr>
+          <tr class="tot"><td>${er.resultado >= 0 ? 'Ganancia' : 'Pérdida'} del período</td>
+            <td class="num" style="color:${er.resultado >= 0 ? '#1F6B45' : '#A33A3A'}">${money(er.resultado)}</td></tr>
+        </tbody></table>
+        <p class="muted" style="margin-top:10px">De Cirene ${er.resultado >= 0 ? '<b>ganó</b>' : '<b>perdió</b>'} dinero en este período.
+          Margen sobre ventas: ${pct(er.margen)}. No se incluye IVA.</p>
+      </div>
+      <div class="card">
+        <h3>Evolución mensual del resultado (12 meses)</h3>
+        ${barChart(evolucion.labels, evolucion.valores)}
+      </div>
+    </div>
+
+    <h2 class="sec">Presupuestado vs. real</h2>
+    <div class="card">
+      <table class="grid"><thead><tr><th>Concepto</th><th class="num">Presupuestado</th><th class="num">Real</th><th class="num">Desvío</th></tr></thead>
+        <tbody>
+          ${['materiales', 'manoObra', 'transporte', 'colocacion'].map(k => filaPVR({
+            materiales: 'Materiales', manoObra: 'Mano de obra', transporte: 'Transporte', colocacion: 'Colocación',
+          }[k], pvr[k])).join('')}
+          <tr class="tot"><td>Costo total</td>
+            <td class="num">${money(pvr.total.presupuestado)}</td>
+            <td class="num">${money(pvr.total.real)}</td>
+            <td class="num"><span class="desv ${pvr.total.desvio >= 0 ? 'pos' : 'neg'}">${pvr.total.desvio >= 0 ? '+' : ''}${money(pvr.total.desvio)}</span></td></tr>
+        </tbody></table>
+      <p class="muted" style="margin-top:10px">Presupuestado sale de la cotización (la foto del momento).
+        Real sale de los materiales efectivamente descontados del stock y de las horas fichadas en las subtareas.</p>
+    </div>
+
+    <h2 class="sec">Horas y productividad</h2>
+    <div class="kpis">
+      <div class="kpi"><span>Horas pagadas (estimadas)</span><b>${prod.horasPagadas.toFixed(1)} h</b>
+        <span class="s">sueldos ÷ costo/hora promedio</span></div>
+      <div class="kpi"><span>Horas en trabajos</span><b>${prod.horasTrabajadas.toFixed(1)} h</b><span class="s">fichadas en subtareas</span></div>
+      <div class="kpi"><span>Tiempo sin asignación</span><b>${prod.sinAsignacion.toFixed(1)} h</b></div>
+      <div class="kpi"><span>Utilización productiva</span><b>${prod.utilizacion.toFixed(1)}%</b></div>
+      <div class="kpi"><span>Horas presupuestadas</span><b>${horasPres.toFixed(1)} h</b></div>
+      <div class="kpi"><span>Horas reales</span><b>${horasReales.toFixed(1)} h</b>
+        <span class="s">${horasPres ? ((horasReales / horasPres - 1) * 100).toFixed(0) + '% vs. presupuesto' : ''}</span></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Horas por operario</h3>
+      <table class="grid"><thead><tr><th>Operario</th><th>Función</th><th class="num">Horas</th><th class="num">Costo</th></tr></thead>
+        <tbody>${prod.porOperario.filter(o => o.horas > 0).map(o => `<tr>
+          <td><b>${esc(o.nombre)}</b></td><td>${esc(o.funcion || '—')}</td>
+          <td class="num">${o.horas.toFixed(1)}</td><td class="num">${money(o.costo)}</td></tr>`).join('')
+          || '<tr><td colspan="4" class="muted">Todavía no hay horas fichadas en el período.</td></tr>'}</tbody></table>
+    </div>
+
+    <h2 class="sec">Clientes</h2>
+    <div class="kpis">
+      <div class="kpi"><span>Total de clientes</span><b>${cli.total}</b></div>
+      <div class="kpi"><span>Con venta en el período</span><b>${clavesP.length}</b></div>
+      <div class="kpi"><span>Nuevos</span><b>${cli.nuevos}</b><span class="s">primera venta</span></div>
+      <div class="kpi"><span>Recurrentes</span><b>${cli.recurrentes}</b><span class="s">más de una venta</span></div>
+      <div class="kpi"><span>Internos (CIRENEOS)</span><b>${cli.internos}</b><span class="s">${cli.internosP} con venta en el período</span></div>
+    </div>
+
+    <h2 class="sec">Impacto social</h2>
+    <div class="impacto">
+      <div><div class="n">${imp.personas_historico}</div><div class="l">Personas que pasaron por la herrería</div></div>
+      <div><div class="n">${imp.personas_actuales}</div><div class="l">Personas actualmente en proceso de inserción</div></div>
+      <div><div class="n">${nps.impactoPromedio ? nps.impactoPromedio.toFixed(1) : '—'}</div>
+        <div class="l">Valoración del impacto social por los clientes (0 a 10)</div></div>
+      <div style="align-self:center">
+        <a href="/admin.html" style="color:#fff;font-size:12px;text-decoration:underline">Actualizar estos números</a>
+        <div class="l" style="margin-top:6px">${impacto.length ? 'Último registro: ' + esc(impacto[0].fecha) : 'Sin registros todavía'}</div>
+      </div>
+    </div>
+
+    <h2 class="sec">Satisfacción de clientes</h2>
+    <div class="kpis">
+      <div class="kpi"><span>NPS</span><b>${nps.respondidas ? nps.nps : '—'}</b>
+        <span class="s">${nps.promotores} promotores · ${nps.detractores} detractores</span></div>
+      <div class="kpi"><span>Encuestas enviadas</span><b>${nps.enviadas}</b></div>
+      <div class="kpi"><span>Respuestas</span><b>${nps.respondidas}</b><span class="s">tasa ${nps.tasa.toFixed(0)}%</span></div>
+      <div class="kpi"><span>Recomendación promedio</span><b>${nps.recomendacionPromedio ? nps.recomendacionPromedio.toFixed(1) : '—'}</b></div>
+      <div class="kpi"><span>Ver detalle</span><b style="font-size:15px"><a href="/nps.html" style="color:inherit">Dashboard NPS →</a></b></div>
+    </div>`;
+}
+
+function filaPVR(label, x) {
+  return `<tr><td>${esc(label)}</td><td class="num">${money(x.presupuestado)}</td>
+    <td class="num">${money(x.real)}</td>
+    <td class="num"><span class="desv ${x.desvio >= 0 ? 'pos' : 'neg'}">${x.desvio >= 0 ? '+' : ''}${money(x.desvio)}</span></td></tr>`;
+}
+
+// Resultado mensual de los últimos 12 meses (ventas − gastos − amortización).
+function ultimos12() {
+  const labels = [], valores = [];
+  const hoy = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const mes = d.toISOString().slice(0, 7);
+    const ing = sales.filter(s => s.estado !== 'anulada' && (s.fecha || '').slice(0, 7) === mes).reduce((s, x) => s + n(x.monto), 0);
+    const gas = expenses.filter(g => (g.fecha || '').slice(0, 7) === mes).reduce((s, g) => s + n(g.monto), 0);
+    labels.push(mes.slice(5)); valores.push(ing - gas - data.amortizacionDelMes(assets, mes));
+  }
+  return { labels, valores };
+}
+function barChart(labels, vals) {
+  const W = 560, H = 200, pad = 30;
+  const max = Math.max(1, ...vals.map(Math.abs));
+  const cero = H / 2;
+  const bw = (W - 2 * pad) / labels.length;
+  const barras = vals.map((v, i) => {
+    const h = Math.abs(v) / max * (H / 2 - pad);
+    const x = pad + i * bw + bw * 0.15;
+    const y = v >= 0 ? cero - h : cero;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.7).toFixed(1)}" height="${Math.max(1, h).toFixed(1)}"
+      fill="${v >= 0 ? '#1F6B45' : '#A33A3A'}" rx="2"><title>${labels[i]}: ${money(v)}</title></rect>`;
+  }).join('');
+  const xl = labels.map((m, i) => `<text x="${(pad + i * bw + bw / 2).toFixed(1)}" y="${H - 6}" font-size="9" text-anchor="middle" fill="#9AA0A6">${m}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad}" y1="${cero}" x2="${W - pad}" y2="${cero}" stroke="#E2E2E0"/>
+    ${barras}${xl}
+    <text x="${pad}" y="14" font-size="10" fill="#9AA0A6">máx ${money(max)}</text></svg>`;
+}
+</script>
+</body>
+</html>

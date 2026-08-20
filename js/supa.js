@@ -13,7 +13,7 @@
 //   supa.storage.from('adjuntos').upload(path, file)
 //
 // Lo NO soportado (y por qué no importa): los embeds de PostgREST
-// —select('*, workshops(name)')— solo los usan módulos heredados de Glide que
+// —select('*, workshops(name)')— solo los usan módulos heredados que
 // ninguna página de Cirene importa. Si llega uno, la API devuelve todas las columnas.
 
 const API = '/api';

@@ -17,11 +17,16 @@
 
 const ADMIN = ['admin', 'director'];
 const TODOS = ['admin', 'director', 'comercial', 'produccion'];
+// El cotizador tiene que poder dar de alta un material sin salir del flujo, y ese
+// material va a la MISMA tabla del catálogo (una sola fuente de datos, sin copias).
+// Por eso comercial escribe `materials`; el resto del catálogo sigue siendo de admin.
+const MATERIALES = ['admin', 'director', 'comercial'];
 
 // leer / escribir = roles habilitados. `escribir: []` ⇒ nadie por la API.
 const TABLAS = {
   // ── Configuración ─────────────────────────────────────────────
-  materials:               { leer: TODOS, escribir: ADMIN },
+  materials:               { leer: TODOS, escribir: MATERIALES },
+  finishes:                { leer: TODOS, escribir: ADMIN },
   labor_rates:             { leer: TODOS, escribir: ADMIN },
   product_templates:       { leer: TODOS, escribir: ADMIN },
   template_material_lines: { leer: TODOS, escribir: ADMIN },
@@ -40,11 +45,39 @@ const TABLAS = {
   quotes:                      { leer: TODOS, escribir: TODOS },
   quote_lines:                 { leer: TODOS, escribir: TODOS },
   clients:                     { leer: TODOS, escribir: TODOS },
+  // Ventas confirmadas: las crea el pase a Producción desde el CRM.
+  sales:                       { leer: TODOS, escribir: TODOS },
+  // Producción: el taller trabaja sobre esto (subtareas, tiempos, planificación).
+  production_subtasks:         { leer: TODOS, escribir: TODOS },
+  subtask_time_logs:           { leer: TODOS, escribir: TODOS },
+  production_weeks:            { leer: TODOS, escribir: TODOS },
+  // Consumo de materiales y recepción de compras: producción y compras escriben.
+  stock_movements:             { leer: TODOS, escribir: TODOS },
+  notifications:               { leer: TODOS, escribir: TODOS },
+  // Encuestas: comercial las envía y registra las respuestas.
+  nps_surveys:                 { leer: TODOS, escribir: TODOS },
+
+  // ── Catálogo extendido (escribe admin) ────────────────────────
+  operators:      { leer: TODOS, escribir: ADMIN },
+  suppliers:      { leer: TODOS, escribir: ADMIN },
+  nps_options:    { leer: TODOS, escribir: ADMIN },
+  payroll_charges:{ leer: TODOS, escribir: ADMIN },
+
+  // ── Abastecimiento (compra = decisión de dirección) ───────────
+  purchase_orders:      { leer: TODOS, escribir: ADMIN },
+  purchase_order_lines: { leer: TODOS, escribir: ADMIN },
 
   // ── Contabilidad (solo admin, igual que la RLS original) ──────
   cash_sessions:  { leer: ADMIN, escribir: ADMIN },
   job_payments:   { leer: ADMIN, escribir: ADMIN },
   cash_movements: { leer: ADMIN, escribir: ADMIN },
+  // La cuenta a cobrar la crea el pase a Producción (comercial), así que necesita
+  // leerla y escribirla para no duplicarla. Los COBROS siguen siendo solo de admin.
+  receivables:    { leer: TODOS, escribir: TODOS },
+  expenses:       { leer: ADMIN, escribir: ADMIN },
+  supplier_ledger:{ leer: ADMIN, escribir: ADMIN },
+  assets:         { leer: ADMIN, escribir: ADMIN },
+  social_impact:  { leer: TODOS, escribir: ADMIN },
 
   // ── Perfiles y auditoría ──────────────────────────────────────
   // Los perfiles los lee cualquiera (la navbar muestra nombres); escribe solo admin.

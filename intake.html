@@ -14,6 +14,7 @@
   .board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
   .col { flex: 0 0 250px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-height: 120px; }
   .col.drop { border-color: #0A0A0A; box-shadow: 0 0 0 2px #0A0A0A; }
+  .col.ganado { background: #EEF7F0; border-color: #2E7D46; }
   .col h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); padding: 4px 6px 8px; display: flex; justify-content: space-between; }
   .col h3 .cnt { background: #0A0A0A; color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; }
   .lead { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; margin-bottom: 8px; cursor: grab; }
@@ -21,23 +22,35 @@
   .lead .nm { font-weight: 700; font-size: 13px; }
   .lead .ds { font-size: 11px; color: var(--tinta-3); margin: 2px 0; line-height: 1.35; max-height: 28px; overflow: hidden; }
   .lead .mt { font-size: 11px; color: var(--tinta-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .lead .cot { font-size: 11px; font-weight: 600; margin-top: 4px; display: flex; gap: 6px; align-items: center; }
+  .lead .cot .pill { border-radius: 999px; padding: 1px 8px; font-size: 10px; font-weight: 700; }
+  .pill.borrador { background: var(--surface-3); color: var(--tinta-2); }
+  .pill.hecha { background: #0A0A0A; color: #fff; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .u-baja { background: #9AA0A6; } .u-normal { background: #3A6EA5; } .u-alta { background: #C9A227; } .u-urgente { background: #A33A3A; }
   .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.win { background: #2E7D46; color: #fff; border-color: #2E7D46; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .55; cursor: default; }
   /* modal */
   .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 30px 16px; z-index: 100; overflow: auto; }
   .ov.show { display: flex; }
-  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 480px; padding: 22px 24px; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 520px; padding: 22px 24px; }
   .modal h2 { font-size: 16px; margin-bottom: 14px; }
   .fg { margin-bottom: 11px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
   .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
   .fg textarea { min-height: 64px; resize: vertical; }
+  .fg .hint { font-size: 11px; color: var(--tinta-3); font-weight: 500; text-transform: none; letter-spacing: 0; margin-top: 3px; display: block; }
+  .fg input.bad { border-color: #A33A3A; background: #FBEAEA; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .mact { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  .aviso { border-radius: 9px; padding: 9px 12px; font-size: 12px; margin-bottom: 10px; }
+  .aviso.ok { background: #EEF7F0; color: #245C36; border: 1px solid #BFE0C9; }
+  .aviso.info { background: var(--surface-2); color: var(--tinta-2); border: 1px solid var(--border); }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
 </style>
 </head>
 <body>
@@ -54,16 +67,23 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { money } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
-const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const toast = (m, err = false) => {
+  const t = $('#toast'); t.textContent = m;
+  t.className = 'show' + (err ? ' err' : '');
+  setTimeout(() => { t.className = ''; }, err ? 4200 : 1900);
+};
+const fail = (e, ctx) => { console.error('[crm]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let stages = [], cards = [], clientsList = [];
+let stages = [], cards = [], clientsList = [], quotesPorLead = {};
+let ganando = false;   // candado: mover a "Lead ganado" no puede correr dos veces
+
 $('#board').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando consultas…</div>';
 await requireAuth();
 renderNavbar('intake');
@@ -73,16 +93,23 @@ try {
   $('#board').innerHTML = `<div style="color:#A33A3A;padding:18px">No se pudo cargar el CRM.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
   throw e;
 }
-// el lead aceptado sale del board (pasó a producción)
-stages = stages.filter(s => s.key !== 'aceptado');
+await cargarCotizaciones();
 render();
 clientsList = await data.listClients().catch(() => []);
 
+// Cotización de cada lead, para mostrarla en la tarjeta sin abrirla.
+async function cargarCotizaciones() {
+  try {
+    const qs = await data.listQuotes();
+    quotesPorLead = {};
+    qs.forEach(q => { if (q.intake_card_id && !quotesPorLead[q.intake_card_id]) quotesPorLead[q.intake_card_id] = q; });
+  } catch (e) { console.warn('[crm] cotizaciones', e); }
+}
+
 function render() {
-  const visible = cards.filter(c => c.status !== 'aceptada');
   $('#board').innerHTML = stages.map(st => {
-    const cs = visible.filter(c => (c.stage_key || 'mensaje_entrante') === st.key);
-    return `<div class="col" data-stage="${st.key}">
+    const cs = cards.filter(c => (c.stage_key || 'mensaje_entrante') === st.key);
+    return `<div class="col ${st.key === 'lead_ganado' ? 'ganado' : ''}" data-stage="${st.key}">
       <h3><span>${esc(st.label)}</span><span class="cnt">${cs.length}</span></h3>
       <div class="drop-zone">${cs.map(leadHtml).join('')}</div>
     </div>`;
@@ -90,10 +117,12 @@ function render() {
   bind();
 }
 function leadHtml(c) {
+  const q = quotesPorLead[c.id];
   return `<div class="lead" draggable="true" data-id="${c.id}">
     <div class="nm">${esc(c.client_query)}</div>
     <div class="ds">${esc(c.description || '')}</div>
     <div class="mt"><span class="dot u-${c.urgency || 'normal'}"></span>${esc(c.client_phone_e164 || '')} ${c.target_date ? '· ' + c.target_date : ''}</div>
+    ${q ? `<div class="cot"><span class="pill ${q.estado === 'borrador' ? 'borrador' : 'hecha'}">${esc(q.id)}</span>${money(q.precio_venta)}</div>` : ''}
   </div>`;
 }
 function bind() {
@@ -109,19 +138,44 @@ function bind() {
       e.preventDefault(); col.classList.remove('drop');
       const id = dragId, stage = col.dataset.stage; if (!id) return;
       const c = cards.find(x => x.id === id); if (!c || c.stage_key === stage) return;
+      if (stage === 'lead_ganado') { await marcarGanado(c); return; }
+      const previo = c.stage_key;
       c.stage_key = stage; render();
-      try { await data.saveIntakeCard({ id, stage_key: stage }); } catch (err) { toast('Error al mover'); }
+      try { await data.saveIntakeCard({ id, stage_key: stage }); }
+      catch (err) { c.stage_key = previo; render(); fail(err, 'No se pudo mover'); }
     };
   });
 }
 
-/* Nueva consulta */
+/* ───────── Lead ganado ─────────
+   Confirma la cotización, registra la venta, manda el pedido a Producción y abre
+   la cuenta a cobrar. Todo idempotente: repetirlo no duplica nada. */
+async function marcarGanado(c) {
+  if (ganando) return;
+  const q = quotesPorLead[c.id];
+  if (!q || !Number(q.precio_venta)) {
+    if (!confirm('Este lead no tiene una cotización con precio. ¿Marcarlo como ganado igual?')) return;
+  } else if (!confirm(`Marcar "${c.client_query}" como GANADO.\n\nSe va a confirmar ${q.id} por ${money(q.precio_venta)}, registrar la venta, mandar el pedido a Producción y abrir la cuenta a cobrar.\n\n¿Confirmás?`)) return;
+
+  ganando = true;
+  try {
+    const r = await data.winLead(c);
+    Object.assign(c, { stage_key: 'lead_ganado', status: 'aceptada', sale_id: r.sale.id, resulting_production_card_id: r.card.id });
+    await cargarCotizaciones();
+    render(); hideModal();
+    toast(`Lead ganado · venta registrada · pedido ${r.card.id}`);
+  } catch (e) { fail(e, 'No se pudo cerrar el lead'); render(); }
+  finally { ganando = false; }
+}
+
+/* ───────── Nueva consulta ───────── */
 $('#btnNew').onclick = () => {
   $('#modal').innerHTML = `<h2>Nueva consulta</h2>
-    <div class="fg"><label>Cliente guardado</label><select id="f-clientpick"><option value="">— nuevo / manual —</option>${clientsList.map(c => `<option value="${c.id}">${esc(c.nombre)}${c.empresa ? ' · ' + esc(c.empresa) : ''}</option>`).join('')}</select></div>
+    <div class="fg"><label>Cliente guardado</label><select id="f-clientpick"><option value="">— nuevo / manual —</option>${clientsList.map(c => `<option value="${c.id}">${esc(c.nombre)}${c.telefono ? ' · ' + esc(c.telefono) : ''}</option>`).join('')}</select></div>
     <div class="fg"><label>Cliente / empresa</label><input id="f-cli" placeholder="Nombre"></div>
     <div class="row2">
-      <div class="fg"><label>Teléfono</label><input id="f-tel" placeholder="097…"></div>
+      <div class="fg"><label>Teléfono *</label><input id="f-tel" placeholder="099 123 456">
+        <span class="hint">Obligatorio. Es lo que identifica al cliente: si ya existe uno con ese número, se usa esa ficha en vez de crear otra.</span></div>
       <div class="fg"><label>Email</label><input id="f-mail"></div>
     </div>
     <div class="fg"><label>Producto / detalle</label><textarea id="f-desc" placeholder="Producto, medidas, color, terminación, lugar de instalación…"></textarea></div>
@@ -129,60 +183,103 @@ $('#btnNew').onclick = () => {
       <div class="fg"><label>Fecha objetivo</label><input id="f-fecha" type="date"></div>
       <div class="fg"><label>Urgencia</label><select id="f-urg"><option value="baja">Baja</option><option value="normal" selected>Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
     </div>
+    <div id="f-dup"></div>
     <div class="mact"><button class="btn primary" id="f-save">Crear</button><button class="btn" id="f-cancel">Cancelar</button></div>`;
   showModal();
-  $('#f-clientpick').onchange = e => { const c = clientsList.find(x => x.id === e.target.value); if (c) { $('#f-cli').value = c.nombre || ''; $('#f-tel').value = c.telefono || ''; $('#f-mail').value = c.email || ''; } };
+  $('#f-clientpick').onchange = e => {
+    const c = clientsList.find(x => x.id === e.target.value);
+    if (c) { $('#f-cli').value = c.nombre || ''; $('#f-tel').value = c.telefono || c.telefono_e164 || ''; $('#f-mail').value = c.email || ''; }
+    chequearDuplicado();
+  };
+  $('#f-tel').oninput = chequearDuplicado;
   $('#f-cancel').onclick = hideModal;
   $('#f-save').onclick = async () => {
     const cli = $('#f-cli').value.trim();
-    if (!cli) { toast('Falta el cliente'); return; }
+    const tel = $('#f-tel').value.trim();
+    const e164 = data.normalizePhoneUY(tel);
+    $('#f-tel').classList.toggle('bad', !e164);
+    if (!cli) { toast('Falta el cliente', true); return; }
+    if (!e164) { toast('El teléfono es obligatorio y tiene que ser válido', true); return; }
+    const btn = $('#f-save'); btn.disabled = true; btn.textContent = 'Creando…';
     try {
       const card = await data.createIntakeCard({
-        client_query: cli, client_phone_e164: $('#f-tel').value || null, client_email: $('#f-mail').value || null,
+        client_query: cli, client_phone_e164: e164, client_email: $('#f-mail').value || null,
         description: $('#f-desc').value || null, target_date: $('#f-fecha').value || null, urgency: $('#f-urg').value,
       });
-      cards.unshift(card); hideModal(); render(); toast('Consulta creada');
-    } catch (e) { toast('Error: ' + (e.message || e)); }
+      cards.unshift(card);
+      clientsList = await data.listClients().catch(() => clientsList);
+      await cargarCotizaciones();
+      hideModal(); render();
+      toast('Consulta creada con su cotización en borrador');
+    } catch (e) { fail(e, 'No se pudo crear'); }
+    finally { btn.disabled = false; btn.textContent = 'Crear'; }
   };
 };
+// Aviso en vivo: este teléfono ya tiene ficha de cliente.
+async function chequearDuplicado() {
+  const cont = $('#f-dup'); if (!cont) return;
+  const e164 = data.normalizePhoneUY($('#f-tel').value);
+  if (!e164) { cont.innerHTML = ''; return; }
+  const ya = clientsList.find(c => c.telefono_e164 === e164);
+  cont.innerHTML = ya
+    ? `<div class="aviso ok">Ya existe <b>${esc(ya.nombre)}</b> con ese teléfono: la consulta se va a asociar a esa ficha, no se crea un cliente nuevo.</div>`
+    : `<div class="aviso info">Teléfono normalizado: <b>${esc(e164)}</b>. Se va a crear una ficha de cliente nueva.</div>`;
+}
 
-/* Detalle del lead */
+/* ───────── Detalle del lead ───────── */
 async function openLead(id) {
   const c = cards.find(x => x.id === id); if (!c) return;
-  const quote = await data.getQuoteByIntake(id);
+  let quote = quotesPorLead[id] || null;
+  const ganado = c.stage_key === 'lead_ganado' || c.status === 'aceptada';
   $('#modal').innerHTML = `<h2>${esc(c.client_query)}</h2>
+    ${ganado ? `<div class="aviso ok">Lead ganado. ${c.resulting_production_card_id ? `Pedido <b>${esc(c.resulting_production_card_id)}</b> en Producción.` : ''}</div>` : ''}
     <div class="row2">
-      <div class="fg"><label>Teléfono</label><input id="e-tel" value="${esc(c.client_phone_e164)}"></div>
+      <div class="fg"><label>Teléfono *</label><input id="e-tel" value="${esc(c.client_phone_e164)}"></div>
       <div class="fg"><label>Email</label><input id="e-mail" value="${esc(c.client_email)}"></div>
     </div>
     <div class="fg"><label>Producto / detalle</label><textarea id="e-desc">${esc(c.description)}</textarea></div>
     <div class="row2">
       <div class="fg"><label>Fecha objetivo</label><input id="e-fecha" type="date" value="${esc(c.target_date)}"></div>
-      <div class="fg"><label>Etapa</label><select id="e-stage">${stages.concat([{key:'aceptado',label:'Aceptado'},{key:'rechazado',label:'Rechazado'}]).map(s => `<option value="${s.key}" ${c.stage_key === s.key ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></div>
+      <div class="fg"><label>Etapa</label><select id="e-stage">${stages.map(s => `<option value="${s.key}" ${c.stage_key === s.key ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></div>
     </div>
-    <div style="font-size:12px;color:var(--tinta-2);margin:4px 0">${quote ? `📄 Cotización <b>${quote.id}</b> · ${money(quote.precio_venta)}` : 'Sin cotización todavía.'}</div>
+    <div class="aviso info" id="e-cotinfo">${quote
+      ? `📄 Cotización <b>${esc(quote.id)}</b> · ${esc(quote.estado)} · ${money(quote.precio_venta)}`
+      : 'Este lead todavía no tiene cotización.'}</div>
     <div class="mact">
-      <button class="btn primary" id="e-cot">${quote ? 'Ver/editar cotización' : 'Cotizar'}</button>
+      <button class="btn primary" id="e-cot">${quote ? 'Abrir cotización' : 'Crear y abrir cotización'}</button>
       <button class="btn" id="e-save">Guardar</button>
-      <button class="btn" id="e-accept" style="background:#2E7D46;color:#fff;border-color:#2E7D46">Aceptar → Producción</button>
+      ${ganado ? `<button class="btn" id="e-ver">Ver pedido</button>` : `<button class="btn win" id="e-win">Lead ganado →</button>`}
       <button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button>
     </div>`;
   showModal();
   $('#e-close').onclick = hideModal;
-  $('#e-cot').onclick = () => { location.href = `/index.html?intake=${id}${quote ? '&quote=' + quote.id : ''}`; };
-  $('#e-save').onclick = async () => {
-    const patch = { id, client_phone_e164: $('#e-tel').value || null, client_email: $('#e-mail').value || null, description: $('#e-desc').value || null, target_date: $('#e-fecha').value || null, stage_key: $('#e-stage').value };
-    Object.assign(c, patch);
-    try { await data.saveIntakeCard(patch); hideModal(); render(); toast('Guardado'); } catch (e) { toast('Error: ' + (e.message || e)); }
-  };
-  $('#e-accept').onclick = async () => {
-    if (!quote && !confirm('No hay cotización para este lead. ¿Pasarlo a Producción igual (sin total)?')) return;
+  $('#e-cot').onclick = async () => {
+    const btn = $('#e-cot'); btn.disabled = true;
     try {
-      const pc = await data.createProductionFromIntake(c, quote);
-      c.status = 'aceptada'; hideModal(); render();
-      toast('Pasó a Producción: ' + pc.id);
-    } catch (e) { toast('Error: ' + (e.message || e)); }
+      // Siempre existe una cotización asociada: si falta, se crea en borrador.
+      if (!quote) { quote = await data.ensureDraftQuote(c); quotesPorLead[c.id] = quote; }
+      location.href = `/index.html?intake=${c.id}&quote=${quote.id}`;
+    } catch (e) { fail(e, 'No se pudo abrir la cotización'); btn.disabled = false; }
   };
+  $('#e-save').onclick = async () => {
+    const e164 = data.normalizePhoneUY($('#e-tel').value);
+    if (!e164) { toast('El teléfono es obligatorio y tiene que ser válido', true); return; }
+    const patch = { id, client_phone_e164: e164, client_email: $('#e-mail').value || null, description: $('#e-desc').value || null, target_date: $('#e-fecha').value || null, stage_key: $('#e-stage').value };
+    const btn = $('#e-save'); btn.disabled = true;
+    try {
+      if ($('#e-stage').value === 'lead_ganado' && !ganado) { await marcarGanado(c); return; }
+      // El cliente sigue la misma regla anti-duplicados que el alta.
+      const cliente = await data.ensureClient({ nombre: c.client_query, telefono: e164, email: patch.client_email });
+      patch.client_id = cliente.id;
+      await data.saveIntakeCard(patch);
+      Object.assign(c, patch);
+      clientsList = await data.listClients().catch(() => clientsList);
+      hideModal(); render(); toast('Guardado');
+    } catch (e) { fail(e, 'No se pudo guardar'); }
+    finally { btn.disabled = false; }
+  };
+  if ($('#e-win')) $('#e-win').onclick = () => marcarGanado(c);
+  if ($('#e-ver')) $('#e-ver').onclick = () => { location.href = '/production.html?card=' + c.resulting_production_card_id; };
 }
 
 function showModal() { $('#ov').classList.add('show'); }

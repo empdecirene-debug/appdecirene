@@ -1,18 +1,22 @@
 // Top navbar compartida entre las páginas de la app (intake, production, admin, etc.).
 // Llamar `renderNavbar('intake')` desde cada página al iniciar.
 
-import { getCurrentUser, getProfile, signOut } from './auth.js?v=3';
+import { getCurrentUser, getProfile, signOut } from './auth.js?v=5';
 
 const PAGES = [
-  { id: 'home',             href: '/home.html',              label: 'Inicio',     roles: 'all' },
-  { id: 'intake',           href: '/intake.html',            label: 'CRM',        roles: 'all' },
-  { id: 'clientes',         href: '/clientes.html',          label: 'Clientes',   roles: 'all' },
-  { id: 'cot',              href: '/index.html',             label: 'Cotizar',    roles: 'all' },
-  { id: 'production',       href: '/production.html',        label: 'Producción', roles: 'all' },
-  { id: 'catalog',          href: '/catalog.html',           label: 'Catálogo',   roles: 'all' },
-  { id: 'ventas',           href: '/ventas.html',            label: 'Ventas',     roles: 'all' },
-  { id: 'contabilidad',     href: '/contabilidad.html',      label: 'Contabilidad', roles: 'admin' },
-  { id: 'admin',            href: '/admin.html',             label: 'Admin',      roles: 'admin' },
+  { id: 'home',         href: '/home.html',         label: 'Inicio',       roles: 'all' },
+  { id: 'intake',       href: '/intake.html',       label: 'CRM',          roles: 'all' },
+  { id: 'clientes',     href: '/clientes.html',     label: 'Clientes',     roles: 'all' },
+  { id: 'cot',          href: '/index.html',        label: 'Cotizar',      roles: 'all' },
+  { id: 'production',   href: '/production.html',   label: 'Producción',   roles: 'all' },
+  { id: 'catalog',      href: '/catalog.html',      label: 'Catálogo',     roles: 'all' },
+  { id: 'compras',      href: '/compras.html',      label: 'Compras',      roles: 'admin' },
+  { id: 'stock',        href: '/stock.html',        label: 'Stock',        roles: 'all' },
+  { id: 'ventas',       href: '/ventas.html',       label: 'Ventas',       roles: 'all' },
+  { id: 'nps',          href: '/nps.html',          label: 'NPS',          roles: 'all' },
+  { id: 'contabilidad', href: '/contabilidad.html', label: 'Contabilidad', roles: 'admin' },
+  { id: 'dashboard',    href: '/dashboard.html',    label: 'Dashboard',    roles: 'admin' },
+  { id: 'admin',        href: '/admin.html',        label: 'Admin',        roles: 'admin' },
 ];
 
 // Lockup de marca: isotipo (mano+brote, blanco) + wordmark. El isotipo queda
@@ -28,9 +32,9 @@ const STYLE = `
 .cirene-nav .gn-mark { height: 28px; width: 28px; display: block; }
 .cirene-nav .gn-logo { display: block; color: #fff; font-family: 'Raleway','Public Sans',system-ui,sans-serif;
   font-weight: 700; font-size: 17px; letter-spacing: .14em; text-transform: uppercase; line-height: 28px; }
-.cirene-nav .gn-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.14); padding: 3px; border-radius: 10px; }
-.cirene-nav .gn-tab { padding: 6px 14px; border-radius: 7px; color: #fff; font-weight: 600; font-size: 13px;
-  text-decoration: none; transition: all .15s; }
+.cirene-nav .gn-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: rgba(255,255,255,.14); padding: 3px; border-radius: 10px; }
+.cirene-nav .gn-tab { padding: 6px 11px; border-radius: 7px; color: #fff; font-weight: 600; font-size: 12.5px;
+  white-space: nowrap; text-decoration: none; transition: all .15s; }
 .cirene-nav .gn-tab.active { background: #fff; color: #0A0A0A; }
 .cirene-nav .gn-tab:not(.active):hover { background: rgba(255,255,255,.12); }
 .cirene-nav .gn-spacer { flex: 1; }

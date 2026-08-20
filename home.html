@@ -33,6 +33,23 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 .tile .label { font-size: 16px; font-weight: 700; }
 .tile .desc { font-size: 11px; color: var(--tinta-3); margin-top: 4px; }
 .tile.admin-only { background: linear-gradient(135deg, #fff, #F0F0EF); border-color: var(--azul); }
+/* centro de actividad */
+.actividad { background: #fff; border: 1px solid var(--border, #e6eaf0); border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; }
+.actividad .ah { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.actividad .ah h2 { font-size: 15px; margin: 0; font-family: 'Raleway', sans-serif; }
+.actividad .badge { background: #A33A3A; color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 8px; }
+.actividad .btn { margin-left: auto; padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border-2, #ccc); background: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.noti { display: flex; gap: 10px; align-items: flex-start; padding: 9px 2px; border-bottom: 1px solid var(--surface-3, #f0f0f0); font-size: 13px; }
+.noti:last-child { border-bottom: none; }
+.noti.no-leida { font-weight: 600; }
+.noti .dot { width: 8px; height: 8px; border-radius: 50%; background: #A33A3A; margin-top: 6px; flex: 0 0 auto; }
+.noti .dot.leida { background: transparent; }
+.noti .cuerpo { flex: 1; min-width: 0; }
+.noti .cuerpo .txt { font-weight: 400; color: var(--tinta-2, #5A5F66); font-size: 12px; }
+.noti .when { font-size: 11px; color: var(--tinta-3, #9AA0A6); white-space: nowrap; }
+.noti a { color: inherit; text-decoration: none; }
+.noti a:hover { text-decoration: underline; }
+.tile .cnt { position: absolute; }
 @media (max-width: 480px) {
   .home-wrap { padding: 20px 12px 60px; }
   .home-hdr h1 { font-size: 24px; }
@@ -51,24 +68,40 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
     <h1>De&nbsp;C&#x0268;rene</h1>
     <p id="welcomeText">Cargando…</p>
   </div>
+  <div id="actividad"></div>
   <div class="tile-grid" id="tileGrid"></div>
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=3';
-import { icon } from './js/icons.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=5';
+import { icon } from './js/icons.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
 
 const TILES = [
   { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },
   { id: 'clientes', icon: 'users',      label: 'Clientes',     href: '/clientes.html',      desc: 'Tu cartera de clientes' },
   { id: 'cot',      icon: 'calculator', label: 'Cotizar',      href: '/index.html',         desc: 'Presupuesto + PDF' },
-  { id: 'catalog',  icon: 'package',    label: 'Catálogo',     href: '/catalog.html',       desc: 'Productos, materiales y tarifas' },
-  { id: 'prod',     icon: 'clipboard',  label: 'Producción',   href: '/production.html',    desc: 'Kanban + calendario' },
+  { id: 'catalog',  icon: 'package',    label: 'Catálogo',     href: '/catalog.html',       desc: 'Materiales, terminaciones y tarifas' },
+  { id: 'prod',     icon: 'clipboard',  label: 'Producción',   href: '/production.html',    desc: 'Kanban, semana y subtareas' },
+  { id: 'stock',    icon: 'stock',      label: 'Stock',        href: '/stock.html',         desc: 'Existencias y movimientos' },
+  { id: 'compras',  icon: 'oc',         label: 'Compras',      href: '/compras.html',       desc: 'Proveedores y órdenes', adminOnly: true },
   { id: 'ventas',   icon: 'chart',      label: 'Ventas',       href: '/ventas.html',        desc: 'KPIs e indicadores' },
-  { id: 'conta',    icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html',  desc: 'Caja, cobros y cierres', adminOnly: true },
-  { id: 'admin',    icon: 'users',      label: 'Admin',        href: '/admin.html',         desc: 'Usuarios y tarifas', adminOnly: true },
+  { id: 'nps',      icon: 'trending',   label: 'NPS',          href: '/nps.html',           desc: 'Satisfacción de clientes' },
+  { id: 'conta',    icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html',  desc: 'Cobros, gastos y activos', adminOnly: true },
+  { id: 'dash',     icon: 'metrics',    label: 'Dashboard',    href: '/dashboard.html',     desc: 'Resumen ejecutivo', adminOnly: true },
+  { id: 'admin',    icon: 'settings',   label: 'Admin',        href: '/admin.html',         desc: 'Operarios, cargas y usuarios', adminOnly: true },
 ];
+
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cuando = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  if (min < 1440) return `hace ${Math.round(min / 60)} h`;
+  return d.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit' });
+};
 
 (async () => {
   await requireAuth();
@@ -78,8 +111,6 @@ const TILES = [
   const name = profile?.vendor_name || profile?.full_name || profile?.email || 'De Cirene';
   document.getElementById('welcomeText').textContent = `Hola ${name}, ¿qué hacés hoy?`;
 
-  // Hash deep-links (#oc, #stock, #metrics) los maneja production.html al cargarse;
-  // acá solo ponemos los hrefs.
   const grid = document.getElementById('tileGrid');
   grid.innerHTML = TILES
     .filter(t => admin || !t.adminOnly)
@@ -90,7 +121,46 @@ const TILES = [
         ${t.desc ? `<div class="desc">${t.desc}</div>` : ''}
       </a>`)
     .join('');
+
+  pintarActividad();
 })();
+
+/* ───────── Centro de actividad ─────────
+   Comentarios donde participé, respuestas nuevas y alertas. Si algo falla, el
+   bloque simplemente no se muestra: nunca deja el Inicio colgado. */
+async function pintarActividad() {
+  const cont = document.getElementById('actividad');
+  let notis = [];
+  try { notis = await data.listNotifications({ limite: 12 }); }
+  catch (e) { console.warn('[inicio] notificaciones', e); cont.innerHTML = ''; return; }
+  const sinLeer = notis.filter(x => !x.leida).length;
+  if (!notis.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = `<div class="actividad">
+    <div class="ah"><h2>Actividad</h2>
+      ${sinLeer ? `<span class="badge">${sinLeer} sin leer</span>` : ''}
+      ${sinLeer ? '<button class="btn" id="leerTodo">Marcar todo como leído</button>' : ''}
+    </div>
+    ${notis.map(x => `<div class="noti ${x.leida ? '' : 'no-leida'}" data-id="${x.id}">
+      <span class="dot ${x.leida ? 'leida' : ''}"></span>
+      <div class="cuerpo">
+        ${x.url ? `<a href="${esc(x.url)}">${esc(x.titulo)}</a>` : esc(x.titulo)}
+        ${x.cuerpo ? `<div class="txt">${esc(x.cuerpo)}</div>` : ''}
+      </div>
+      <span class="when">${cuando(x.created_at)}</span>
+    </div>`).join('')}
+  </div>`;
+  const btn = document.getElementById('leerTodo');
+  if (btn) btn.onclick = async () => {
+    btn.disabled = true;
+    try { await data.markAllNotificationsRead(); pintarActividad(); }
+    catch (e) { console.warn(e); btn.disabled = false; }
+  };
+  cont.querySelectorAll('.noti.no-leida').forEach(el => el.onclick = () => {
+    data.markNotificationRead(el.dataset.id).catch(() => {});
+    el.classList.remove('no-leida');
+    el.querySelector('.dot').classList.add('leida');
+  });
+}
 </script>
 </body>
 </html>

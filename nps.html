@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · NPS</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 80px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .tabbar { display: inline-flex; gap: 4px; background: var(--surface-3); padding: 3px; border-radius: 10px; }
+  .tabbar button { border: none; background: transparent; padding: 8px 16px; border-radius: 7px; font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .tabbar button.active { background: #0A0A0A; color: #fff; }
+  .rango { display: flex; gap: 6px; align-items: center; }
+  .rango input { padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; font: inherit; font-size: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px,1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .kpi span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); font-weight: 700; }
+  .kpi b { font-size: 24px; font-family: 'Raleway'; display: block; margin-top: 3px; }
+  .kpi .s { font-size: 11px; color: var(--tinta-3); }
+  .kpi.dark { background: #0A0A0A; color: #fff; } .kpi.dark span { color: rgba(255,255,255,.65); } .kpi.dark .s { color: rgba(255,255,255,.55); }
+  .grid2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 880px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h3 { font-size: 14px; margin-bottom: 12px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th { text-align: left; padding: 7px 8px; font-size: 11px; text-transform: uppercase; color: var(--tinta-2); border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 7px 8px; border-bottom: 1px solid var(--surface-3); }
+  td.num, th.num { text-align: right; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .est { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  .est.respondida { background: #E1F5EE; color: #1F6B45; }
+  .est.enviada { background: #EDF3F9; color: #2E5C86; }
+  .segbar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; font-size: 11px; font-weight: 700; color: #fff; }
+  .segbar div { display: flex; align-items: center; justify-content: center; }
+  .bar { height: 9px; background: #0A0A0A; border-radius: 5px; }
+  .escala { display: flex; gap: 4px; flex-wrap: wrap; }
+  .escala button { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .escala button.sel { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
+  .chks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chks label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 24px 16px; z-index: 100; overflow: auto; }
+  .ov.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; padding: 22px 24px; }
+  .fg { margin-bottom: 12px; } .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--tinta-2); margin-bottom: 5px; }
+  .fg input, .fg select, .fg textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .fg textarea { min-height: 70px; resize: vertical; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; max-width: 92vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <h1 style="font-family:'Raleway'">NPS · Satisfacción de clientes</h1>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="tabbar">
+        <button data-tab="dash" class="active">Dashboard</button>
+        <button data-tab="encuestas">Encuestas</button>
+      </div>
+      <div class="rango"><input type="date" id="r-desde"><input type="date" id="r-hasta">
+        <button class="btn sm" id="r-ok">Filtrar</button></div>
+    </div>
+  </div>
+  <div id="pane"><div class="card">Cargando…</div></div>
+</div>
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, n } from './js/quote-engine.js?v=5';
+
+const $ = s => document.querySelector(s);
+const pane = $('#pane');
+const toast = (m, err = false) => { const t = $('#toast'); t.textContent = m; t.className = 'show' + (err ? ' err' : ''); setTimeout(() => { t.className = ''; }, err ? 4200 : 1900); };
+const fail = (e, ctx) => { console.error('[nps]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let surveys = [], opciones = [], cards = [];
+let tab = 'dash', desde = '', hasta = '';
+
+await requireAuth();
+renderNavbar('nps');
+try {
+  [surveys, opciones, cards] = await Promise.all([
+    data.listNpsSurveys(), data.listNpsOptions().catch(() => []), data.listProductionCards().catch(() => []),
+  ]);
+} catch (e) {
+  pane.innerHTML = `<div class="card" style="color:#A33A3A">No se pudo cargar NPS.<br><span class="muted">${esc(e.message || e)}</span>
+    <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b));
+  tab = b.dataset.tab; render();
+});
+$('#r-ok').onclick = () => { desde = $('#r-desde').value; hasta = $('#r-hasta').value; render(); };
+render();
+
+const aspectos = () => opciones.filter(o => o.tipo === 'aspecto').map(o => o.valor);
+const canales = () => opciones.filter(o => o.tipo === 'canal').map(o => o.valor);
+function filtradas() {
+  return surveys.filter(s => {
+    const f = (s.respondida_at || s.enviada_at || s.created_at || '').slice(0, 10);
+    if (desde && f < desde) return false;
+    if (hasta && f > hasta) return false;
+    return true;
+  });
+}
+function render() { tab === 'encuestas' ? renderEncuestas() : renderDash(); }
+
+/* ───────── Dashboard NPS ─────────
+   NPS = % promotores (9-10) − % detractores (0-6). Los pasivos (7-8) no suman. */
+function renderDash() {
+  const rows = filtradas();
+  const m = data.npsMetrics(rows);
+  const tot = m.respondidas || 1;
+  const evol = evolucionNps();
+  pane.innerHTML = `
+    <div class="kpis">
+      <div class="kpi dark"><span>NPS</span><b>${m.respondidas ? m.nps : '—'}</b>
+        <span class="s">% promotores − % detractores</span></div>
+      <div class="kpi"><span>Formularios enviados</span><b>${m.enviadas}</b></div>
+      <div class="kpi"><span>Respuestas recibidas</span><b>${m.respondidas}</b></div>
+      <div class="kpi"><span>Tasa de respuesta</span><b>${m.tasa.toFixed(0)}%</b></div>
+      <div class="kpi"><span>Recomendación promedio</span><b>${m.recomendacionPromedio ? m.recomendacionPromedio.toFixed(1) : '—'}</b><span class="s">de 0 a 10</span></div>
+      <div class="kpi"><span>Impacto social percibido</span><b>${m.impactoPromedio ? m.impactoPromedio.toFixed(1) : '—'}</b><span class="s">de 0 a 10</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Distribución de respuestas</h3>
+      ${m.respondidas ? `<div class="segbar">
+        <div style="width:${(m.detractores / tot * 100)}%;background:#A33A3A">${m.detractores ? m.detractores : ''}</div>
+        <div style="width:${(m.pasivos / tot * 100)}%;background:#C9A227">${m.pasivos ? m.pasivos : ''}</div>
+        <div style="width:${(m.promotores / tot * 100)}%;background:#2E7D46">${m.promotores ? m.promotores : ''}</div>
+      </div>
+      <div class="muted" style="display:flex;justify-content:space-between;margin-top:6px">
+        <span>Detractores 0–6: ${m.detractores}</span><span>Pasivos 7–8: ${m.pasivos}</span><span>Promotores 9–10: ${m.promotores}</span>
+      </div>` : '<p class="muted">Todavía no hay respuestas en el período.</p>'}
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="card"><h3>Evolución del NPS</h3>${evol.labels.length ? lineChart(evol.labels, evol.valores) : '<p class="muted">Sin datos suficientes.</p>'}</div>
+        <div class="card"><h3>Principales oportunidades de mejora</h3>
+          ${m.mejoras.length ? m.mejoras.slice(0, 25).map(t => `<div style="border-left:3px solid var(--border-2);padding:4px 0 4px 10px;margin-bottom:8px;font-size:13px">${esc(t)}</div>`).join('')
+            : '<p class="muted">Sin comentarios todavía.</p>'}</div>
+      </div>
+      <div>
+        <div class="card"><h3>Aspectos más valorados</h3>${barList(m.aspectos)}</div>
+        <div class="card"><h3>Cómo conocieron la herrería</h3>${barList(m.canales)}</div>
+      </div>
+    </div>`;
+}
+function barList(arr) {
+  if (!arr.length) return '<p class="muted">Sin datos.</p>';
+  const max = Math.max(...arr.map(a => a[1]));
+  return arr.map(([k, v]) => `<div style="margin-bottom:9px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${esc(k)}</span><b>${v}</b></div>
+    <div class="bar" style="width:${Math.max(4, v / max * 100)}%"></div></div>`).join('');
+}
+function evolucionNps() {
+  const meses = {};
+  surveys.filter(s => s.estado === 'respondida' && s.respondida_at).forEach(s => {
+    const m = s.respondida_at.slice(0, 7);
+    (meses[m] = meses[m] || []).push(s);
+  });
+  const labels = Object.keys(meses).sort().slice(-12);
+  const valores = labels.map(m => data.npsMetrics(meses[m].map(s => ({ ...s, estado: 'respondida' }))).nps);
+  return { labels: labels.map(l => l.slice(5)), valores };
+}
+function lineChart(labels, vals) {
+  const W = 540, H = 190, pad = 30;
+  const min = Math.min(-100, ...vals), max = Math.max(100, ...vals);
+  const x = i => labels.length === 1 ? W / 2 : pad + i * (W - 2 * pad) / (labels.length - 1);
+  const y = v => H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const dots = vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="#0A0A0A"><title>${labels[i]}: ${v}</title></circle>`).join('');
+  const xl = labels.map((m, i) => `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="9" text-anchor="middle" fill="#9AA0A6">${m}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad}" y1="${y(0).toFixed(1)}" x2="${W - pad}" y2="${y(0).toFixed(1)}" stroke="#E2E2E0"/>
+    <polyline points="${pts}" fill="none" stroke="#0A0A0A" stroke-width="2"/>${dots}${xl}</svg>`;
+}
+
+/* ───────── Listado de encuestas ───────── */
+function renderEncuestas() {
+  const rows = filtradas();
+  const entregados = cards.filter(c => c.stage_key === 'entregado');
+  const sinEncuesta = entregados.filter(c => !surveys.some(s => s.production_card_id === c.id));
+  pane.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <h3 style="margin:0">Encuestas (${rows.length})</h3>
+        ${sinEncuesta.length ? `<button class="btn primary" id="crearTodas">Crear encuesta para ${sinEncuesta.length} pedido${sinEncuesta.length === 1 ? '' : 's'} entregado${sinEncuesta.length === 1 ? '' : 's'}</button>` : ''}
+      </div>
+      <div style="overflow-x:auto"><table class="grid"><thead><tr>
+        <th>Cliente</th><th>Pedido</th><th>Vendedor</th><th>Estado</th><th>Enviada</th><th>Respondida</th>
+        <th class="num">Recom.</th><th class="num">Impacto</th><th></th></tr></thead>
+      <tbody>${rows.map(s => `<tr data-id="${s.id}">
+        <td><b>${esc(s.cliente_nombre || '—')}</b></td>
+        <td>${s.production_card_id ? `<a href="/production.html?card=${esc(s.production_card_id)}" style="color:var(--tinta)">${esc(s.production_card_id)}</a>` : '—'}</td>
+        <td>${esc(s.vendedor || '—')}</td>
+        <td><span class="est ${esc(s.estado)}">${esc(s.estado)}</span></td>
+        <td>${esc((s.enviada_at || '').slice(0, 10) || '—')}</td>
+        <td>${esc((s.respondida_at || '').slice(0, 10) || '—')}</td>
+        <td class="num">${s.recomendacion ?? '—'}</td>
+        <td class="num">${s.impacto_social ?? '—'}</td>
+        <td style="text-align:right">
+          ${s.estado === 'pendiente' ? `<button class="btn sm" data-enviar="${s.id}">Marcar enviada</button>` : ''}
+          <button class="btn sm" data-resp="${s.id}">${s.estado === 'respondida' ? 'Ver respuesta' : 'Cargar respuesta'}</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="9" class="muted">Sin encuestas todavía.</td></tr>'}
+      </tbody></table></div>
+      <p class="muted" style="margin-top:10px">La encuesta de un pedido se crea sola cuando el pedido pasa a "Entregado". Una por pedido: no se duplica.</p>
+    </div>`;
+  const crear = $('#crearTodas');
+  if (crear) crear.onclick = async () => {
+    crear.disabled = true;
+    try {
+      for (const c of sinEncuesta) await data.ensureNpsSurvey(c, null);
+      surveys = await data.listNpsSurveys();
+      renderEncuestas(); toast('Encuestas creadas');
+    } catch (e) { fail(e, 'No se pudieron crear'); crear.disabled = false; }
+  };
+  pane.querySelectorAll('[data-enviar]').forEach(b => b.onclick = async (ev) => {
+    ev.stopPropagation(); b.disabled = true;
+    try {
+      await data.saveNpsSurvey({ id: b.dataset.enviar, estado: 'enviada', enviada_at: new Date().toISOString() });
+      surveys = await data.listNpsSurveys(); renderEncuestas(); toast('Marcada como enviada');
+    } catch (e) { fail(e, 'No se pudo actualizar'); b.disabled = false; }
+  });
+  pane.querySelectorAll('[data-resp]').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    respuestaModal(surveys.find(s => s.id === b.dataset.resp));
+  });
+}
+
+/* ───────── Formulario de respuesta ───────── */
+function respuestaModal(s) {
+  if (!s) return;
+  let recom = s.recomendacion ?? null, impacto = s.impacto_social ?? null;
+  let sel = Array.isArray(s.aspectos) ? [...s.aspectos] : [];
+  const escala = (nombre, valor) => `<div class="escala" data-escala="${nombre}">
+    ${Array.from({ length: 11 }, (_, i) => `<button type="button" data-v="${i}" class="${valor === i ? 'sel' : ''}">${i}</button>`).join('')}</div>`;
+
+  $('#modal').innerHTML = `
+    <h2 style="font-family:'Raleway';font-size:17px;margin-bottom:4px">Encuesta de satisfacción</h2>
+    <p class="muted" style="margin-bottom:16px">${esc(s.cliente_nombre || '')} ${s.production_card_id ? '· ' + esc(s.production_card_id) : ''}</p>
+
+    <div class="fg"><label>¿Qué tan probable es que recomiendes a De Cirene a otra empresa o persona?</label>
+      ${escala('recom', recom)}
+      <div class="muted" style="display:flex;justify-content:space-between;margin-top:4px"><span>0 · nada probable</span><span>10 · muy probable</span></div></div>
+
+    <div class="fg"><label>¿Cómo valorás el impacto social del proyecto?</label>
+      ${escala('impacto', impacto)}</div>
+
+    <div class="fg"><label>Aspectos más valorados</label>
+      <div class="chks" id="asp">${aspectos().map(a => `<label><input type="checkbox" value="${esc(a)}" ${sel.includes(a) ? 'checked' : ''}>${esc(a)}</label>`).join('')}</div></div>
+
+    <div class="fg"><label>Oportunidades de mejora</label>
+      <textarea id="f-mejoras" placeholder="¿Qué podríamos hacer mejor?">${esc(s.mejoras)}</textarea></div>
+
+    <div class="fg"><label>¿Cómo conociste la herrería?</label>
+      <select id="f-canal"><option value="">— sin responder —</option>
+        ${canales().map(c => `<option value="${esc(c)}" ${s.como_conocio === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+
+    <div class="fg"><label>Comentarios</label><textarea id="f-coment">${esc(s.comentarios)}</textarea></div>
+
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn primary" id="f-save">Guardar respuesta</button>
+      <button class="btn sm" id="f-cancel" style="margin-left:auto">Cerrar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#modal').querySelectorAll('[data-escala]').forEach(cont => {
+    cont.querySelectorAll('button').forEach(b => b.onclick = () => {
+      cont.querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+      if (cont.dataset.escala === 'recom') recom = +b.dataset.v; else impacto = +b.dataset.v;
+    });
+  });
+  $('#f-cancel').onclick = () => $('#ov').classList.remove('show');
+  $('#f-save').onclick = async () => {
+    if (recom === null) { toast('Falta la pregunta de recomendación (0 a 10)', true); return; }
+    sel = [...$('#asp').querySelectorAll('input:checked')].map(i => i.value);
+    const btn = $('#f-save'); btn.disabled = true;
+    try {
+      await data.saveNpsSurvey({
+        id: s.id, estado: 'respondida', respondida_at: s.respondida_at || new Date().toISOString(),
+        enviada_at: s.enviada_at || new Date().toISOString(),
+        recomendacion: recom, impacto_social: impacto,
+        aspectos: sel, mejoras: $('#f-mejoras').value || null,
+        como_conocio: $('#f-canal').value || null, comentarios: $('#f-coment').value || null,
+      });
+      surveys = await data.listNpsSurveys();
+      $('#ov').classList.remove('show'); toast('Respuesta guardada'); render();
+    } catch (e) { fail(e, 'No se pudo guardar'); btn.disabled = false; }
+  };
+}
+$('#ov').onclick = e => { if (e.target === $('#ov')) $('#ov').classList.remove('show'); };
+</script>
+</body>
+</html>

@@ -23,6 +23,11 @@
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
   .muted { color: var(--tinta-3); font-size: 12px; }
+  .tipo { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .tipo.nuevo { background: #EDF3F9; color: #2E5C86; }
+  .tipo.recu { background: #E1F5EE; color: #1F6B45; }
+  .tipo.interno { background: #0A0A0A; color: #fff; }
+  .tipo.sin { background: var(--surface-3); color: var(--tinta-3); }
   .ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow: auto; }
   .ov.show { display: flex; }
   .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 440px; padding: 22px 24px; }
@@ -52,20 +57,25 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth, isAdmin } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth, isAdmin } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
 
 const $ = s => document.querySelector(s);
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let clients = [], admin = false, filter = '';
+let clients = [], admin = false, filter = '', ventasPorCliente = {};
 await requireAuth();
 renderNavbar('clientes');
 try {
   admin = await isAdmin();
   clients = await data.listClients();
+  // Clasificación: nuevo (1 venta), recurrente (más de una), interno (CIRENEOS).
+  const ventas = await data.listSales().catch(() => []);
+  ventas.filter(v => v.estado !== 'anulada').forEach(v => {
+    if (v.client_id) ventasPorCliente[v.client_id] = (ventasPorCliente[v.client_id] || 0) + 1;
+  });
 } catch (e) {
   $('#list').innerHTML = `<div style="color:#A33A3A;padding:18px">No se pudo cargar Clientes.<br><span class="muted">${esc(e.message || e)}</span><br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
   throw e;
@@ -78,12 +88,21 @@ function renderList() {
   const s = filter.toLowerCase();
   const rows = clients.filter(c => !s || (c.nombre + ' ' + (c.empresa || '') + ' ' + (c.telefono || '') + ' ' + (c.email || '')).toLowerCase().includes(s));
   $('#count').textContent = `${rows.length} cliente${rows.length === 1 ? '' : 's'}${admin ? ' · viendo todos' : ''}`;
+  const tipo = c => {
+    if (c.es_interno) return '<span class="tipo interno">Interno</span>';
+    const v = ventasPorCliente[c.id] || 0;
+    if (v > 1) return '<span class="tipo recu">Recurrente</span>';
+    if (v === 1) return '<span class="tipo nuevo">Nuevo</span>';
+    return '<span class="tipo sin">Sin ventas</span>';
+  };
   $('#list').innerHTML = `<table class="grid"><thead><tr>
-    <th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th>${admin ? '<th>Vendedor</th>' : ''}<th></th></tr></thead>
+    <th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th><th>Tipo</th>${admin ? '<th>Vendedor</th>' : ''}<th></th></tr></thead>
     <tbody>${rows.map(c => `<tr data-id="${c.id}">
-      <td><b>${esc(c.nombre)}</b></td><td>${esc(c.empresa || '')}</td><td>${esc(c.telefono || '')}</td><td>${esc(c.email || '')}</td>
+      <td><b>${esc(c.nombre)}</b></td><td>${esc(c.empresa || '')}</td>
+      <td>${esc(c.telefono_e164 || c.telefono || '')}</td><td>${esc(c.email || '')}</td>
+      <td>${tipo(c)}</td>
       ${admin ? `<td>${esc(c.vendedor || '')}</td>` : ''}
-      <td class="row-actions" style="white-space:nowrap"><button data-edit title="Editar">✎</button><button data-del class="del" title="Eliminar">✕</button></td></tr>`).join('') || `<tr><td colspan="${admin ? 6 : 5}" class="muted">Sin clientes. Creá el primero con "+ Nuevo cliente".</td></tr>`}</tbody></table>`;
+      <td class="row-actions" style="white-space:nowrap"><button data-edit title="Editar">✎</button><button data-del class="del" title="Eliminar">✕</button></td></tr>`).join('') || `<tr><td colspan="${admin ? 7 : 6}" class="muted">Sin clientes. Creá el primero con "+ Nuevo cliente".</td></tr>`}</tbody></table>`;
   $('#list').querySelectorAll('tr[data-id]').forEach(tr => {
     const id = tr.dataset.id;
     tr.querySelector('[data-edit]').onclick = () => openClient(id);

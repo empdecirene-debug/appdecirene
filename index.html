@@ -17,31 +17,53 @@
   .card h2 { font-size: 15px; margin-bottom: 12px; }
   .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; }
   .fg label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); margin-bottom: 4px; }
-  .fg input, .fg select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .fg input, .fg select, .fg textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  .fg textarea { min-height: 60px; resize: vertical; }
+  /* dimensión = número + unidad pegados */
+  .dim { display: flex; gap: 4px; }
+  .dim input { flex: 1; min-width: 0; }
+  .dim select { width: 74px; padding: 8px 4px; }
   table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.grid th { text-align: left; padding: 6px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--tinta-2); border-bottom: 1px solid var(--border); }
   table.grid td { padding: 3px 4px; border-bottom: 1px solid var(--surface-3); }
   table.grid input, table.grid select { width: 100%; border: 1px solid transparent; background: transparent; padding: 5px 5px; border-radius: 6px; font: inherit; font-size: 13px; }
   table.grid input:focus, table.grid select:focus { outline: none; border-color: #0A0A0A; background: #fff; }
   td.num, th.num { text-align: right; } td.num input { text-align: right; }
-  .row-actions button { background: none; border: none; cursor: pointer; color: var(--tinta-3); font-size: 14px; }
-  .row-actions button:hover { color: #A33A3A; }
+  .row-actions { white-space: nowrap; }
+  .row-actions button { background: none; border: none; cursor: pointer; color: var(--tinta-3); font-size: 14px; padding: 2px 4px; }
+  .row-actions button:hover { color: #0A0A0A; }
+  .row-actions button[data-del]:hover { color: #A33A3A; }
   .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
   .btn.primary { background: #0A0A0A; color: #fff; border-color: #0A0A0A; }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
   .btn:disabled { opacity: .5; cursor: default; }
-  .sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin: 14px 0 4px; }
+  .sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin: 14px 0 4px; display: flex; align-items: center; gap: 8px; }
+  .sub .hint { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--tinta-3); font-size: 11px; }
   .costbox { display: flex; gap: 16px; flex-wrap: wrap; background: #0A0A0A; color: #fff; border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
   .costbox div span { display: block; font-size: 10px; opacity: .7; text-transform: uppercase; }
   .costbox div b { font-size: 16px; }
   .lineas .li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 4px; border-bottom: 1px solid var(--surface-3); }
-  .lineas .li .ln { font-weight: 600; } .lineas .li .lm { font-size: 11px; color: var(--tinta-3); }
+  .lineas .li .ln { font-weight: 600; } .lineas .li .lm { font-size: 11px; color: var(--tinta-3); line-height: 1.5; }
   .totbox { margin-top: 12px; font-size: 13px; }
   .totbox .t { display: flex; justify-content: space-between; padding: 3px 0; }
+  .totbox .t.sm { font-size: 12px; color: var(--tinta-2); padding-left: 12px; }
   .totbox .grand { font-size: 20px; font-weight: 800; border-top: 2px solid #0A0A0A; margin-top: 6px; padding-top: 8px; }
   .muted { color: var(--tinta-3); font-size: 12px; }
-  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 200; }
+  .svcbox { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 6px; background: var(--surface-2); }
+  .svcbox h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-2); margin-bottom: 8px; }
+  .nomk { font-size: 10px; font-weight: 700; color: #2E7D46; border: 1px solid #2E7D46; border-radius: 999px; padding: 1px 7px; }
+  .mk { font-size: 10px; font-weight: 700; color: #5B86A8; border: 1px solid #5B86A8; border-radius: 999px; padding: 1px 7px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0A0A0A; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; max-width: 90vw; text-align: center; }
   #toast.show { opacity: 1; }
+  #toast.err { background: #A33A3A; }
+  /* modal de material */
+  #ov { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 250; padding: 20px; }
+  #ov.show { display: flex; }
+  #modal { background: #fff; border-radius: 14px; padding: 20px 22px; width: min(520px, 100%); max-height: 90vh; overflow: auto; }
+  #modal h3 { font-family: 'Raleway'; margin-bottom: 12px; }
+  .mact { display: flex; gap: 8px; margin-top: 16px; }
+  .banner { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+  .banner.err { background: #FBEAEA; color: #A33A3A; border: 1px solid #E4B9B9; }
 </style>
 </head>
 <body>
@@ -54,6 +76,7 @@
       <button class="btn" id="btnNueva">Nueva</button>
     </div>
   </div>
+  <div id="bootErr"></div>
   <div class="cols">
     <!-- Builder -->
     <div class="card">
@@ -64,18 +87,32 @@
         <div class="fg"><label>Cantidad</label><input id="b-cant" type="number" min="1" step="1" value="1"></div>
         <div class="fg"><label>Multiplicador</label><input id="b-mult" type="number" step="0.05" value="1.5"></div>
       </div>
+
+      <div class="sub">Dimensiones <span class="hint">información para fabricar · no afectan el precio</span></div>
+      <div class="row">
+        <div class="fg"><label>Ancho</label><div class="dim"><input id="b-ancho" type="number" step="0.1" placeholder="—"><select id="b-ancho-u"></select></div></div>
+        <div class="fg"><label>Alto</label><div class="dim"><input id="b-alto" type="number" step="0.1" placeholder="—"><select id="b-alto-u"></select></div></div>
+        <div class="fg"><label>Largo</label><div class="dim"><input id="b-largo" type="number" step="0.1" placeholder="—"><select id="b-largo-u"></select></div></div>
+        <div class="fg"><label>Diámetro</label><div class="dim"><input id="b-diam" type="number" step="0.1" placeholder="—"><select id="b-diam-u"></select></div></div>
+      </div>
       <div class="row" style="margin-top:8px">
-        <div class="fg"><label>Tamaño / dimensiones</label><input id="b-tam" placeholder="a medida / estándar"></div>
-        <div class="fg" style="display:flex;align-items:flex-end;gap:6px"><label style="margin:0"><input type="checkbox" id="b-pintado"> Pintado</label></div>
+        <div class="fg"><label>Referencia / medida libre</label><input id="b-tam" placeholder="a medida / estándar"></div>
+        <div class="fg"><label>Terminación / pintado</label><select id="b-term"></select></div>
       </div>
 
       <div class="sub">Materiales</div>
       <table class="grid"><thead><tr><th style="width:38%">Material</th><th>Dimensión</th><th class="num">Cant.</th><th class="num">Costo/u</th><th class="num">Subtotal</th><th></th></tr></thead><tbody id="mtBody"></tbody></table>
-      <button class="btn sm" id="addMat" style="margin-top:6px">+ Material</button>
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <button class="btn sm" id="addMat">+ Material</button>
+        <button class="btn sm" id="newMat">＋ Crear material nuevo</button>
+      </div>
 
       <div class="sub">Mano de obra</div>
       <table class="grid"><thead><tr><th style="width:38%">Rol</th><th class="num">Costo/h</th><th class="num">Horas</th><th class="num">Subtotal</th><th></th></tr></thead><tbody id="lbBody"></tbody></table>
       <button class="btn sm" id="addLab" style="margin-top:6px">+ Mano de obra</button>
+
+      <div class="sub">Comentarios para producción</div>
+      <div class="fg"><textarea id="b-coment" placeholder="Detalles de fabricación: soldaduras, refuerzos, sentido de apertura, acabado, cuidados…"></textarea></div>
 
       <div class="costbox" id="bCost"></div>
       <div style="margin-top:14px"><button class="btn primary" id="addLine">Agregar a la cotización</button></div>
@@ -97,7 +134,44 @@
       <div class="sub">Ítems</div>
       <div class="lineas" id="lineas"><p class="muted">Agregá productos desde la izquierda.</p></div>
 
+      <div class="sub">Servicios <span class="hint">se cobran aparte de la fabricación</span></div>
+      <div class="svcbox">
+        <h4>Transporte <span class="nomk">sin markup</span></h4>
+        <div class="row">
+          <div class="fg"><label>Costo / precio</label><input id="s-transp" type="number" step="1" value="0"></div>
+          <div class="fg"><label>Detalle</label><input id="s-transp-nota" placeholder="Flete a Ciudad de la Costa…"></div>
+        </div>
+      </div>
+      <div class="svcbox" style="margin-top:8px">
+        <h4>Colocación</h4>
+        <div class="row">
+          <div class="fg"><label>Tarifa de mano de obra <span class="mk">con markup</span></label><select id="s-col-rol"></select></div>
+          <div class="fg"><label>Costo/hora</label><input id="s-col-costoh" type="number" step="1" value="0"></div>
+          <div class="fg"><label>Horas hombre</label><input id="s-col-horas" type="number" step="0.5" value="0"></div>
+          <div class="fg"><label>Operarios</label><input id="s-col-oper" type="number" min="1" step="1" value="1"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="fg"><label>Multiplicador MO</label><input id="s-col-mult" type="number" step="0.05" value="1.5"></div>
+          <div class="fg"><label>Viáticos / transporte <span class="nomk">sin markup</span></label><input id="s-col-viat" type="number" step="1" value="0"></div>
+        </div>
+        <div class="fg" style="margin-top:8px"><label>Comentarios de colocación</label><textarea id="s-col-coment" placeholder="Lugar, accesos, horarios, herramientas necesarias…"></textarea></div>
+      </div>
+
+      <div class="sub">Comentarios generales para producción</div>
+      <div class="fg"><textarea id="q-coment" placeholder="Observaciones que tiene que ver el taller para todo el pedido."></textarea></div>
+
       <div class="totbox" id="totales"></div>
+
+      <div class="row" style="margin-top:14px">
+        <div class="fg"><label>Estado</label><select id="q-estado">
+          <option value="borrador">Borrador</option>
+          <option value="presupuestado">Presupuestado</option>
+          <option value="enviado">Enviado</option>
+          <option value="en_seguimiento">En seguimiento</option>
+          <option value="aceptado">Aceptado</option>
+          <option value="rechazado">Rechazado</option>
+        </select></div>
+      </div>
 
       <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btnGuardar">Guardar</button>
@@ -107,97 +181,203 @@
     </div>
   </div>
 </div>
+<div id="ov"><div id="modal"></div></div>
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { calcLine, calcQuoteTotals, money, pct, n } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { calcLine, calcQuoteTotals, calcServices, dimsText, money, pct, n, UNIDADES_DIM } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
-const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1900); };
+const toast = (m, err = false) => {
+  const t = $('#toast'); t.textContent = m;
+  t.className = 'show' + (err ? ' err' : '');
+  setTimeout(() => { t.className = ''; }, err ? 4200 : 1900);
+};
+const fail = (e, ctx) => { console.error('[cotizador]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let materials = [], laborRates = [], templates = [], vendor = 'Visitante';
-const state = { id: null, numero: null, cliente: {}, lineas: [] };
-let builder = newBuilder();
-function newBuilder() { return { nombre: '', templateId: null, pintado: false, cantidad: 1, tamano: '', multiplicador: 1.5, materiales: [], manoObra: [], editIndex: null }; }
+let materials = [], laborRates = [], templates = [], finishes = [], vendor = 'Visitante';
+let clientsList = [];
+let guardando = false;          // candado anti doble clic / doble guardado
+let sucio = false;              // hay cambios sin guardar
 
+const newServicios = () => ({
+  transporteCosto: 0, transporteNotas: '',
+  colocacionHoras: 0, colocacionOperarios: 1, colocacionLaborRateId: null,
+  colocacionRol: '', colocacionCostoHora: 0, colocacionMultiplicador: 1.5,
+  colocacionViaticos: 0, colocacionComentarios: '',
+});
+const state = {
+  id: null, numero: null, estado: 'borrador',
+  cliente: { nombre: '', contacto: '', direccion: '' }, clienteId: null,
+  intakeId: null, lineas: [], servicios: newServicios(), comentariosProduccion: '',
+};
+function newBuilder() {
+  return {
+    nombre: '', templateId: null, cantidad: 1, tamano: '', multiplicador: 1.5,
+    ancho: '', anchoUnidad: 'cm', alto: '', altoUnidad: 'cm',
+    largo: '', largoUnidad: 'cm', diametro: '', diametroUnidad: 'cm',
+    terminacionId: null, terminacionNombre: '', terminacionCosto: 0,
+    comentariosProduccion: '', materiales: [], manoObra: [], editIndex: null,
+  };
+}
+let builder = newBuilder();
+const marcarSucio = () => { sucio = true; };
+
+/* ───────── Arranque ───────── */
 await requireAuth();
 renderNavbar('cot');
-[materials, laborRates, templates, vendor] = await Promise.all([data.listMaterials(), data.listLaborRates(), data.listTemplates(), data.currentVendorName()]);
-
-// Selects
-$('#b-tpl').innerHTML = '<option value="">— en blanco —</option>' + templates.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
-refreshLoadQuotes();
-
-// Clientes guardados: seleccionar uno autocompleta sus datos
-let clientsList = await data.listClients().catch(() => []);
-function refreshClientPick(sel = '') {
-  $('#clientPick').innerHTML = '<option value="">— nuevo / manual —</option>' + clientsList.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${c.empresa ? ' · ' + esc(c.empresa) : ''}</option>`).join('');
+try {
+  [materials, laborRates, templates, finishes, vendor] = await Promise.all([
+    data.listMaterials(), data.listLaborRates(), data.listTemplates(),
+    data.listFinishes().catch(() => []), data.currentVendorName(),
+  ]);
+} catch (e) {
+  $('#bootErr').innerHTML = `<div class="banner err">No se pudo cargar el catálogo. <b>${esc(e.message || e)}</b>
+    <button class="btn sm" style="margin-left:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
 }
-refreshClientPick();
-$('#clientPick').onchange = e => {
-  const c = clientsList.find(x => x.id === e.target.value);
-  if (!c) return;
-  $('#c-nombre').value = c.nombre || ''; $('#c-contacto').value = c.telefono || ''; $('#c-direccion').value = c.direccion || '';
-  state.cliente = { nombre: c.nombre || '', contacto: c.telefono || '', direccion: c.direccion || '' };
-};
-$('#clientSave').onclick = async () => {
-  const nombre = $('#c-nombre').value.trim();
-  if (!nombre) { toast('Poné el nombre del cliente'); return; }
-  try {
-    const saved = await data.upsertClient({ nombre, telefono: $('#c-contacto').value || null, direccion: $('#c-direccion').value || null });
-    clientsList = [saved, ...clientsList.filter(c => c.id !== saved.id)];
-    refreshClientPick(saved.id); toast('Cliente guardado');
-  } catch (e) { toast('Error: ' + (e.message || e)); }
-};
 
-// Contexto desde el CRM: ?intake=<id> precarga cliente; ?quote=<id> carga la cotización
+// Selects estáticos
+$('#b-tpl').innerHTML = '<option value="">— en blanco —</option>' + templates.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
+const unidadOpts = (sel) => UNIDADES_DIM.map(u => `<option value="${u}" ${u === sel ? 'selected' : ''}>${u}</option>`).join('');
+['#b-ancho-u', '#b-alto-u', '#b-largo-u', '#b-diam-u'].forEach(id => { $(id).innerHTML = unidadOpts('cm'); });
+function refreshFinishes() {
+  $('#b-term').innerHTML = '<option value="">— sin terminación —</option>' +
+    finishes.map(f => `<option value="${f.id}">${esc(f.nombre)}${n(f.costo) ? ' · ' + money(f.costo) : ' · a definir'}</option>`).join('');
+  $('#b-term').value = builder.terminacionId || '';
+}
+refreshFinishes();
+function refreshColocacionRoles() {
+  $('#s-col-rol').innerHTML = '<option value="">— elegir tarifa —</option>' +
+    laborRates.map(r => `<option value="${r.id}">${esc(r.rol)} · ${money(r.costo_hora)}/h</option>`).join('');
+  $('#s-col-rol').value = state.servicios.colocacionLaborRateId || '';
+}
+refreshColocacionRoles();
+
+await refreshLoadQuotes();
+clientsList = await data.listClients().catch(() => []);
+refreshClientPick();
+
+/* ───────── Contexto: ?quote= / ?intake= ───────── */
 const _params = new URLSearchParams(location.search);
 const _quoteParam = _params.get('quote');
-if (_quoteParam) { try { await cargarCotizacion(_quoteParam); } catch {} }
 const _intakeId = _params.get('intake');
+if (_quoteParam) {
+  try { await cargarCotizacion(_quoteParam); } catch (e) { fail(e, 'No se pudo abrir la cotización'); }
+}
 if (_intakeId) {
+  // El vínculo con el lead se conserva SIEMPRE, aunque la cotización ya existiera.
   state.intakeId = _intakeId;
   try {
     const lead = await data.getIntakeCard(_intakeId);
-    if (lead && !_quoteParam) {
+    if (lead && !state.id) {
       state.cliente = { nombre: lead.client_query || '', contacto: lead.client_phone_e164 || '', direccion: '' };
-      $('#c-nombre').value = state.cliente.nombre; $('#c-contacto').value = state.cliente.contacto;
+      pintarCliente();
       $('#quoteMeta').textContent = 'Cotizando para: ' + (lead.client_query || '');
     }
-  } catch {}
+  } catch (e) { console.warn('[cotizador] lead', e); }
 }
 
-// Builder field bindings
-$('#b-nombre').oninput = e => builder.nombre = e.target.value;
-$('#b-cant').oninput = e => builder.cantidad = n(e.target.value) || 1;
-$('#b-mult').oninput = e => { builder.multiplicador = n(e.target.value) || 1.5; drawCost(); };
-$('#b-tam').oninput = e => builder.tamano = e.target.value;
-$('#b-pintado').onchange = e => builder.pintado = e.target.checked;
-$('#b-tpl').onchange = async e => { if (e.target.value) await loadTemplate(e.target.value); };
-$('#addMat').onclick = () => { const m0 = materials[0] || {}; builder.materiales.push({ material_id: m0.id || null, descripcion: m0.nombre || '', dimension: '', costoUnit: m0.precio_unit || 0, cantidad: 1 }); drawMat(); drawCost(); };
-$('#addLab').onclick = () => { const r0 = laborRates.find(r => !r.es_transporte) || laborRates[0] || {}; builder.manoObra.push({ labor_rate_id: r0.id || null, rol: r0.rol || '', costoHora: r0.costo_hora || 0, horas: 1 }); drawLab(); drawCost(); };
+/* ───────── Bindings ───────── */
+$('#b-nombre').oninput = e => { builder.nombre = e.target.value; marcarSucio(); };
+$('#b-cant').oninput = e => { builder.cantidad = n(e.target.value) || 1; marcarSucio(); };
+$('#b-mult').oninput = e => { builder.multiplicador = n(e.target.value) || 1.5; drawCost(); marcarSucio(); };
+$('#b-tam').oninput = e => { builder.tamano = e.target.value; marcarSucio(); };
+$('#b-coment').oninput = e => { builder.comentariosProduccion = e.target.value; marcarSucio(); };
+const bindDim = (inputId, selId, campo) => {
+  $(inputId).oninput = e => { builder[campo] = e.target.value; marcarSucio(); };
+  $(selId).onchange = e => { builder[campo + 'Unidad'] = e.target.value; marcarSucio(); };
+};
+bindDim('#b-ancho', '#b-ancho-u', 'ancho');
+bindDim('#b-alto', '#b-alto-u', 'alto');
+bindDim('#b-largo', '#b-largo-u', 'largo');
+bindDim('#b-diam', '#b-diam-u', 'diametro');
+$('#b-term').onchange = e => {
+  const f = finishes.find(x => x.id === e.target.value);
+  builder.terminacionId = f ? f.id : null;
+  builder.terminacionNombre = f ? f.nombre : '';
+  builder.terminacionCosto = f ? n(f.costo) : 0;
+  drawCost(); marcarSucio();
+};
+$('#b-tpl').onchange = async e => { if (e.target.value) { try { await loadTemplate(e.target.value); } catch (err) { fail(err, 'Plantilla'); } } };
+$('#addMat').onclick = () => {
+  const m0 = materials[0] || {};
+  builder.materiales.push({ material_id: m0.id || null, descripcion: m0.nombre || '', dimension: '', costoUnit: n(m0.precio_unit), cantidad: 1 });
+  drawMat(); drawCost(); marcarSucio();
+};
+$('#newMat').onclick = () => abrirMaterialModal(null, (m) => {
+  builder.materiales.push({ material_id: m.id, descripcion: m.nombre, dimension: '', costoUnit: n(m.precio_unit), cantidad: 1 });
+  drawMat(); drawCost(); marcarSucio();
+});
+$('#addLab').onclick = () => {
+  const r0 = laborRates.find(r => !r.es_transporte) || laborRates[0] || {};
+  builder.manoObra.push({ labor_rate_id: r0.id || null, rol: r0.rol || '', costoHora: n(r0.costo_hora), horas: 1 });
+  drawLab(); drawCost(); marcarSucio();
+};
 $('#addLine').onclick = addLineToQuote;
-$('#btnNueva').onclick = () => { if (confirm('¿Empezar una cotización nueva?')) resetAll(); };
+$('#btnNueva').onclick = () => { if (confirm('¿Empezar una cotización nueva? Lo que no guardaste se pierde.')) resetAll(); };
 $('#btnGuardar').onclick = guardar;
 $('#btnPDF').onclick = generarPDF;
-['c-nombre', 'c-contacto', 'c-direccion'].forEach(id => $('#' + id).oninput = () => { state.cliente = { nombre: $('#c-nombre').value, contacto: $('#c-contacto').value, direccion: $('#c-direccion').value }; });
-$('#loadQuote').onchange = e => { if (e.target.value) cargarCotizacion(e.target.value); };
+$('#q-estado').onchange = e => { state.estado = e.target.value; marcarSucio(); };
+$('#q-coment').oninput = e => { state.comentariosProduccion = e.target.value; marcarSucio(); };
+['c-nombre', 'c-contacto', 'c-direccion'].forEach(id => $('#' + id).oninput = () => {
+  state.cliente = { nombre: $('#c-nombre').value, contacto: $('#c-contacto').value, direccion: $('#c-direccion').value };
+  marcarSucio();
+});
+$('#loadQuote').onchange = async e => {
+  const id = e.target.value;
+  if (!id) return;
+  if (sucio && !confirm('Tenés cambios sin guardar. ¿Abrir otra cotización igual?')) { e.target.value = state.id || ''; return; }
+  try { await cargarCotizacion(id); } catch (err) { fail(err, 'No se pudo abrir'); e.target.value = state.id || ''; }
+};
+
+// Servicios
+const bindSrv = (sel, campo, esNum = true) => {
+  $(sel).oninput = e => { state.servicios[campo] = esNum ? n(e.target.value) : e.target.value; drawTotales(); marcarSucio(); };
+};
+bindSrv('#s-transp', 'transporteCosto');
+bindSrv('#s-transp-nota', 'transporteNotas', false);
+bindSrv('#s-col-horas', 'colocacionHoras');
+bindSrv('#s-col-oper', 'colocacionOperarios');
+bindSrv('#s-col-costoh', 'colocacionCostoHora');
+bindSrv('#s-col-mult', 'colocacionMultiplicador');
+bindSrv('#s-col-viat', 'colocacionViaticos');
+bindSrv('#s-col-coment', 'colocacionComentarios', false);
+$('#s-col-rol').onchange = e => {
+  const r = laborRates.find(x => x.id === e.target.value);
+  state.servicios.colocacionLaborRateId = r ? r.id : null;
+  state.servicios.colocacionRol = r ? r.rol : '';
+  // Snapshot del costo vigente; el usuario lo puede ajustar a mano.
+  if (r) { state.servicios.colocacionCostoHora = n(r.costo_hora); $('#s-col-costoh').value = n(r.costo_hora); }
+  drawTotales(); marcarSucio();
+};
+
+window.addEventListener('beforeunload', (e) => { if (sucio) { e.preventDefault(); e.returnValue = ''; } });
 
 drawMat(); drawLab(); drawCost(); drawLineas();
 
+/* ───────── Plantillas ───────── */
 async function loadTemplate(id) {
   const t = await data.getTemplate(id);
-  builder.nombre = t.tpl.nombre; builder.templateId = id; builder.multiplicador = n(t.tpl.multiplicador) || 1.5;
-  builder.tamano = t.tpl.dimensiones || ''; builder.materiales = t.materiales.map(m => ({ material_id: m.material_id, descripcion: m.descripcion, dimension: m.dimension, costoUnit: n(m.costo_unit), cantidad: n(m.cantidad) }));
+  if (!t?.tpl) { toast('No se encontró la plantilla', true); return; }
+  builder.nombre = t.tpl.nombre; builder.templateId = id;
+  builder.multiplicador = n(t.tpl.multiplicador) || 1.5;
+  builder.tamano = t.tpl.dimensiones || '';
+  builder.materiales = t.materiales.map(m => ({ material_id: m.material_id, descripcion: m.descripcion, dimension: m.dimension, costoUnit: n(m.costo_unit), cantidad: n(m.cantidad) }));
   builder.manoObra = t.manoObra.map(l => ({ labor_rate_id: l.labor_rate_id, rol: l.rol, costoHora: n(l.costo_hora), horas: n(l.horas) }));
-  $('#b-nombre').value = builder.nombre; $('#b-mult').value = builder.multiplicador; $('#b-tam').value = builder.tamano;
-  drawMat(); drawLab(); drawCost();
+  // La terminación de la plantilla es texto libre: si coincide con una del
+  // catálogo la preseleccionamos, si no queda sin terminación.
+  const f = finishes.find(x => (x.nombre || '').toLowerCase() === (t.tpl.terminacion || '').toLowerCase());
+  builder.terminacionId = f?.id || null; builder.terminacionNombre = f?.nombre || ''; builder.terminacionCosto = n(f?.costo);
+  pintarBuilder();
+  marcarSucio();
 }
 
+/* ───────── Materiales del builder ───────── */
 const matOpts = sel => materials.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join('');
 const labOpts = sel => laborRates.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.rol)}</option>`).join('');
 
@@ -208,16 +388,32 @@ function drawMat() {
     <td class="num"><input data-f="cantidad" type="number" step="0.01" value="${n(m.cantidad)}"></td>
     <td class="num"><input data-f="costoUnit" type="number" step="0.01" value="${n(m.costoUnit)}"></td>
     <td class="num">${money(n(m.costoUnit) * n(m.cantidad))}</td>
-    <td class="row-actions"><button data-del>✕</button></td></tr>`).join('');
+    <td class="row-actions"><button data-edit title="Editar en el catálogo">✎</button><button data-del title="Quitar">✕</button></td></tr>`).join('');
   $('#mtBody').querySelectorAll('tr').forEach(tr => {
     const i = +tr.dataset.i;
     tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
       const f = el.dataset.f;
-      if (f === 'material_id') { builder.materiales[i].material_id = el.value; const mm = materials.find(x => x.id === el.value); if (mm) { builder.materiales[i].costoUnit = n(mm.precio_unit); builder.materiales[i].descripcion = mm.nombre; } }
-      else builder.materiales[i][f] = (f === 'dimension') ? el.value : n(el.value);
-      drawMat(); drawCost();
+      if (f === 'material_id') {
+        builder.materiales[i].material_id = el.value;
+        const mm = materials.find(x => x.id === el.value);
+        if (mm) { builder.materiales[i].costoUnit = n(mm.precio_unit); builder.materiales[i].descripcion = mm.nombre; }
+      } else builder.materiales[i][f] = (f === 'dimension') ? el.value : n(el.value);
+      drawMat(); drawCost(); marcarSucio();
     });
-    tr.querySelector('[data-del]').onclick = () => { builder.materiales.splice(i, 1); drawMat(); drawCost(); };
+    tr.querySelector('[data-del]').onclick = () => { builder.materiales.splice(i, 1); drawMat(); drawCost(); marcarSucio(); };
+    tr.querySelector('[data-edit]').onclick = () => {
+      const mm = materials.find(x => x.id === builder.materiales[i].material_id);
+      if (!mm) { toast('Elegí primero un material', true); return; }
+      abrirMaterialModal(mm, (guardado) => {
+        // El precio del catálogo cambió: se ofrece actualizar esta línea.
+        if (n(guardado.precio_unit) !== n(builder.materiales[i].costoUnit) &&
+            confirm('El costo del catálogo quedó en ' + money(guardado.precio_unit) + '. ¿Actualizar también esta línea de la cotización?')) {
+          builder.materiales[i].costoUnit = n(guardado.precio_unit);
+        }
+        builder.materiales[i].descripcion = guardado.nombre;
+        drawMat(); drawCost(); marcarSucio();
+      });
+    };
   });
 }
 function drawLab() {
@@ -226,187 +422,427 @@ function drawLab() {
     <td class="num"><input data-f="costoHora" type="number" step="1" value="${n(l.costoHora)}"></td>
     <td class="num"><input data-f="horas" type="number" step="0.5" value="${n(l.horas)}"></td>
     <td class="num">${money(n(l.costoHora) * n(l.horas))}</td>
-    <td class="row-actions"><button data-del>✕</button></td></tr>`).join('');
+    <td class="row-actions"><button data-del title="Quitar">✕</button></td></tr>`).join('');
   $('#lbBody').querySelectorAll('tr').forEach(tr => {
     const i = +tr.dataset.i;
     tr.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
       const f = el.dataset.f;
-      if (f === 'labor_rate_id') { builder.manoObra[i].labor_rate_id = el.value; const rr = laborRates.find(x => x.id === el.value); if (rr) { builder.manoObra[i].costoHora = n(rr.costo_hora); builder.manoObra[i].rol = rr.rol; } }
-      else builder.manoObra[i][f] = n(el.value);
-      drawLab(); drawCost();
+      if (f === 'labor_rate_id') {
+        builder.manoObra[i].labor_rate_id = el.value;
+        const rr = laborRates.find(x => x.id === el.value);
+        if (rr) { builder.manoObra[i].costoHora = n(rr.costo_hora); builder.manoObra[i].rol = rr.rol; }
+      } else builder.manoObra[i][f] = n(el.value);
+      drawLab(); drawCost(); marcarSucio();
     });
-    tr.querySelector('[data-del]').onclick = () => { builder.manoObra.splice(i, 1); drawLab(); drawCost(); };
+    tr.querySelector('[data-del]').onclick = () => { builder.manoObra.splice(i, 1); drawLab(); drawCost(); marcarSucio(); };
   });
 }
 function drawCost() {
-  const l = calcLine({ materiales: builder.materiales, manoObra: builder.manoObra, multiplicador: builder.multiplicador });
+  const l = calcLine({
+    materiales: builder.materiales, manoObra: builder.manoObra,
+    terminacionCosto: builder.terminacionCosto, multiplicador: builder.multiplicador,
+  });
   $('#bCost').innerHTML = `
     <div><span>Materiales</span><b>${money(l.costoMateriales)}</b></div>
     <div><span>Mano de obra</span><b>${money(l.costoMO)}</b></div>
+    <div><span>Terminación</span><b>${money(l.costoTerminacion)}</b></div>
     <div><span>Costo directo</span><b>${money(l.costoDirecto)}</b></div>
     <div><span>Precio ×${l.multiplicador}</span><b>${money(l.precioVenta)}</b></div>
     <div><span>Margen</span><b>${pct(l.margen)}</b></div>`;
   $('#addLine').textContent = builder.editIndex == null ? 'Agregar a la cotización' : 'Actualizar ítem';
 }
 
+/* ───────── Ítems de la cotización ───────── */
 function addLineToQuote() {
-  if (!builder.nombre.trim()) { toast('Ponele nombre al producto'); return; }
+  if (!builder.nombre.trim()) { toast('Ponele nombre al producto', true); return; }
   const line = {
-    producto: builder.nombre, templateId: builder.templateId, es_estandar: !!builder.templateId,
-    pintado: builder.pintado, tamano: builder.tamano, cantidad: n(builder.cantidad) || 1,
+    producto: builder.nombre.trim(), templateId: builder.templateId, es_estandar: !!builder.templateId,
+    tamano: builder.tamano, cantidad: n(builder.cantidad) || 1,
+    ancho: builder.ancho, anchoUnidad: builder.anchoUnidad,
+    alto: builder.alto, altoUnidad: builder.altoUnidad,
+    largo: builder.largo, largoUnidad: builder.largoUnidad,
+    diametro: builder.diametro, diametroUnidad: builder.diametroUnidad,
+    terminacionId: builder.terminacionId, terminacionNombre: builder.terminacionNombre,
+    terminacionCosto: n(builder.terminacionCosto),
+    comentariosProduccion: builder.comentariosProduccion,
     materiales: builder.materiales.map(m => ({ ...m })), manoObra: builder.manoObra.map(l => ({ ...l })),
     multiplicador: builder.multiplicador,
   };
   calcLine(line);
   if (builder.editIndex == null) state.lineas.push(line);
   else state.lineas[builder.editIndex] = line;
-  builder = newBuilder(); resetBuilderUI();
-  drawLineas();
-  toast('Ítem agregado');
+  const eraEdicion = builder.editIndex != null;
+  builder = newBuilder(); pintarBuilder();
+  drawLineas(); marcarSucio();
+  toast(eraEdicion ? 'Ítem actualizado' : 'Ítem agregado');
 }
-function resetBuilderUI() {
-  $('#b-nombre').value = ''; $('#b-tpl').value = ''; $('#b-cant').value = 1; $('#b-mult').value = 1.5; $('#b-tam').value = ''; $('#b-pintado').checked = false;
+// Vuelca el builder a los campos del formulario (una sola función: nunca queda
+// un input con el valor del ítem anterior).
+function pintarBuilder() {
+  $('#b-nombre').value = builder.nombre || '';
+  $('#b-tpl').value = builder.templateId || '';
+  $('#b-cant').value = builder.cantidad || 1;
+  $('#b-mult').value = builder.multiplicador || 1.5;
+  $('#b-tam').value = builder.tamano || '';
+  $('#b-coment').value = builder.comentariosProduccion || '';
+  $('#b-ancho').value = builder.ancho ?? ''; $('#b-ancho-u').value = builder.anchoUnidad || 'cm';
+  $('#b-alto').value = builder.alto ?? ''; $('#b-alto-u').value = builder.altoUnidad || 'cm';
+  $('#b-largo').value = builder.largo ?? ''; $('#b-largo-u').value = builder.largoUnidad || 'cm';
+  $('#b-diam').value = builder.diametro ?? ''; $('#b-diam-u').value = builder.diametroUnidad || 'cm';
+  $('#b-term').value = builder.terminacionId || '';
   drawMat(); drawLab(); drawCost();
 }
 function drawLineas() {
-  if (!state.lineas.length) { $('#lineas').innerHTML = '<p class="muted">Agregá productos desde la izquierda.</p>'; drawTotales(); return; }
-  $('#lineas').innerHTML = state.lineas.map((l, i) => `<div class="li" data-i="${i}">
-    <div><div class="ln">${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</div>
-      <div class="lm">${esc(l.tamano || '')}${l.pintado ? ' · pintado' : ''} · costo ${money(l.costoDirecto)} · margen ${pct(l.margen)}</div></div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <b>${money(l.precioVenta * (l.cantidad || 1))}</b>
-      <span class="row-actions"><button data-edit title="Editar">✎</button><button data-del title="Quitar">✕</button></span>
-    </div></div>`).join('');
+  if (!state.lineas.length) {
+    $('#lineas').innerHTML = '<p class="muted">Agregá productos desde la izquierda.</p>';
+    drawTotales(); return;
+  }
+  $('#lineas').innerHTML = state.lineas.map((l, i) => {
+    const dims = dimsText(l);
+    const meta = [
+      dims, l.tamano || '', l.terminacionNombre ? '🎨 ' + l.terminacionNombre : '',
+      'costo ' + money(l.costoDirecto), 'margen ' + pct(l.margen),
+    ].filter(Boolean).join(' · ');
+    return `<div class="li" data-i="${i}">
+      <div style="min-width:0"><div class="ln">${esc(l.producto)} ${l.cantidad > 1 ? '×' + l.cantidad : ''}</div>
+        <div class="lm">${esc(meta)}${l.comentariosProduccion ? '<br>📋 ' + esc(l.comentariosProduccion) : ''}</div></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <b>${money(l.precioVenta * (l.cantidad || 1))}</b>
+        <span class="row-actions"><button data-edit title="Editar">✎</button><button data-del title="Quitar">✕</button></span>
+      </div></div>`;
+  }).join('');
   $('#lineas').querySelectorAll('.li').forEach(el => {
     const i = +el.dataset.i;
-    el.querySelector('[data-del]').onclick = () => { state.lineas.splice(i, 1); drawLineas(); };
+    el.querySelector('[data-del]').onclick = () => { state.lineas.splice(i, 1); drawLineas(); marcarSucio(); };
     el.querySelector('[data-edit]').onclick = () => editLine(i);
   });
   drawTotales();
 }
 function editLine(i) {
   const l = state.lineas[i];
-  builder = { nombre: l.producto, templateId: l.templateId, pintado: l.pintado, cantidad: l.cantidad, tamano: l.tamano, multiplicador: l.multiplicador, materiales: l.materiales.map(m => ({ ...m })), manoObra: l.manoObra.map(x => ({ ...x })), editIndex: i };
-  $('#b-nombre').value = l.producto; $('#b-cant').value = l.cantidad; $('#b-mult').value = l.multiplicador; $('#b-tam').value = l.tamano || ''; $('#b-pintado').checked = !!l.pintado;
-  drawMat(); drawLab(); drawCost();
+  builder = {
+    nombre: l.producto, templateId: l.templateId, cantidad: l.cantidad, tamano: l.tamano || '',
+    multiplicador: l.multiplicador,
+    ancho: l.ancho ?? '', anchoUnidad: l.anchoUnidad || 'cm',
+    alto: l.alto ?? '', altoUnidad: l.altoUnidad || 'cm',
+    largo: l.largo ?? '', largoUnidad: l.largoUnidad || 'cm',
+    diametro: l.diametro ?? '', diametroUnidad: l.diametroUnidad || 'cm',
+    terminacionId: l.terminacionId || null, terminacionNombre: l.terminacionNombre || '',
+    terminacionCosto: n(l.terminacionCosto),
+    comentariosProduccion: l.comentariosProduccion || '',
+    materiales: (l.materiales || []).map(m => ({ ...m })), manoObra: (l.manoObra || []).map(x => ({ ...x })),
+    editIndex: i,
+  };
+  pintarBuilder();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function drawTotales() {
   const t = calcQuoteTotals(state);
+  const s = t.servicios;
+  const filaSrv = s.hay ? `
+    <div class="t"><span>Servicios</span><span>${money(s.precio)}</span></div>
+    ${s.transporte ? `<div class="t sm"><span>· Transporte (sin markup)</span><span>${money(s.transporte)}</span></div>` : ''}
+    ${s.precioColocacionMO ? `<div class="t sm"><span>· Colocación · mano de obra</span><span>${money(s.precioColocacionMO)}</span></div>` : ''}
+    ${s.viaticos ? `<div class="t sm"><span>· Colocación · viáticos (sin markup)</span><span>${money(s.viaticos)}</span></div>` : ''}` : '';
   $('#totales').innerHTML = `
     <div class="t"><span>Materiales</span><span>${money(t.subtotalMateriales)}</span></div>
     <div class="t"><span>Mano de obra</span><span>${money(t.subtotalMO)}</span></div>
-    <div class="t"><span>Costo directo</span><span>${money(t.costoDirecto)}</span></div>
+    ${t.subtotalTerminaciones ? `<div class="t"><span>Terminaciones</span><span>${money(t.subtotalTerminaciones)}</span></div>` : ''}
+    <div class="t"><span>Fabricación (precio)</span><span>${money(t.precioProductos)}</span></div>
+    ${filaSrv}
+    <div class="t"><span>Costo directo total</span><span>${money(t.costoDirecto)}</span></div>
     <div class="t"><span>Ganancia (margen ${pct(t.margen)})</span><span>${money(t.ganancia)}</span></div>
     <div class="t grand"><span>TOTAL</span><span>${money(t.precioVenta)}</span></div>`;
 }
 
+/* ───────── Clientes ───────── */
+function refreshClientPick(sel = '') {
+  $('#clientPick').innerHTML = '<option value="">— nuevo / manual —</option>' +
+    clientsList.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nombre)}${c.empresa ? ' · ' + esc(c.empresa) : ''}</option>`).join('');
+}
+function pintarCliente() {
+  $('#c-nombre').value = state.cliente.nombre || '';
+  $('#c-contacto').value = state.cliente.contacto || '';
+  $('#c-direccion').value = state.cliente.direccion || '';
+}
+$('#clientPick').onchange = e => {
+  const c = clientsList.find(x => x.id === e.target.value);
+  state.clienteId = c ? c.id : null;
+  if (!c) return;
+  state.cliente = { nombre: c.nombre || '', contacto: c.telefono || '', direccion: c.direccion || '' };
+  pintarCliente(); marcarSucio();
+};
+$('#clientSave').onclick = async () => {
+  const nombre = $('#c-nombre').value.trim();
+  if (!nombre) { toast('Poné el nombre del cliente', true); return; }
+  try {
+    const saved = await data.upsertClient({
+      ...(state.clienteId ? { id: state.clienteId } : {}),
+      nombre, telefono: $('#c-contacto').value || null, direccion: $('#c-direccion').value || null,
+    });
+    clientsList = [saved, ...clientsList.filter(c => c.id !== saved.id)];
+    state.clienteId = saved.id;
+    refreshClientPick(saved.id);
+    toast('Cliente guardado');
+  } catch (e) { fail(e, 'Cliente'); }
+};
+
+/* ───────── Alta / edición de material sin salir del cotizador ─────────
+   Escribe sobre la MISMA tabla del catálogo: no hay copias locales. */
+function abrirMaterialModal(mat, onSaved) {
+  const esNuevo = !mat;
+  const m = mat || { nombre: '', tipo: '', unidad: 'mt', precio_unit: 0, proveedor: '', stock_actual: 0, stock_minimo: 0 };
+  $('#modal').innerHTML = `
+    <h3>${esNuevo ? 'Nuevo material' : 'Editar material'}</h3>
+    <p class="muted" style="margin-bottom:12px">Se guarda en el Catálogo: queda disponible para todas las cotizaciones.</p>
+    <div class="row">
+      <div class="fg" style="grid-column:1/-1"><label>Nombre</label><input id="m-nombre" value="${esc(m.nombre)}" placeholder="Caño 30x30x2"></div>
+      <div class="fg"><label>Tipo</label><input id="m-tipo" value="${esc(m.tipo)}" placeholder="Caño cuadrado"></div>
+      <div class="fg"><label>Unidad</label><input id="m-unidad" value="${esc(m.unidad)}" placeholder="mt"></div>
+      <div class="fg"><label>Costo por unidad</label><input id="m-precio" type="number" step="0.01" value="${n(m.precio_unit)}"></div>
+      <div class="fg"><label>Proveedor habitual</label><input id="m-prov" value="${esc(m.proveedor)}"></div>
+      <div class="fg"><label>Stock actual</label><input id="m-stock" type="number" step="0.01" value="${n(m.stock_actual)}"></div>
+      <div class="fg"><label>Stock mínimo</label><input id="m-stockmin" type="number" step="0.01" value="${n(m.stock_minimo)}"></div>
+    </div>
+    ${mat?.updated_at ? `<p class="muted" style="margin-top:10px">Última actualización: ${new Date(mat.updated_at).toLocaleString('es-UY')}</p>` : ''}
+    <div class="mact"><button class="btn primary" id="m-save">Guardar en catálogo</button><button class="btn" id="m-cancel">Cancelar</button></div>`;
+  $('#ov').classList.add('show');
+  $('#m-cancel').onclick = cerrarModal;
+  $('#m-save').onclick = async () => {
+    const nombre = $('#m-nombre').value.trim();
+    if (!nombre) { toast('El material necesita un nombre', true); return; }
+    const btn = $('#m-save'); btn.disabled = true;
+    try {
+      const saved = await data.upsertMaterial({
+        ...(esNuevo ? {} : { id: m.id }),
+        nombre, tipo: $('#m-tipo').value || null, unidad: $('#m-unidad').value || 'mt',
+        precio_unit: n($('#m-precio').value), proveedor: $('#m-prov').value || null,
+        stock_actual: n($('#m-stock').value), stock_minimo: n($('#m-stockmin').value), activo: true,
+      });
+      materials = [saved, ...materials.filter(x => x.id !== saved.id)]
+        .sort((a, b) => (a.tipo || '').localeCompare(b.tipo || '', 'es') || (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+      cerrarModal();
+      toast(esNuevo ? 'Material creado en el catálogo' : 'Material actualizado');
+      onSaved?.(saved);
+    } catch (e) {
+      fail(e, 'No se pudo guardar el material');
+    } finally { btn.disabled = false; }
+  };
+}
+function cerrarModal() { $('#ov').classList.remove('show'); }
+$('#ov').onclick = e => { if (e.target === $('#ov')) cerrarModal(); };
+
+/* ───────── Guardar / cargar ───────── */
 async function guardar() {
-  if (!state.lineas.length) { toast('La cotización está vacía'); return; }
-  $('#btnGuardar').disabled = true;
+  if (guardando) return;                        // doble clic
+  if (!state.lineas.length && !calcServices(state.servicios).hay) {
+    toast('La cotización está vacía', true); return;
+  }
+  if (builder.nombre.trim() && !confirm('Tenés un producto empezado que no agregaste a la cotización. ¿Guardar igual?')) return;
+
+  guardando = true; $('#btnGuardar').disabled = true; $('#btnGuardar').textContent = 'Guardando…';
   try {
     const t = calcQuoteTotals(state);
-    if (!state.numero) { state.numero = await data.nextQuoteNumber(); state.id = data.quoteId(state.numero); }
-    const { data: { user } } = await (await import('./js/supa.js?v=3')).getSupa().auth.getUser();
+    const s = t.servicios;
     const quote = {
-      id: state.id, numero: state.numero, estado: 'presupuestado',
+      ...(state.id ? { id: state.id } : {}),
+      estado: state.estado || 'borrador',
       cliente_nombre: state.cliente.nombre || null, cliente_contacto: state.cliente.contacto || null,
       cliente_telefono: state.cliente.contacto || null, cliente_direccion: state.cliente.direccion || null,
-      vendedor: vendor, vendedor_user_id: user?.id || null, intake_card_id: state.intakeId || null,
-      subtotal_materiales: t.subtotalMateriales, subtotal_mo: t.subtotalMO, costo_directo: t.costoDirecto,
-      multiplicador: 1.5, precio_venta: t.precioVenta, ganancia: t.ganancia, margen: t.margen,
+      cliente_id: state.clienteId || null,
+      // El vendedor se sella al crear: que otro la edite después no le cambia la venta de dueño.
+      ...(state.id ? {} : { vendedor }),
+      intake_card_id: state.intakeId || null,
+
+      subtotal_materiales: t.subtotalMateriales, subtotal_mo: t.subtotalMO,
+      costo_terminaciones: t.subtotalTerminaciones, subtotal_productos: t.precioProductos,
+      costo_directo: t.costoDirecto, multiplicador: state.lineas[0]?.multiplicador || 1.5,
+      precio_venta: t.precioVenta, ganancia: t.ganancia, margen: t.margen,
+
+      transporte_costo: s.transporte, transporte_notas: state.servicios.transporteNotas || null,
+      colocacion_horas: n(state.servicios.colocacionHoras), colocacion_operarios: s.operarios,
+      colocacion_labor_rate_id: state.servicios.colocacionLaborRateId || null,
+      colocacion_rol: state.servicios.colocacionRol || null,
+      colocacion_costo_hora: n(state.servicios.colocacionCostoHora),
+      colocacion_multiplicador: s.multiplicador, colocacion_viaticos: s.viaticos,
+      colocacion_comentarios: state.servicios.colocacionComentarios || null,
+      costo_colocacion_mo: s.costoColocacionMO, precio_colocacion_mo: s.precioColocacionMO,
+      subtotal_servicios: s.precio,
+
+      comentarios_produccion: state.comentariosProduccion || null,
     };
-    await data.saveQuote(quote, state.lineas);
-    refreshLoadQuotes();
-    $('#quoteMeta').textContent = `Guardada como ${state.id} · ${vendor}`;
+    const saved = await data.saveQuote(quote, state.lineas);
+    // A partir de acá SIEMPRE se actualiza esta cotización: Guardar no duplica.
+    state.id = saved.id; state.numero = saved.numero; state.estado = saved.estado || state.estado;
+
+    // Si vino de un lead, el vínculo queda registrado también del lado del CRM.
+    if (state.intakeId) {
+      try { await data.saveIntakeCard({ id: state.intakeId, resulting_quote_id: saved.id }); }
+      catch (e) { console.warn('[cotizador] no se pudo vincular el lead', e); }
+    }
+    sucio = false;
+    await refreshLoadQuotes();
+    $('#loadQuote').value = state.id;
+    $('#quoteMeta').textContent = `${state.id} · ${vendor} · guardada ${new Date().toLocaleString('es-UY')}`;
     toast('Cotización guardada: ' + state.id);
-  } catch (e) { toast('Error: ' + (e.message || e)); }
-  finally { $('#btnGuardar').disabled = false; }
+  } catch (e) {
+    fail(e, 'No se pudo guardar');
+  } finally {
+    guardando = false; $('#btnGuardar').disabled = false; $('#btnGuardar').textContent = 'Guardar';
+  }
 }
 
 async function refreshLoadQuotes() {
   try {
     const qs = await data.listQuotes();
-    $('#loadQuote').innerHTML = '<option value="">Cargar cotización…</option>' + qs.map(q => `<option value="${q.id}">${q.id} · ${esc(q.cliente_nombre || 's/cliente')} · ${money(q.precio_venta)}</option>`).join('');
-  } catch {}
-}
-async function cargarCotizacion(id) {
-  const { quote, lines } = await data.getQuote(id);
-  if (!quote) return;
-  state.id = quote.id; state.numero = quote.numero;
-  state.cliente = { nombre: quote.cliente_nombre || '', contacto: quote.cliente_contacto || '', direccion: quote.cliente_direccion || '' };
-  $('#c-nombre').value = state.cliente.nombre; $('#c-contacto').value = state.cliente.contacto; $('#c-direccion').value = state.cliente.direccion;
-  state.lineas = lines.map(l => { const o = { producto: l.producto, templateId: l.template_id, es_estandar: l.es_estandar, pintado: l.pintado, tamano: l.tamano, cantidad: n(l.cantidad) || 1, materiales: l.materiales || [], manoObra: l.mano_obra || [], multiplicador: n(l.multiplicador) || 1.5 }; calcLine(o); return o; });
-  drawLineas();
-  $('#quoteMeta').textContent = `Editando ${state.id}`;
-  toast('Cargada ' + id);
-}
-function resetAll() {
-  state.id = null; state.numero = null; state.cliente = {}; state.lineas = [];
-  $('#c-nombre').value = ''; $('#c-contacto').value = ''; $('#c-direccion').value = '';
-  $('#quoteMeta').textContent = ''; builder = newBuilder(); resetBuilderUI(); $('#loadQuote').value = '';
-  drawLineas();
+    $('#loadQuote').innerHTML = '<option value="">Cargar cotización…</option>' +
+      qs.map(q => `<option value="${q.id}">${q.id} · ${esc(q.cliente_nombre || 's/cliente')} · ${money(q.precio_venta)} · ${esc(q.estado)}</option>`).join('');
+    if (state.id) $('#loadQuote').value = state.id;
+  } catch (e) { console.warn('[cotizador] listado de cotizaciones', e); }
 }
 
-/* ───────── PDF molde De Cirene ───────── */
+// Reabre una cotización EXACTAMENTE como quedó guardada.
+async function cargarCotizacion(id) {
+  const { quote, lines } = await data.getQuote(id);
+  state.id = quote.id; state.numero = quote.numero; state.estado = quote.estado || 'borrador';
+  state.cliente = {
+    nombre: quote.cliente_nombre || '', contacto: quote.cliente_contacto || quote.cliente_telefono || '',
+    direccion: quote.cliente_direccion || '',
+  };
+  state.clienteId = quote.cliente_id || null;
+  state.intakeId = quote.intake_card_id || state.intakeId || null;
+  state.comentariosProduccion = quote.comentarios_produccion || '';
+  state.servicios = {
+    transporteCosto: n(quote.transporte_costo), transporteNotas: quote.transporte_notas || '',
+    colocacionHoras: n(quote.colocacion_horas), colocacionOperarios: n(quote.colocacion_operarios) || 1,
+    colocacionLaborRateId: quote.colocacion_labor_rate_id || null, colocacionRol: quote.colocacion_rol || '',
+    colocacionCostoHora: n(quote.colocacion_costo_hora),
+    colocacionMultiplicador: n(quote.colocacion_multiplicador) || 1.5,
+    colocacionViaticos: n(quote.colocacion_viaticos), colocacionComentarios: quote.colocacion_comentarios || '',
+  };
+  state.lineas = lines.map(l => { const o = data.rowALinea(l); calcLine(o); return o; });
+
+  pintarCliente();
+  refreshClientPick(state.clienteId || '');
+  $('#q-estado').value = state.estado;
+  $('#q-coment').value = state.comentariosProduccion;
+  $('#s-transp').value = state.servicios.transporteCosto;
+  $('#s-transp-nota').value = state.servicios.transporteNotas;
+  $('#s-col-horas').value = state.servicios.colocacionHoras;
+  $('#s-col-oper').value = state.servicios.colocacionOperarios;
+  $('#s-col-costoh').value = state.servicios.colocacionCostoHora;
+  $('#s-col-mult').value = state.servicios.colocacionMultiplicador;
+  $('#s-col-viat').value = state.servicios.colocacionViaticos;
+  $('#s-col-coment').value = state.servicios.colocacionComentarios;
+  refreshColocacionRoles();
+
+  builder = newBuilder(); pintarBuilder();
+  drawLineas();
+  $('#loadQuote').value = state.id;
+  $('#quoteMeta').textContent = `Editando ${state.id}` + (quote.updated_at ? ` · última edición ${new Date(quote.updated_at).toLocaleString('es-UY')}` : '');
+  sucio = false;
+  toast('Cargada ' + id);
+}
+
+function resetAll() {
+  state.id = null; state.numero = null; state.estado = 'borrador';
+  state.cliente = { nombre: '', contacto: '', direccion: '' }; state.clienteId = null;
+  state.lineas = []; state.servicios = newServicios(); state.comentariosProduccion = '';
+  // El vínculo con el lead NO se pierde: se sigue cotizando para ese lead.
+  pintarCliente();
+  refreshClientPick('');
+  $('#q-estado').value = 'borrador'; $('#q-coment').value = '';
+  $('#s-transp').value = 0; $('#s-transp-nota').value = '';
+  $('#s-col-horas').value = 0; $('#s-col-oper').value = 1; $('#s-col-costoh').value = 0;
+  $('#s-col-mult').value = 1.5; $('#s-col-viat').value = 0; $('#s-col-coment').value = '';
+  refreshColocacionRoles();
+  $('#quoteMeta').textContent = ''; $('#loadQuote').value = '';
+  builder = newBuilder(); pintarBuilder();
+  drawLineas(); sucio = false;
+}
+
+/* ───────── PDF molde De Cirene (sin IVA) ───────── */
 function generarPDF() {
-  if (!state.lineas.length) { toast('Nada para exportar'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const W = 210, M = 18; let y = 18;
   const t = calcQuoteTotals(state);
-  const fecha = new Date().toLocaleDateString('es-UY');
-  // Encabezado
-  doc.setFillColor(10, 10, 10); doc.rect(0, 0, W, 30, 'F');
-  doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-  doc.text('EMPRENDIMIENTOS DE CIRENE', M, 14);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('Herrería · Tel 097 225 165 · @de_cirene_', M, 21);
-  doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-  doc.text('PRESUPUESTO', W - M, 18, { align: 'right' });
-  y = 40; doc.setTextColor(20);
-  // Cliente
-  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-  doc.text(`Cliente: ${state.cliente.nombre || '-'}`, M, y);
-  doc.text(`Fecha: ${fecha}`, W - M, y, { align: 'right' }); y += 5;
-  if (state.cliente.contacto) { doc.text(`Contacto: ${state.cliente.contacto}`, M, y); y += 5; }
-  if (state.cliente.direccion) { doc.text(`Dirección: ${state.cliente.direccion}`, M, y); y += 5; }
-  if (state.id) { doc.text(`N° ${state.id}`, M, y); y += 5; }
-  y += 3;
-  // Tabla de ítems
-  doc.setFillColor(245); doc.rect(M, y, W - 2 * M, 8, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-  doc.text('Concepto', M + 2, y + 5.5); doc.text('Cant.', W - M - 42, y + 5.5, { align: 'right' }); doc.text('Importe', W - M - 2, y + 5.5, { align: 'right' });
-  y += 11; doc.setFont('helvetica', 'normal');
-  for (const l of state.lineas) {
-    const desc = l.producto + (l.tamano ? ` (${l.tamano})` : '') + (l.pintado ? ' · pintado' : '');
-    doc.text(doc.splitTextToSize(desc, 110), M + 2, y);
-    doc.text(String(l.cantidad || 1), W - M - 42, y, { align: 'right' });
-    doc.text(money(l.precioVenta * (l.cantidad || 1)), W - M - 2, y, { align: 'right' });
-    y += 8;
-    if (y > 250) { doc.addPage(); y = 24; }
-  }
-  // Total
-  doc.setDrawColor(10); doc.line(M, y, W - M, y); y += 7;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-  doc.text('TOTAL', W - M - 50, y, { align: 'right' });
-  doc.text(money(t.precioVenta), W - M - 2, y, { align: 'right' });
-  y += 14;
-  // Términos
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80);
-  const terminos = [
-    'Validez del presupuesto: 15 días.',
-    'Forma de pago: 50% de adelanto (materiales e inicio) y 50% al finalizar.',
-    'Plazo estimado: fabricación ~2 semanas + instalación, a coordinar.',
-    'Flete / instalación: a cotizar según lugar.',
-  ];
-  doc.text('Condiciones', M, y); y += 5; doc.setTextColor(110);
-  terminos.forEach(tx => { doc.text('• ' + tx, M, y); y += 5; });
-  y += 4; doc.setTextColor(10); doc.setFont('helvetica', 'italic');
-  doc.text('¡Gracias por pensar en Emprendimientos De Cirene para tu producto!', M, y);
-  const fname = (state.id || 'presupuesto') + '_' + (state.cliente.nombre || 'cliente').replace(/\s+/g, '_') + '.pdf';
-  doc.save(fname);
-  toast('PDF generado');
+  if (!state.lineas.length && !t.servicios.hay) { toast('Nada para exportar', true); return; }
+  if (!window.jspdf?.jsPDF) { toast('No se pudo cargar el generador de PDF. Revisá la conexión.', true); return; }
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, M = 18; let y = 18;
+    const fecha = new Date().toLocaleDateString('es-UY');
+    const salto = (alto = 8) => { if (y > 265 - alto) { doc.addPage(); y = 24; } };
+
+    doc.setFillColor(10, 10, 10); doc.rect(0, 0, W, 30, 'F');
+    doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+    doc.text('EMPRENDIMIENTOS DE CIRENE', M, 14);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text('Herrería · Tel 097 225 165 · @de_cirene_', M, 21);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('PRESUPUESTO', W - M, 18, { align: 'right' });
+    y = 40; doc.setTextColor(20);
+
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text(`Cliente: ${state.cliente.nombre || '-'}`, M, y);
+    doc.text(`Fecha: ${fecha}`, W - M, y, { align: 'right' }); y += 5;
+    if (state.cliente.contacto) { doc.text(`Contacto: ${state.cliente.contacto}`, M, y); y += 5; }
+    if (state.cliente.direccion) { doc.text(`Dirección: ${state.cliente.direccion}`, M, y); y += 5; }
+    if (state.id) { doc.text(`N° ${state.id}`, M, y); y += 5; }
+    y += 3;
+
+    doc.setFillColor(245); doc.rect(M, y, W - 2 * M, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text('Concepto', M + 2, y + 5.5);
+    doc.text('Cant.', W - M - 42, y + 5.5, { align: 'right' });
+    doc.text('Importe', W - M - 2, y + 5.5, { align: 'right' });
+    y += 11; doc.setFont('helvetica', 'normal');
+
+    for (const l of state.lineas) {
+      const dims = dimsText(l);
+      const desc = l.producto + (dims ? ` — ${dims}` : (l.tamano ? ` (${l.tamano})` : ''))
+        + (l.terminacionNombre ? ` · ${l.terminacionNombre}` : '');
+      const trozos = doc.splitTextToSize(desc, 108);
+      salto(trozos.length * 5 + 4);
+      doc.text(trozos, M + 2, y);
+      doc.text(String(l.cantidad || 1), W - M - 42, y, { align: 'right' });
+      doc.text(money(l.precioVenta * (l.cantidad || 1)), W - M - 2, y, { align: 'right' });
+      y += Math.max(8, trozos.length * 5 + 3);
+    }
+    // Servicios: van como conceptos propios, identificados.
+    const s = t.servicios;
+    if (s.transporte) { salto(); doc.text('Transporte', M + 2, y); doc.text('1', W - M - 42, y, { align: 'right' }); doc.text(money(s.transporte), W - M - 2, y, { align: 'right' }); y += 8; }
+    if (s.precioColocacionMO) {
+      salto();
+      const det = `Colocación (${n(state.servicios.colocacionHoras)} h × ${s.operarios} operario${s.operarios > 1 ? 's' : ''})`;
+      doc.text(det, M + 2, y); doc.text('1', W - M - 42, y, { align: 'right' });
+      doc.text(money(s.precioColocacionMO), W - M - 2, y, { align: 'right' }); y += 8;
+    }
+    if (s.viaticos) { salto(); doc.text('Viáticos de colocación', M + 2, y); doc.text('1', W - M - 42, y, { align: 'right' }); doc.text(money(s.viaticos), W - M - 2, y, { align: 'right' }); y += 8; }
+
+    salto(20);
+    doc.setDrawColor(10); doc.line(M, y, W - M, y); y += 7;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('TOTAL', W - M - 50, y, { align: 'right' });
+    doc.text(money(t.precioVenta), W - M - 2, y, { align: 'right' });
+    y += 14;
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80);
+    const terminos = [
+      'Validez del presupuesto: 15 días.',
+      'Forma de pago: 50% de adelanto (materiales e inicio) y 50% al finalizar.',
+      'Plazo estimado: fabricación ~2 semanas + instalación, a coordinar.',
+      s.transporte || s.viaticos ? 'Flete / colocación incluidos según el detalle de arriba.' : 'Flete / instalación: a cotizar según lugar.',
+    ];
+    salto(30);
+    doc.text('Condiciones', M, y); y += 5; doc.setTextColor(110);
+    terminos.forEach(tx => { salto(6); doc.text('• ' + tx, M, y); y += 5; });
+    y += 4; doc.setTextColor(10); doc.setFont('helvetica', 'italic');
+    salto(10);
+    doc.text('¡Gracias por pensar en Emprendimientos De Cirene para tu producto!', M, y);
+    const fname = (state.id || 'presupuesto') + '_' + (state.cliente.nombre || 'cliente').replace(/\s+/g, '_') + '.pdf';
+    doc.save(fname);
+    toast('PDF generado');
+  } catch (e) { fail(e, 'PDF'); }
 }
 </script>
 </body>

@@ -34,7 +34,7 @@ function listaColumnas(tabla, columnas) {
   const txt = (columnas || '*').trim();
   if (txt === '*' || txt === '') return '*';
   // Los embeds de PostgREST — select('*, workshops(name)') — no se soportan:
-  // ninguna página viva de Cirene los usa (solo módulos muertos de Glide).
+  // ninguna página viva de Cirene los usa (solo módulos heredados que ya no se importan).
   if (txt.includes('(')) {
     console.warn('[query] embed no soportado, devuelvo todas las columnas:', txt);
     return '*';

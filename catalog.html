@@ -55,28 +55,48 @@
   <div class="tabbar">
     <button data-tab="materiales" class="active">Materiales</button>
     <button data-tab="plantillas">Plantillas de producto</button>
+    <button data-tab="terminaciones">Terminaciones / pintado</button>
     <button data-tab="mo">Mano de obra</button>
   </div>
-  <div id="pane"></div>
+  <div id="pane"><p class="muted">Cargando catálogo…</p></div>
 </div>
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { money, pct, n, calcLine } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, pct, n, calcLine } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
 const pane = $('#pane');
-const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); };
+const toast = (m, err = false) => {
+  const t = $('#toast'); t.textContent = m;
+  t.style.background = err ? '#A33A3A' : '#0A0A0A';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), err ? 4000 : 1800);
+};
+const fail = (e, ctx) => { console.error('[catalogo]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Fecha y hora de la última actualización de costo (requisito de trazabilidad).
+const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
-let materials = [], laborRates = [], templates = [];
+let materials = [], laborRates = [], templates = [], finishes = [];
 
 await requireAuth();
 renderNavbar('catalog');
-[materials, laborRates, templates] = await Promise.all([data.listMaterials(), data.listLaborRates(), data.listTemplates()]);
+try {
+  [materials, laborRates, templates, finishes] = await Promise.all([
+    data.listMaterials({ incluirInactivos: true }),
+    data.listLaborRates({ incluirInactivos: true }),
+    data.listTemplates(),
+    data.listFinishes({ incluirInactivas: true }).catch(() => []),
+  ]);
+} catch (e) {
+  pane.innerHTML = `<div style="color:#A33A3A;padding:18px">No se pudo cargar el catálogo.<br>
+    <span class="muted">${esc(e.message || e)}</span><br>
+    <button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
 
 document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('active', x === b));
@@ -87,83 +107,173 @@ render('materiales');
 function render(tab) {
   if (tab === 'materiales') renderMateriales();
   else if (tab === 'mo') renderMO();
+  else if (tab === 'terminaciones') renderTerminaciones();
   else renderTemplates();
 }
 
-/* ───────── Materiales ───────── */
+/* ───────── Materiales ─────────
+   Fuente única: esta misma tabla la escribe también el Cotizador cuando se crea
+   un material en pleno presupuesto. No hay copias. */
 function renderMateriales(filter = '') {
   const rows = materials.filter(m => !filter || (m.nombre + ' ' + (m.tipo||'') + ' ' + (m.proveedor||'')).toLowerCase().includes(filter.toLowerCase()));
+  const bajos = materials.filter(m => m.activo && n(m.stock_actual) < n(m.stock_minimo)).length;
   pane.innerHTML = `
     <div class="toolbar">
       <input type="search" id="mSearch" placeholder="Buscar material…" value="${esc(filter)}">
-      <span class="muted">${rows.length} materiales</span>
+      <span class="muted">${rows.length} materiales${bajos ? ' · <b style="color:#A33A3A">' + bajos + ' bajo mínimo</b>' : ''}</span>
       <button class="btn primary" id="mAdd">+ Material</button>
     </div>
     <table class="grid"><thead><tr>
-      <th style="width:28%">Material</th><th>Tipo</th><th>Unidad</th>
-      <th style="width:13%" class="num">Precio/unidad</th><th>Proveedor</th><th></th>
+      <th style="width:24%">Material</th><th>Tipo</th><th>Unidad</th>
+      <th style="width:11%" class="num">Costo/unidad</th><th>Proveedor</th>
+      <th class="num" style="width:8%">Stock</th><th class="num" style="width:8%">Mínimo</th>
+      <th style="width:11%">Actualizado</th><th style="width:60px">Activo</th><th></th>
     </tr></thead><tbody id="mBody">
       ${rows.map(m => matRow(m)).join('')}
     </tbody></table>`;
   $('#mSearch').oninput = e => renderMateriales(e.target.value);
   $('#mAdd').onclick = async () => {
-    const m = await data.upsertMaterial({ nombre: 'Nuevo material', tipo: '', unidad: 'mt', precio_unit: 0, activo: true });
-    materials.unshift(m); renderMateriales(filter);
+    try {
+      const m = await data.upsertMaterial({ nombre: 'Nuevo material', tipo: '', unidad: 'mt', precio_unit: 0, activo: true });
+      materials.unshift(m); renderMateriales(filter);
+    } catch (e) { fail(e, 'No se pudo crear el material'); }
   };
   bindMatRows();
 }
 function matRow(m) {
-  return `<tr data-id="${m.id}">
+  const bajo = m.activo && n(m.stock_actual) < n(m.stock_minimo);
+  return `<tr data-id="${m.id}" style="${m.activo ? '' : 'opacity:.5'}">
     <td><input data-f="nombre" value="${esc(m.nombre)}"></td>
     <td><input data-f="tipo" value="${esc(m.tipo)}"></td>
     <td><input data-f="unidad" value="${esc(m.unidad)}" style="max-width:70px"></td>
     <td class="num"><input data-f="precio_unit" type="number" step="0.01" value="${n(m.precio_unit)}"></td>
     <td><input data-f="proveedor" value="${esc(m.proveedor)}"></td>
+    <td class="num" ${bajo ? 'style="background:#FBEAEA"' : ''}><input data-f="stock_actual" type="number" step="0.01" value="${n(m.stock_actual)}"></td>
+    <td class="num"><input data-f="stock_minimo" type="number" step="0.01" value="${n(m.stock_minimo)}"></td>
+    <td class="muted" style="font-size:11px">${fechaHora(m.updated_at)}</td>
+    <td style="text-align:center"><input type="checkbox" data-f="activo" ${m.activo ? 'checked' : ''}></td>
     <td class="row-actions"><button data-del title="Eliminar">✕</button></td>
   </tr>`;
 }
+const CAMPOS_MAT_NUM = ['precio_unit', 'stock_actual', 'stock_minimo'];
 function bindMatRows() {
   $('#mBody')?.querySelectorAll('tr').forEach(tr => {
     const id = tr.dataset.id;
     tr.querySelectorAll('input').forEach(inp => inp.onchange = async () => {
       const m = materials.find(x => x.id === id);
-      m[inp.dataset.f] = inp.dataset.f === 'precio_unit' ? n(inp.value) : inp.value;
-      await data.upsertMaterial({ id, nombre: m.nombre, tipo: m.tipo, unidad: m.unidad, precio_unit: m.precio_unit, proveedor: m.proveedor, activo: true });
-      toast('Guardado');
+      if (!m) return;
+      const f = inp.dataset.f;
+      m[f] = f === 'activo' ? inp.checked : (CAMPOS_MAT_NUM.includes(f) ? n(inp.value) : inp.value);
+      try {
+        const saved = await data.upsertMaterial({
+          id, nombre: m.nombre, tipo: m.tipo, unidad: m.unidad, precio_unit: n(m.precio_unit),
+          proveedor: m.proveedor, stock_actual: n(m.stock_actual), stock_minimo: n(m.stock_minimo),
+          activo: !!m.activo,
+        });
+        Object.assign(m, saved);
+        // Refrescar la fecha de última actualización sin repintar toda la tabla.
+        const celda = tr.querySelector('td.muted');
+        if (celda) celda.textContent = fechaHora(saved.updated_at);
+        toast('Guardado');
+      } catch (e) { fail(e, 'No se pudo guardar'); }
     });
     tr.querySelector('[data-del]').onclick = async () => {
-      if (!confirm('¿Eliminar material?')) return;
-      await data.deleteMaterial(id);
-      materials = materials.filter(x => x.id !== id); tr.remove(); toast('Eliminado');
+      if (!confirm('¿Eliminar material? Si ya se usó en cotizaciones, conviene desactivarlo en vez de borrarlo.')) return;
+      try {
+        await data.deleteMaterial(id);
+        materials = materials.filter(x => x.id !== id); tr.remove(); toast('Eliminado');
+      } catch (e) { fail(e, 'No se pudo eliminar (puede estar en uso)'); }
     };
   });
+}
+
+/* ───────── Terminaciones / pintado ─────────
+   Antes el pintado era un sí/no en la cotización. Ahora es este catálogo: se
+   agregan opciones nuevas desde acá, sin tocar código. */
+function renderTerminaciones() {
+  pane.innerHTML = `
+    <p class="muted" style="margin-bottom:12px">Opciones de terminación que ofrece el cotizador. El costo entra al costo del producto y se multiplica por el markup.</p>
+    <table class="grid"><thead><tr>
+      <th style="width:26%">Nombre</th><th>Descripción</th><th class="num" style="width:120px">Costo</th>
+      <th style="width:110px">Unidad</th><th style="width:130px">Actualizado</th><th style="width:70px">Activo</th>
+    </tr></thead><tbody id="fBody">
+      ${finishes.map(f => `<tr data-id="${f.id}" style="${f.activo ? '' : 'opacity:.5'}">
+        <td><input data-f="nombre" value="${esc(f.nombre)}"></td>
+        <td><input data-f="descripcion" value="${esc(f.descripcion)}" placeholder="${esc(f.notas || '')}"></td>
+        <td class="num"><input data-f="costo" type="number" step="0.01" value="${n(f.costo)}"></td>
+        <td><input data-f="unidad" value="${esc(f.unidad)}"></td>
+        <td class="muted" style="font-size:11px">${fechaHora(f.updated_at)}</td>
+        <td style="text-align:center"><input type="checkbox" data-f="activo" ${f.activo ? 'checked' : ''}></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="muted" style="padding:14px">Todavía no hay terminaciones.</td></tr>'}
+    </tbody></table>
+    <button class="btn sm" id="fAdd" style="margin-top:12px">+ Terminación</button>`;
+  $('#fBody').querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll('input').forEach(inp => inp.onchange = async () => {
+      const f = finishes.find(x => x.id === id);
+      if (!f) return;
+      const campo = inp.dataset.f;
+      f[campo] = campo === 'activo' ? inp.checked : (campo === 'costo' ? n(inp.value) : inp.value);
+      try {
+        const saved = await data.upsertFinish({
+          id, nombre: f.nombre, descripcion: f.descripcion || null, costo: n(f.costo),
+          unidad: f.unidad || 'producto', activo: !!f.activo,
+        });
+        Object.assign(f, saved);
+        const celda = tr.querySelector('td.muted');
+        if (celda) celda.textContent = fechaHora(saved.updated_at);
+        toast('Guardado');
+      } catch (e) { fail(e, 'No se pudo guardar la terminación'); }
+    });
+  });
+  $('#fAdd').onclick = async () => {
+    try {
+      const f = await data.upsertFinish({ nombre: 'Nueva terminación', costo: 0, unidad: 'producto', display_order: (finishes.length + 1) * 10, activo: true });
+      finishes.push(f); renderTerminaciones();
+    } catch (e) { fail(e, 'No se pudo crear (¿nombre repetido?)'); }
+  };
 }
 
 /* ───────── Mano de obra ───────── */
 function renderMO() {
   pane.innerHTML = `
-    <p class="muted" style="margin-bottom:12px">Costo por hora de cada rol. El cotizador usa estos valores.</p>
-    <table class="grid"><thead><tr><th>Rol</th><th class="num" style="width:160px">Costo/hora</th><th style="width:120px">Por viaje</th></tr></thead>
-    <tbody>${laborRates.map(r => `<tr data-id="${r.id}">
+    <p class="muted" style="margin-bottom:12px">Costo por hora de cada rol. Las cotizaciones <b>nuevas</b> usan el costo vigente;
+    las ya presupuestadas conservan el costo que tenían (la cotización es una foto del momento).</p>
+    <table class="grid"><thead><tr>
+      <th>Rol</th><th class="num" style="width:140px">Costo/hora</th><th style="width:110px">Por viaje</th>
+      <th style="width:150px">Actualizado</th><th style="width:70px">Activo</th>
+    </tr></thead>
+    <tbody>${laborRates.map(r => `<tr data-id="${r.id}" style="${r.activo === false ? 'opacity:.5' : ''}">
       <td><input data-f="rol" value="${esc(r.rol)}"></td>
       <td class="num"><input data-f="costo_hora" type="number" step="1" value="${n(r.costo_hora)}"></td>
       <td style="text-align:center"><input type="checkbox" data-f="es_transporte" ${r.es_transporte ? 'checked' : ''}></td>
+      <td class="muted" style="font-size:11px">${fechaHora(r.updated_at)}</td>
+      <td style="text-align:center"><input type="checkbox" data-f="activo" ${r.activo !== false ? 'checked' : ''}></td>
     </tr>`).join('')}</tbody></table>
     <button class="btn sm" id="moAdd" style="margin-top:12px">+ Rol</button>`;
   pane.querySelectorAll('tbody tr').forEach(tr => {
     const id = tr.dataset.id;
     tr.querySelectorAll('input').forEach(inp => inp.onchange = async () => {
       const r = laborRates.find(x => x.id === id);
+      if (!r) return;
       r.rol = tr.querySelector('[data-f=rol]').value;
       r.costo_hora = n(tr.querySelector('[data-f=costo_hora]').value);
       r.es_transporte = tr.querySelector('[data-f=es_transporte]').checked;
-      await data.upsertLaborRate({ id, rol: r.rol, costo_hora: r.costo_hora, es_transporte: r.es_transporte });
-      toast('Guardado');
+      r.activo = tr.querySelector('[data-f=activo]').checked;
+      try {
+        const saved = await data.upsertLaborRate({ id, rol: r.rol, costo_hora: r.costo_hora, es_transporte: r.es_transporte, activo: r.activo });
+        Object.assign(r, saved);
+        const celda = tr.querySelector('td.muted');
+        if (celda) celda.textContent = fechaHora(saved.updated_at);
+        toast('Guardado');
+      } catch (e) { fail(e, 'No se pudo guardar la tarifa'); }
     });
   });
   $('#moAdd').onclick = async () => {
-    const r = await data.upsertLaborRate({ rol: 'Nuevo rol', costo_hora: 0, display_order: laborRates.length * 10 });
-    laborRates.push(r); renderMO();
+    try {
+      const r = await data.upsertLaborRate({ rol: 'Nuevo rol ' + (laborRates.length + 1), costo_hora: 0, display_order: laborRates.length * 10, activo: true });
+      laborRates.push(r); renderMO();
+    } catch (e) { fail(e, 'No se pudo crear el rol (el nombre no puede repetirse)'); }
   };
 }
 
@@ -193,6 +303,14 @@ async function editTemplate(id) {
 
   const matOpts = (sel) => materials.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.nombre)} (${esc(m.unidad)})</option>`).join('');
   const labOpts = (sel) => laborRates.map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.rol)}</option>`).join('');
+  // La terminación de la plantilla se elige del catálogo. Si una plantilla vieja
+  // tiene un texto libre que ya no existe, se conserva como opción para no perderlo.
+  const termOpts = (sel) => {
+    const nombres = finishes.map(f => f.nombre);
+    if (sel && !nombres.includes(sel)) nombres.unshift(sel);
+    return '<option value="">— sin terminación —</option>' +
+      nombres.map(t => `<option value="${esc(t)}" ${t === sel ? 'selected' : ''}>${esc(t)}</option>`).join('');
+  };
 
   function preview() {
     const line = {
@@ -213,7 +331,7 @@ async function editTemplate(id) {
         <div class="fg"><label>Nombre</label><input id="f-nombre" value="${esc(tpl.nombre)}"></div>
         <div class="fg"><label>Categoría</label><input id="f-categoria" value="${esc(tpl.categoria)}"></div>
         <div class="fg"><label>Dimensiones</label><input id="f-dimensiones" value="${esc(tpl.dimensiones)}"></div>
-        <div class="fg"><label>Terminación</label><input id="f-terminacion" value="${esc(tpl.terminacion)}"></div>
+        <div class="fg"><label>Terminación</label><select id="f-terminacion">${termOpts(tpl.terminacion || '')}</select></div>
         <div class="fg"><label>Multiplicador</label><input id="f-mult" type="number" step="0.05" value="${n(tpl.multiplicador) || 1.5}"></div>
         <div class="fg"><label>Tipo</label><select id="f-estandar"><option value="1" ${tpl.es_estandar ? 'selected' : ''}>Estándar</option><option value="0" ${!tpl.es_estandar ? 'selected' : ''}>A medida</option></select></div>
       </div>

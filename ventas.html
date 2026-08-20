@@ -48,15 +48,15 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=3';
-import { requireAuth } from './js/auth.js?v=3';
-import * as data from './js/cirene-data.js?v=3';
-import { money, pct, n } from './js/quote-engine.js?v=3';
+import { renderNavbar } from './js/navbar.js?v=5';
+import { requireAuth } from './js/auth.js?v=5';
+import * as data from './js/cirene-data.js?v=5';
+import { money, pct, n } from './js/quote-engine.js?v=5';
 
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let cards = [], quotes = [], payments = [], leads = [], stages = [];
+let cards = [], quotes = [], payments = [], leads = [], stages = [], sales = [], clientes = [];
 let period = '1m';
 
 await requireAuth();
@@ -67,9 +67,10 @@ document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
 });
 try {
   const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout).')), 15000));
-  [cards, quotes, payments, leads, stages] = await Promise.race([Promise.all([
+  [cards, quotes, payments, leads, stages, sales, clientes] = await Promise.race([Promise.all([
     data.listProductionCards().catch(() => []), data.listQuotes().catch(() => []), data.listPayments().catch(() => []),
-    data.listIntakeCards().catch(() => []), data.listStages('comercial').catch(() => [])
+    data.listIntakeCards().catch(() => []), data.listStages('comercial').catch(() => []),
+    data.listSales().catch(() => []), data.listClients().catch(() => []),
   ]), timeout]);
 } catch (e) {
   $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Ventas.<br>${esc(e.message || e)}<br><button onclick="location.reload()" style="margin-top:8px;padding:7px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer">Reintentar</button></div>`;
@@ -115,21 +116,72 @@ function render() {
   // pipeline (leads activos por etapa)
   const pipe = stages.map(st => ({ label: st.label, count: leads.filter(l => l.status !== 'aceptada' && (l.stage_key || 'mensaje_entrante') === st.key).length }));
 
+  // Ventas confirmadas del período: una venta nace cuando la cotización aprobada
+  // pasa a Producción, así que el ticket promedio se calcula sobre `sales`.
+  const psales = sales.filter(s => s.estado !== 'anulada' && inP(monthOf(s.fecha)));
+  const ticket = psales.length ? psales.reduce((s, x) => s + n(x.monto), 0) / psales.length : 0;
+
+  // Estadísticas por vendedor: del lead a la venta, todo en una fila.
+  const vendedores = [...new Set([
+    ...leads.map(l => l.vendor), ...pquotes.map(q => q.vendedor), ...psales.map(s => s.vendedor),
+  ].filter(Boolean))];
+  const statsVend = vendedores.map(v => {
+    const misLeads = leads.filter(l => l.vendor === v && inP(monthOf(l.created_at)));
+    const misCot = pquotes.filter(q => q.vendedor === v);
+    const misVentas = psales.filter(s => s.vendedor === v);
+    const monto = misVentas.reduce((s, x) => s + n(x.monto), 0);
+    return {
+      v, leads: misLeads.length, cot: misCot.length, ganados: misVentas.length,
+      conv: misLeads.length ? misVentas.length / misLeads.length : 0,
+      monto, ticket: misVentas.length ? monto / misVentas.length : 0,
+    };
+  }).sort((a, b) => b.monto - a.monto);
+
+  // Clientes: nuevo (primera venta), recurrente (más de una), interno (CIRENEOS).
+  const ventasPorCliente = {};
+  sales.filter(s => s.estado !== 'anulada').forEach(s => {
+    const k = s.client_id || ('n:' + (s.cliente_nombre || '—'));
+    ventasPorCliente[k] = (ventasPorCliente[k] || 0) + 1;
+  });
+  const clavesPeriodo = [...new Set(psales.map(s => s.client_id || ('n:' + (s.cliente_nombre || '—'))))];
+  const internos = clientes.filter(c => c.es_interno).map(c => c.id);
+  const nuevos = clavesPeriodo.filter(k => ventasPorCliente[k] === 1).length;
+  const recurrentes = clavesPeriodo.filter(k => ventasPorCliente[k] > 1).length;
+  const internosPeriodo = clavesPeriodo.filter(k => internos.includes(k)).length;
+
   $('#dash').innerHTML = `
     <div class="kpis">
       <div class="kpi dark"><span>Facturado</span><b>${money(facturado)}</b></div>
       <div class="kpi"><span>Cobrado</span><b>${money(cobrado)}</b></div>
       <div class="kpi"><span>Por cobrar</span><b>${money(Math.max(0, facturado - cobrado))}</b></div>
-      <div class="kpi"><span>Trabajos</span><b>${pcards.length}</b></div>
+      <div class="kpi"><span>Ventas confirmadas</span><b>${psales.length}</b></div>
+      <div class="kpi"><span>Ticket promedio</span><b>${money(ticket)}</b></div>
       <div class="kpi"><span>Cotizaciones</span><b>${pquotes.length}</b></div>
       <div class="kpi"><span>Conversión</span><b>${pct(conv)}</b></div>
     </div>
     <div class="grid2">
       <div>
         <div class="card"><h2>Evolución de ventas (12 meses)</h2>${lineChart(m12, serie)}</div>
-        <div class="card"><h2>Ventas por vendedor</h2>${barList(vendArr, money)}</div>
+        <div class="card"><h2>Estadísticas por vendedor</h2>
+          <table class="grid"><thead><tr><th>Vendedor</th><th class="num">Leads</th><th class="num">Cotiz.</th>
+            <th class="num">Ganados</th><th class="num">Conv.</th><th class="num">Vendido</th><th class="num">Ticket</th></tr></thead>
+          <tbody>${statsVend.map(s => `<tr><td><b>${esc(s.v)}</b></td>
+            <td class="num">${s.leads}</td><td class="num">${s.cot}</td><td class="num">${s.ganados}</td>
+            <td class="num">${pct(s.conv)}</td><td class="num">${money(s.monto)}</td><td class="num">${money(s.ticket)}</td>
+          </tr>`).join('') || '<tr><td colspan="7" class="muted">Sin datos en el período.</td></tr>'}</tbody></table>
+          <p class="muted" style="margin-top:8px">La conversión compara los leads del período con las ventas confirmadas del mismo vendedor.</p>
+        </div>
+        <div class="card"><h2>Ventas por vendedor (facturación de trabajos)</h2>${barList(vendArr, money)}</div>
       </div>
       <div>
+        <div class="card"><h2>Clientes del período</h2>
+          <table class="grid"><tbody>
+            <tr><td>Clientes con venta</td><td class="num"><b>${clavesPeriodo.length}</b></td></tr>
+            <tr><td>Nuevos (primera venta)</td><td class="num">${nuevos}</td></tr>
+            <tr><td>Recurrentes</td><td class="num">${recurrentes}</td></tr>
+            <tr><td>Internos (CIRENEOS)</td><td class="num">${internosPeriodo}</td></tr>
+            <tr><td>Total de clientes en la base</td><td class="num">${clientes.length}</td></tr>
+          </tbody></table></div>
         <div class="card"><h2>Pipeline comercial</h2>
           <table class="grid"><tbody>${pipe.map(p => `<tr><td>${esc(p.label)}</td><td class="num">${p.count}</td></tr>`).join('')}</tbody></table></div>
         <div class="card"><h2>Productos más vendidos</h2>
