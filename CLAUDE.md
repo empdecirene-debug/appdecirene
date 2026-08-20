@@ -60,8 +60,10 @@ Si falta `SESSION_SECRET` la app anda pero las sesiones se caen en cada reinicio
 **Deploy**: el servicio debería estar conectado a `empdecirene-debug/appdecirene` rama `main` →
 push = deploy. URL: https://appdecirene-production.up.railway.app
 
-> ⚠ **El trigger automático vuelve a estar caído (2026-08-20).** Ya pasó una vez (servía un build
-> del 10 de julio, por eso faltaba `clientes.html`). Verificación rápida de qué build hay arriba:
+> ⚠ **El push solo no siempre dispara el deploy.** Pasó el 10 de julio (servía un build viejo, por
+> eso faltaba `clientes.html`) y de nuevo el 2026-08-20: tres pushes seguidos no movieron el
+> servicio. **Lo que sí lo fuerza es guardar una variable** en *Variables* (cualquier cambio ahí
+> redespliega). Verificación rápida de qué build hay arriba:
 >
 > ```
 > curl -s https://appdecirene-production.up.railway.app/index.html | grep -o 'cirene-data.js?v=[0-9]*'
@@ -69,9 +71,9 @@ push = deploy. URL: https://appdecirene-production.up.railway.app
 > ```
 >
 > El `?v=N` tiene que coincidir con el del repo y `tablas` tiene que subir cuando `db/schema.sql`
-> agrega tablas. Si no coincide, **el push no se desplegó**: entrar a Railway → servicio
-> `appdecirene` → *Deployments* → **Redeploy**, y en *Settings → Source* volver a conectar el
-> repo/rama. Mientras el trigger esté caído, cada push necesita un redeploy a mano.
+> agrega tablas. Si no coincide, **el push no se desplegó**: tocá una variable en *Variables*
+> (o *Deployments → Redeploy*); si aun así no sale, reconectá el repo en *Settings → Source*.
+> Estado al 2026-08-20 después de desplegar: `?v=5`, 41 tablas.
 
 **Aplicar SQL**: ya no hace falta herramienta externa — editá `db/schema.sql` y el próximo
 deploy lo aplica. Como es idempotente, agregá `create ... if not exists` / `alter ... if not exists`.
