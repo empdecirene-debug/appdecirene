@@ -76,6 +76,13 @@ push = deploy. URL: https://appdecirene-production.up.railway.app
 **Aplicar SQL**: ya no hace falta herramienta externa — editá `db/schema.sql` y el próximo
 deploy lo aplica. Como es idempotente, agregá `create ... if not exists` / `alter ... if not exists`.
 
+**Antes de pushear SQL, correr `perl tools/check-sql.pl db/schema.sql`.** Parsea el archivo como lo
+haría Postgres (comentarios, literales, dollar quoting) y avisa de paréntesis desbalanceados o
+comillas sin cerrar. El primer deploy a Railway murió con *mismatched parentheses* y el error solo
+se vio en los logs; el esquema se aplica entero en una sola query, así que un error de sintaxis en
+cualquier línea deja **toda** la migración sin aplicar (la app levanta igual, pero sin las tablas
+nuevas). Estado esperado hoy: 237 sentencias, 41 tablas, 0 desbalanceadas.
+
 ## Stack y entorno
 - **Auth**: propia (`api/session.js`). Roles en `user_profiles.role`: `comercial`,
   `produccion`, `admin`, `director`. Admin = admin|director. Usuario admin: `admin@decirene.uy`.
