@@ -57,9 +57,21 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 `SESSION_SECRET`, `ADMIN_EMAIL`, `ADJUNTOS_DIR=/data/adjuntos`, `NODE_ENV=production`.
 Si falta `SESSION_SECRET` la app anda pero las sesiones se caen en cada reinicio.
 
-**Deploy**: el servicio está conectado a `empdecirene-debug/appdecirene` rama `main` → push =
-deploy. (Antes **no tenía trigger**: servía un build del 10 de julio, por eso faltaba
-`clientes.html`.) URL: https://appdecirene-production.up.railway.app
+**Deploy**: el servicio debería estar conectado a `empdecirene-debug/appdecirene` rama `main` →
+push = deploy. URL: https://appdecirene-production.up.railway.app
+
+> ⚠ **El trigger automático vuelve a estar caído (2026-08-20).** Ya pasó una vez (servía un build
+> del 10 de julio, por eso faltaba `clientes.html`). Verificación rápida de qué build hay arriba:
+>
+> ```
+> curl -s https://appdecirene-production.up.railway.app/index.html | grep -o 'cirene-data.js?v=[0-9]*'
+> curl -s https://appdecirene-production.up.railway.app/api/health
+> ```
+>
+> El `?v=N` tiene que coincidir con el del repo y `tablas` tiene que subir cuando `db/schema.sql`
+> agrega tablas. Si no coincide, **el push no se desplegó**: entrar a Railway → servicio
+> `appdecirene` → *Deployments* → **Redeploy**, y en *Settings → Source* volver a conectar el
+> repo/rama. Mientras el trigger esté caído, cada push necesita un redeploy a mano.
 
 **Aplicar SQL**: ya no hace falta herramienta externa — editá `db/schema.sql` y el próximo
 deploy lo aplica. Como es idempotente, agregá `create ... if not exists` / `alter ... if not exists`.
