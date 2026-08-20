@@ -50,6 +50,23 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 .noti a { color: inherit; text-decoration: none; }
 .noti a:hover { text-decoration: underline; }
 .tile .cnt { position: absolute; }
+/* cambio de contraseña */
+.cuenta { margin-top: 28px; text-align: center; }
+.cuenta .link { background: none; border: none; color: var(--tinta-3, #9AA0A6); font: inherit; font-size: 12px;
+  text-decoration: underline; cursor: pointer; padding: 4px; }
+.cuenta .link:hover { color: var(--tinta, #14161A); }
+.cuenta form { max-width: 620px; margin: 12px auto 0; background: #fff; border: 1px solid var(--border, #e6eaf0);
+  border-radius: 14px; padding: 16px 18px; text-align: left; }
+.cuenta .pwgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.cuenta label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--tinta-2, #5A5F66); }
+.cuenta input { width: 100%; margin-top: 4px; padding: 9px 11px; border: 1px solid var(--border, #e6eaf0);
+  border-radius: 8px; font: inherit; text-transform: none; letter-spacing: 0; }
+.cuenta .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #0A0A0A; background: #0A0A0A; color: #fff;
+  font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+.cuenta .btn:disabled { opacity: .5; cursor: default; }
+.cuenta #pw-msg { font-size: 12px; margin-left: 10px; }
+.cuenta #pw-msg.ok { color: #1F6B45; } .cuenta #pw-msg.err { color: #A33A3A; }
 @media (max-width: 480px) {
   .home-wrap { padding: 20px 12px 60px; }
   .home-hdr h1 { font-size: 24px; }
@@ -70,6 +87,19 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
   </div>
   <div id="actividad"></div>
   <div class="tile-grid" id="tileGrid"></div>
+
+  <div class="cuenta">
+    <button class="link" id="togglePw">Cambiar mi contraseña</button>
+    <form id="pwForm" style="display:none">
+      <div class="pwgrid">
+        <label>Contraseña actual<input type="password" id="pw-actual" autocomplete="current-password"></label>
+        <label>Nueva contraseña<input type="password" id="pw-nueva" autocomplete="new-password" minlength="8"></label>
+        <label>Repetir la nueva<input type="password" id="pw-rep" autocomplete="new-password" minlength="8"></label>
+      </div>
+      <button class="btn" type="submit" id="pw-save">Guardar</button>
+      <span id="pw-msg"></span>
+    </form>
+  </div>
 </div>
 
 <script type="module">
@@ -77,6 +107,7 @@ import { renderNavbar } from './js/navbar.js?v=5';
 import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=5';
 import { icon } from './js/icons.js?v=5';
 import * as data from './js/cirene-data.js?v=5';
+import { api } from './js/supa.js?v=5';
 
 const TILES = [
   { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },
@@ -123,7 +154,40 @@ const cuando = (iso) => {
     .join('');
 
   pintarActividad();
+  pintarCambioPw();
 })();
+
+/* ───────── Cambiar la propia contraseña ─────────
+   Antes solo existía el endpoint: si perdías la contraseña había que tocar la
+   base o una variable de entorno. Ahora cada uno la cambia desde acá. */
+function pintarCambioPw() {
+  const form = document.getElementById('pwForm');
+  const msg = document.getElementById('pw-msg');
+  document.getElementById('togglePw').onclick = () => {
+    const abierto = form.style.display !== 'none';
+    form.style.display = abierto ? 'none' : 'block';
+    if (!abierto) document.getElementById('pw-actual').focus();
+  };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const actual = document.getElementById('pw-actual').value;
+    const nueva = document.getElementById('pw-nueva').value;
+    const rep = document.getElementById('pw-rep').value;
+    const set = (t, cls) => { msg.textContent = t; msg.className = cls; };
+    if (nueva.length < 8) { set('La nueva contraseña necesita al menos 8 caracteres.', 'err'); return; }
+    if (nueva !== rep) { set('Las dos contraseñas nuevas no coinciden.', 'err'); return; }
+    const btn = document.getElementById('pw-save');
+    btn.disabled = true; set('Guardando…', '');
+    try {
+      const r = await api.pedir('/auth/password', { method: 'POST', body: JSON.stringify({ actual, nueva }) });
+      if (r.error) throw new Error(r.error);
+      form.reset();
+      set('Listo, tu contraseña quedó cambiada.', 'ok');
+    } catch (err) {
+      set(err.message || String(err), 'err');
+    } finally { btn.disabled = false; }
+  };
+}
 
 /* ───────── Centro de actividad ─────────
    Comentarios donde participé, respuestas nuevas y alertas. Si algo falla, el

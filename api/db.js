@@ -45,8 +45,70 @@ async function contar(tabla) {
   catch { return -1; }
 }
 
+// ── Recuperar el acceso de administración ────────────────────────────────────
+// La contraseña se guarda con scrypt: no se puede leer ni recuperar. Si se perdió,
+// la única salida era tener acceso a la base. Con esto alcanza una variable:
+//
+//   1. Railway → servicio appdecirene → Variables → ADMIN_RESET_PASSWORD = <la nueva>
+//      (guardar la variable ya dispara un deploy, no hace falta nada más)
+//   2. Entrar con ADMIN_EMAIL (o admin@decirene.uy) y esa contraseña
+//   3. BORRAR la variable  ← importante: mientras exista, cada reinicio la vuelve a poner
+//
+// Si el usuario no existe, se crea. Si existe pero perdió el perfil o quedó
+// inactivo, se repara. Corre ANTES del esquema a propósito: si un cambio de
+// schema.sql falla, igual tenés forma de entrar y arreglarlo.
+async function resetearAdmin() {
+  const nueva = process.env.ADMIN_RESET_PASSWORD;
+  if (!nueva) return;
+  const email = (process.env.ADMIN_EMAIL || 'admin@decirene.uy').toLowerCase().trim();
+
+  if (String(nueva).length < 8) {
+    console.error('[db] ADMIN_RESET_PASSWORD tiene menos de 8 caracteres: no la aplico.');
+    return;
+  }
+  if (!(await existeTabla('app_users'))) {
+    console.error('[db] todavía no existe app_users: el reset se aplica en el próximo arranque.');
+    return;
+  }
+
+  const hash = await hashPassword(String(nueva));
+  const { rows } = await q(
+    `update app_users set password_hash = $1, must_change_pw = true
+      where lower(email) = $2 returning id`, [hash, email]);
+
+  let uid = rows[0]?.id;
+  if (!uid) {
+    const { rows: nuevo } = await q(
+      `insert into app_users (email, password_hash, must_change_pw) values ($1,$2,true) returning id`,
+      [email, hash]);
+    uid = nuevo[0].id;
+    console.log('[db] el usuario', email, 'no existía: lo creé.');
+  }
+
+  // El perfil tiene que tener el MISMO id que el usuario: la sesión resuelve el rol
+  // buscando user_profiles por ese id. Si quedó uno viejo con ese email, se realinea.
+  await q(`update user_profiles set id = $1 where lower(email) = $2 and id <> $1`, [uid, email]);
+  await q(
+    `insert into user_profiles (id, email, full_name, role, active)
+     values ($1,$2,'Administrador','admin',true)
+     on conflict (id) do update set role = 'admin', active = true, email = excluded.email`,
+    [uid, email]);
+
+  console.log('┌──────────────────────────────────────────────');
+  console.log('│ CONTRASEÑA DE ADMIN RESTABLECIDA');
+  console.log('│   email :', email);
+  console.log('│   rol   : admin');
+  console.log('│ Entrá y después BORRÁ la variable ADMIN_RESET_PASSWORD:');
+  console.log('│ mientras exista, cada reinicio vuelve a poner esa contraseña.');
+  console.log('└──────────────────────────────────────────────');
+}
+
 export async function migrar() {
   if (!connectionString) throw new Error('Sin DATABASE_URL no puedo migrar');
+
+  // Va primero: recuperar el acceso no puede depender de que el esquema aplique bien.
+  try { await resetearAdmin(); }
+  catch (e) { console.error('[db] no se pudo restablecer el admin:', e.message); }
 
   const esquema = fs.readFileSync(path.join(RAIZ, 'db', 'schema.sql'), 'utf8');
   console.log('[db] aplicando esquema…');
