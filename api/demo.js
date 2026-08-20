@@ -244,7 +244,8 @@ export async function generarDemo() {
       await c.query(
         `insert into intake_cards (id, vendor, vendor_user_id, client_query, client_phone_e164, client_email,
            description, target_date, urgency, stage_key, status, client_id, created_at, demo)
-         values ($1,'Comercial',$2,$3,$4,$5,$6,$7,$8,$9,'abierta',$10, now() - ($11 || ' days')::interval, true)`,
+         values ($1,'Comercial',$2,$3,$4,$5,$6,$7,$8,$9,'abierta',$10,
+                 now() - ($11::text || ' days')::interval, true)`,
         [lid, uid, cli.nombre, cli.tel, null, desc, diasAdelante(20 + i * 5), urg, etapa, cli.id, String(12 - i * 3)]);
       sumar('leads');
       // Las dos últimas ya tienen presupuesto hecho.
