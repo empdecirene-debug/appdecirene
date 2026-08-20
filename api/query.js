@@ -11,7 +11,19 @@
 //      Postgres antes de tocar el string. Lo que no está en el catálogo, no entra.
 // Sin esas dos, un endpoint de consulta genérica sería una inyección SQL servida.
 
-import { tablaPermitida, columnaPermitida, columnasDe } from './registry.js';
+import { tablaPermitida, columnaPermitida, columnasDe, esJson } from './registry.js';
+
+// Un array de JavaScript, tal cual, lo manda `pg` como literal de ARRAY de
+// Postgres (`{"a","b"}`). En una columna `text[]` eso está perfecto, pero en una
+// `jsonb` revienta con "invalid input syntax for type json". Y en jsonb es
+// justo donde la app guarda listas: los materiales y la mano de obra de cada
+// línea de cotización, los product_lines del pedido, los adjuntos, los aspectos
+// del NPS. Por eso, cuando la columna es json/jsonb, el valor va serializado.
+function valorPara(tabla, col, val) {
+  if (val === null || val === undefined) return val;
+  if (!esJson(tabla, col)) return val;
+  return typeof val === 'string' ? val : JSON.stringify(val);
+}
 
 // Operadores soportados = los que realmente usa la app (los conté sobre el código).
 const OPS = {
@@ -140,7 +152,7 @@ export function construir(desc) {
     const cols = [...new Set(filas.flatMap(f => Object.keys(f)))];
     const tuplas = filas.map(f => '(' + cols.map(c => {
       if (!(c in f)) return 'default';
-      params.push(f[c]); return '$' + params.length;
+      params.push(valorPara(tabla, c, f[c])); return '$' + params.length;
     }).join(', ') + ')');
     let sql = `insert into ${T} (${cols.map(c => ident(tabla, c)).join(', ')}) values ${tuplas.join(', ')}`;
     if (accion === 'upsert') {
@@ -158,7 +170,10 @@ export function construir(desc) {
 
   if (accion === 'update') {
     const fila = limpiarFila(tabla, desc.valores);
-    const sets = Object.entries(fila).map(([c, v]) => { params.push(v); return `${ident(tabla, c)} = $${params.length}`; });
+    const sets = Object.entries(fila).map(([c, v]) => {
+      params.push(valorPara(tabla, c, v));
+      return `${ident(tabla, c)} = $${params.length}`;
+    });
     let sql = `update ${T} set ${sets.join(', ')}`;
     const where = armarWhere(tabla, desc.filtros, params);
     // Un UPDATE sin filtros reescribiría la tabla entera. No.

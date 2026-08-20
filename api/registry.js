@@ -88,18 +88,25 @@ const TABLAS = {
 
 // Columnas reales por tabla, cargadas del catálogo al arrancar.
 const columnas = new Map();
+// Tipo de cada columna, también del catálogo. Hace falta para las jsonb: el
+// driver de Postgres convierte un array de JavaScript a literal de ARRAY
+// (`{...}`), que en una columna jsonb explota con "invalid input syntax for
+// type json". Sabiendo el tipo, api/query.js lo serializa como JSON.
+const tipos = new Map();
 
 export async function cargarColumnas(pool) {
   const { rows } = await pool.query(
-    `select table_name, column_name
+    `select table_name, column_name, data_type
        from information_schema.columns
       where table_schema = 'public'
       order by table_name, ordinal_position`
   );
   columnas.clear();
+  tipos.clear();
   for (const r of rows) {
     if (!columnas.has(r.table_name)) columnas.set(r.table_name, new Set());
     columnas.get(r.table_name).add(r.column_name);
+    tipos.set(r.table_name + '.' + r.column_name, r.data_type);
   }
   const faltan = Object.keys(TABLAS).filter(t => !columnas.has(t));
   if (faltan.length) console.warn('[registry] tablas del registro que no existen en la BD:', faltan.join(', '));
@@ -121,6 +128,12 @@ export function columnaPermitida(tabla, col) {
 
 export function columnasDe(tabla) {
   return [...(columnas.get(tabla) || [])];
+}
+
+// ¿La columna es json/jsonb? Lo usa api/query.js para serializar bien el valor.
+export function esJson(tabla, col) {
+  const t = tipos.get(tabla + '.' + col);
+  return t === 'jsonb' || t === 'json';
 }
 
 // Devuelve null si puede, o el motivo del rechazo.

@@ -2,8 +2,9 @@
 // Materiales, terminaciones, tarifas de mano de obra, plantillas de producto (BOM)
 // y cotizaciones. TODA página de datos pasa por acá.
 
-import { getSupa } from './supa.js?v=5';
-import { normalizePhoneUY } from './phone-normalizer.js?v=5';
+import { getSupa } from './supa.js?v=6';
+import { normalizePhoneUY } from './phone-normalizer.js?v=6';
+import { arr } from './quote-engine.js?v=6';
 
 const db = () => getSupa();
 
@@ -227,8 +228,8 @@ function lineaARow(l, quoteId, i) {
     // Compatibilidad con datos históricos: se sigue marcando si hay terminación.
     pintado: !!l.terminacionId,
 
-    materiales: l.materiales || [],
-    mano_obra: l.manoObra || [],
+    materiales: arr(l.materiales),
+    mano_obra: arr(l.manoObra),
     especificaciones: l.especificaciones || null,
 
     costo_materiales: num(l.costoMateriales), costo_mo: num(l.costoMO),
@@ -251,7 +252,7 @@ export function rowALinea(l) {
     terminacionId: l.terminacion_id || null,
     terminacionNombre: l.terminacion_nombre || '',
     terminacionCosto: num(l.terminacion_costo),
-    materiales: l.materiales || [], manoObra: l.mano_obra || [],
+    materiales: arr(l.materiales), manoObra: arr(l.mano_obra),
     especificaciones: l.especificaciones || '',
     multiplicador: num(l.multiplicador) || 1.5,
   };
@@ -547,8 +548,8 @@ export async function createProductionFromIntake(intake, quote) {
       tamano: l.tamano || null,
       terminacion: l.terminacion_nombre || null,
       comentarios_produccion: l.comentarios_produccion || null,
-      materiales: l.materiales || [],
-      mano_obra: l.mano_obra || [],
+      materiales: arr(l.materiales),
+      mano_obra: arr(l.mano_obra),
     }));
   }
   const notasProd = [
@@ -1221,9 +1222,9 @@ export async function consumirMaterialesDePedido(card, lineas) {
 // Materiales que un pedido tiene comprometidos según su cotización.
 export function materialesDePedido(card) {
   const out = new Map();
-  for (const l of (card.product_lines || [])) {
+  for (const l of arr(card.product_lines)) {
     const cant = num(l.cantidad) || 1;
-    for (const m of (l.materiales || [])) {
+    for (const m of arr(l.materiales)) {
       if (!m.material_id) continue;
       const total = num(m.cantidad) * cant;
       const ya = out.get(m.material_id) || { material_id: m.material_id, descripcion: m.descripcion, cantidad: 0, costoUnit: num(m.costoUnit) };

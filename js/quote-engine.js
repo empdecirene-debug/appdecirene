@@ -29,11 +29,17 @@ export function n(x) { const v = parseFloat(x); return Number.isFinite(v) ? v : 
 export function calcMaterialLine(m) { return n(m.costoUnit) * n(m.cantidad); }
 export function calcLaborLine(l)   { return n(l.costoHora) * n(l.horas); }
 
+// Las listas guardadas en jsonb pueden volver como objeto `{}` si en su momento
+// se escribieron mal (un array de JS que el driver mandó como literal de ARRAY).
+// `{} || []` da `{}`, que no tiene .reduce ni .map y voltea la pantalla entera:
+// por eso todo lo que venga de jsonb pasa por acá.
+export function arr(x) { return Array.isArray(x) ? x : []; }
+
 // Calcula y MUTA los derivados de una línea de cotización. Devuelve la línea.
 export function calcLine(line) {
   const mult = n(line.multiplicador) || DEFAULT_MULTIPLICADOR;
-  const costoMateriales = (line.materiales || []).reduce((s, m) => s + calcMaterialLine(m), 0);
-  const costoMO = (line.manoObra || []).reduce((s, l) => s + calcLaborLine(l), 0);
+  const costoMateriales = arr(line.materiales).reduce((s, m) => s + calcMaterialLine(m), 0);
+  const costoMO = arr(line.manoObra).reduce((s, l) => s + calcLaborLine(l), 0);
   // Terminación/pintado: costo del catálogo `finishes`, congelado en la línea.
   const costoTerminacion = n(line.terminacionCosto);
   const costoDirecto = costoMateriales + costoMO + costoTerminacion;
@@ -76,7 +82,7 @@ export function calcServices(srv = {}) {
 // Totales de la cotización completa: productos (× cantidad) + servicios.
 export function calcQuoteTotals(cot) {
   let subtotalMateriales = 0, subtotalMO = 0, subtotalTerminaciones = 0, precioProductos = 0;
-  for (const line of (cot.lineas || [])) {
+  for (const line of arr(cot.lineas)) {
     calcLine(line);
     const q = n(line.cantidad) || 1;
     subtotalMateriales += line.costoMateriales * q;

@@ -138,10 +138,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=5';
-import { requireAuth } from './js/auth.js?v=5';
-import * as data from './js/cirene-data.js?v=5';
-import { money, n, dimsText } from './js/quote-engine.js?v=5';
+import { renderNavbar } from './js/navbar.js?v=6';
+import { requireAuth } from './js/auth.js?v=6';
+import * as data from './js/cirene-data.js?v=6';
+import { money, n, dimsText, arr } from './js/quote-engine.js?v=6';
 
 const $ = s => document.querySelector(s);
 const toast = (m, err = false) => {
@@ -202,7 +202,7 @@ function atrasado(c) {
 /* ── TABLERO DE PRODUCCIÓN (dashboard superior) ── */
 function renderTablero() {
   const enCurso = cards.filter(activo);
-  const unidades = enCurso.reduce((s, c) => s + (c.product_lines || []).reduce((a, l) => a + (n(l.cantidad) || 1), 0), 0);
+  const unidades = enCurso.reduce((s, c) => s + arr(c.product_lines).reduce((a, l) => a + (n(l.cantidad) || 1), 0), 0);
   const horas = enCurso.reduce((s, c) => s + Math.max(0, n(c.horas_estimadas) - n(c.horas_reales)), 0);
   const tarde = enCurso.filter(atrasado);
   const valor = enCurso.reduce((s, c) => s + n(c.total_venta), 0);
@@ -243,7 +243,7 @@ function renderKanban() {
   bindKanban();
 }
 function tkHtml(c) {
-  const resumen = (c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ');
+  const resumen = arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', ');
   const u = data.urgenciaPorFecha(c.due_date);
   return `<div class="tk ${noPrice(c) ? 'noprice' : ''}" draggable="true" data-id="${c.id}" style="${c.due_date ? `border-left-color:${u.color}` : ''}">
     <div class="nm">${esc(c.client_name || 'Sin cliente')}</div>
@@ -279,13 +279,13 @@ function bindKanban() {
 function renderLista() {
   const rowHtml = c => `<tr data-id="${c.id}">
     <td><b>${esc(c.client_name || '—')}</b></td>
-    <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
+    <td>${esc(arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
     <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
     <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
     <td>${esc(c.semana_produccion || '—')}</td>
     <td class="num">${n(c.horas_estimadas)} / ${n(c.horas_reales)} h</td>
     <td>${c.due_date || ''} ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</td>
-    <td>${(c.attachments || []).length ? '📎' + (c.attachments || []).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td></tr>`;
+    <td>${arr(c.attachments).length ? '📎' + arr(c.attachments).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td></tr>`;
   let html = '';
   for (const st of stages) {
     const cs = cards.filter(c => (c.stage_key || 'procesar') === st.key);
@@ -403,7 +403,7 @@ function renderCola() {
         <th class="num">Valor</th><th>Entrega pedida</th><th></th></tr></thead><tbody>
         ${enCola.map(c => `<tr data-id="${c.id}">
           <td><b>${esc(c.client_name || '—')}</b></td>
-          <td>${esc((c.product_lines || []).map(l => l.producto).filter(Boolean).join(', '))}</td>
+          <td>${esc(arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', '))}</td>
           <td class="num">${n(c.horas_estimadas)}</td><td class="num">${money(c.total_venta)}</td>
           <td>${esc(c.fecha_solicitada_cliente || c.due_date || '—')}</td>
           <td style="text-align:right"><button class="btn sm" data-plan="${c.id}">Planificar en ${esc(semanaSel)}</button></td>
@@ -484,7 +484,7 @@ function renderCal() {
 /* ── MODAL DE TARJETA ── */
 async function openCard(id) {
   const c = cards.find(x => x.id === id); if (!c) return;
-  const lines = c.product_lines || [];
+  const lines = arr(c.product_lines);
   const opts = (sel) => operarios.map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
   const semOpts = data.semanasAlrededor(12, -3);
   if (c.semana_produccion && !semOpts.includes(c.semana_produccion)) semOpts.unshift(c.semana_produccion);
@@ -623,7 +623,7 @@ async function openCard(id) {
     finally { btn.disabled = false; }
   };
 
-  const attHtml = () => (c.attachments || []).map((f, i) => {
+  const attHtml = () => arr(c.attachments).map((f, i) => {
     const isImg = (f.type || '').startsWith('image/');
     const inner = isImg ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt=""></a>` : `<a class="file" href="${esc(f.url)}" target="_blank">📄 ${esc((f.name || 'archivo').slice(0, 16))}</a>`;
     return `<div class="a">${inner}<button class="x" data-att="${i}" title="Quitar">×</button></div>`;
@@ -643,7 +643,7 @@ async function openCard(id) {
     const files = [...e.target.files]; if (!files.length) return;
     toast('Subiendo…');
     try {
-      for (const f of files) { const meta = await data.uploadAttachment(f, id); c.attachments = [...(c.attachments || []), meta]; }
+      for (const f of files) { const meta = await data.uploadAttachment(f, id); c.attachments = [...arr(c.attachments), meta]; }
       await data.saveProductionCard({ id, attachments: c.attachments });
       paintAtt(); toast('Adjuntado');
     } catch (err) { fail(err, 'No se pudo adjuntar'); }

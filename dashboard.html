@@ -66,10 +66,10 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=5';
-import { requireAdmin } from './js/auth.js?v=5';
-import * as data from './js/cirene-data.js?v=5';
-import { money, pct, n } from './js/quote-engine.js?v=5';
+import { renderNavbar } from './js/navbar.js?v=6';
+import { requireAdmin } from './js/auth.js?v=6';
+import * as data from './js/cirene-data.js?v=6';
+import { money, pct, n } from './js/quote-engine.js?v=6';
 
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -100,7 +100,7 @@ try {
       data.listSocialImpact().catch(() => []), data.listNpsSurveys().catch(() => []),
     ]);
   // Los tiempos fichados alimentan la productividad; si son muchos, se acotan.
-  const { data: tl } = await (await import('./js/supa.js?v=5')).getSupa()
+  const { data: tl } = await (await import('./js/supa.js?v=6')).getSupa()
     .from('subtask_time_logs').select('*').order('started_at', { ascending: false }).limit(4000);
   timeLogs = tl || [];
 } catch (e) {

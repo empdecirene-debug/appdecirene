@@ -48,10 +48,10 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=5';
-import { requireAuth } from './js/auth.js?v=5';
-import * as data from './js/cirene-data.js?v=5';
-import { money, pct, n } from './js/quote-engine.js?v=5';
+import { renderNavbar } from './js/navbar.js?v=6';
+import { requireAuth } from './js/auth.js?v=6';
+import * as data from './js/cirene-data.js?v=6';
+import { money, pct, n, arr as lista } from './js/quote-engine.js?v=6';
 
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -112,7 +112,7 @@ function render() {
   const vendArr = Object.entries(vend).sort((a, b) => b[1] - a[1]);
 
   // productos más vendidos (período, por unidades)
-  const prod = {}; pcards.forEach(c => (c.product_lines || []).forEach(l => { if (!l.producto) return; prod[l.producto] = (prod[l.producto] || 0) + (n(l.cantidad) || 1); }));
+  const prod = {}; pcards.forEach(c => lista(c.product_lines).forEach(l => { if (!l.producto) return; prod[l.producto] = (prod[l.producto] || 0) + (n(l.cantidad) || 1); }));
   const prodArr = Object.entries(prod).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
   // pipeline (leads activos por etapa)
