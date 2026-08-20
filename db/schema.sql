@@ -551,11 +551,24 @@ create index if not exists idx_workshops_active on workshops (active);
 -- ====== 009_seed_materials.sql ======
 -- =====================================================================
 -- De Cirene ERP — 009 seed de materiales (desde Cotizador Herrería.xlsx, hoja Materiales)
--- Lista de precios real de la herrería. Idempotente por nombre+proveedor via delete previo.
+-- Lista de precios real de la herrería. SOLO siembra lo que falta.
+--
+-- Antes esto era `delete from materials where notas='seed-excel-2026'` + insert,
+-- y se ejecutaba en CADA arranque. Dos problemas graves:
+--
+--   1. En cuanto un material quedó referenciado por una orden de compra o un
+--      movimiento de stock, el delete se volvió imposible y tumbó la migración
+--      ENTERA. Y como el esquema se aplica en una sola query, la app levantaba
+--      sin registro de tablas: toda consulta respondía "Tabla no permitida".
+--   2. Cada deploy pisaba los precios que se hubieran actualizado desde el
+--      Catálogo, devolviéndolos a los del archivo.
+--
+-- Ahora se insertan únicamente los materiales cuyo nombre todavía no existe.
+-- Los precios los manda el Catálogo, que es donde se editan.
 -- =====================================================================
-delete from materials where notas = 'seed-excel-2026';
-
-insert into materials (nombre,tipo,unidad,precio_unit,compra_min,precio_compra,proveedor,activo,notas) values
+insert into materials (nombre,tipo,unidad,precio_unit,compra_min,precio_compra,proveedor,activo,notas)
+select v.nombre, v.tipo, v.unidad, v.precio_unit, v.compra_min, v.precio_compra, v.proveedor, v.activo, v.notas
+from (values
   ('Hierro redondo 6mm','Hierro redondo','mt',16.3333,6.0,98.0,'Barraca HN',true,'seed-excel-2026'),
   ('Hierro redondo 8mm','Hierro redondo','mt',27.6667,6.0,166.0,'Barraca HN',true,'seed-excel-2026'),
   ('Hierro redondo 10mm','Hierro redondo','mt',51.6667,6.0,310.0,'Barraca HN',true,'seed-excel-2026'),
@@ -645,41 +658,53 @@ insert into materials (nombre,tipo,unidad,precio_unit,compra_min,precio_compra,p
   ('Caño redondo 1 1/2 x 1.6mm','Caño redondo','mt',94.4133,6.0,566.48,'Barraca HN',true,'seed-excel-2026'),
   ('Tapas de plástico 30x30','Tapas de plástico','un',30.0,1.0,30.0,'Barraca HN',true,'seed-excel-2026'),
   ('Chapa labrada 3mm 100cmx300cm','Chapa labrada','un',8577.0,1.0,8577.0,'',true,'seed-excel-2026'),
-  ('Hormigón Pedregullo','Hormigón','m3',0,null,null,'',true,'seed-excel-2026');
+  ('Hormigón Pedregullo','Hormigón','m3',0,null,null,'',true,'seed-excel-2026')
+) as v(nombre,tipo,unidad,precio_unit,compra_min,precio_compra,proveedor,activo,notas)
+where not exists (select 1 from materials m where m.nombre = v.nombre);
 
 -- ====== 010_seed_templates.sql ======
-delete from product_templates;
+-- Igual que los materiales: esto hacía `delete from product_templates` en CADA
+-- arranque. Borraba las plantillas creadas desde Catálogo, y en cuanto una
+-- cotización referenciara una (quote_lines.template_id) el borrado iba a fallar
+-- y tumbar la migración entera. Ahora cada bloque se planta solo si todavía no
+-- hay ninguna plantilla.
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Leñero','Almacenaje','90x40x110 cm',1.45,true,7109,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Caño','30x30x2mm',700.0,2.0,0),(tid,'Varilla','10mm',310.0,1.0,1),(tid,'Tejido Electrosoldado','1.7x1.1m',120.0,1.0,2),(tid,'Pintura','1 litro',1675.0,0.33,3),(tid,'Tapas Caño','30x30',30.0,4.0,4);
   insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,4.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,8.0,1);
 end $$;
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Parrilla móvil','Cocina','',1.45,true,8996,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','10mm',254.0,5.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1),(tid,'Manivela y cadena','',2100.0,1.0,2),(tid,'Pomela','Serie N3',90.0,2.0,3);
   insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,4.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,4.0,1);
 end $$;
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Parrilla fija','Cocina','',1.4,true,4304,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','10mm',254.0,5.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1);
   insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0);
 end $$;
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Quemador','Cocina','',1.45,true,4162,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Varilla','14mm',455.0,4.0,0);
   insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0);
 end $$;
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Sacabotas','Accesorios','6 pares',1.4,true,3597,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Planchuela','1 1/4x1/8',340.0,1.0,0),(tid,'Ángulo','1 1/4x1/8',754.0,1.0,1),(tid,'Pintura','0.1lt',1675.0,0.03,2);
   insert into template_labor_lines (template_id,labor_rate_id,rol,costo_hora,horas,display_order) values (tid,(select id from labor_rates where rol='Jefe de taller'),'Jefe de taller',350.0,3.0,0),(tid,(select id from labor_rates where rol='Aprendiz'),'Aprendiz',125.0,3.0,1);
 end $$;
 do $$ declare tid uuid; begin
+  if exists (select 1 from product_templates) then return; end if;
   insert into product_templates (nombre,categoria,dimensiones,multiplicador,es_estandar,precio_referencia,activo)
   values ('Chispero','Estufa','1.20 x 0.60 m',1.5,true,4958,true) returning id into tid;
   insert into template_material_lines (template_id,descripcion,dimension,costo_unit,cantidad,display_order) values (tid,'Tejido electrosoldado','',80.0,1.0,0),(tid,'Angulo','3/4x1/8',325.0,1.0,1),(tid,'Pintura y gastos','',500.0,1.0,2);
