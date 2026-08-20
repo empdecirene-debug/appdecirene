@@ -52,6 +52,15 @@ export async function reiniciar(modo = 'demo') {
   try {
     await c.query('begin');
 
+    // Qué materiales tocó la demo. Hay que anotarlos ANTES de borrar los
+    // movimientos, porque después no hay forma de saber cuáles fueron.
+    let materialesDemo = [];
+    if (modo === 'demo') {
+      const { rows } = await c.query(
+        `select distinct material_id from stock_movements where demo and material_id is not null`);
+      materialesDemo = rows.map(r => r.material_id);
+    }
+
     // Romper el ciclo production_cards ↔ sales antes de borrar.
     await c.query(modo === 'demo'
       ? 'update production_cards set sale_id = null where demo'
@@ -86,6 +95,18 @@ export async function reiniciar(modo = 'demo') {
       await c.query(`update suppliers s set saldo = coalesce((
         select sum(case when l.tipo='cargo' then l.monto else -l.monto end)
           from supplier_ledger l where l.supplier_id = s.id), 0)`);
+      // Los materiales que movió la demo vuelven al saldo que dejan los
+      // movimientos reales que queden (0 si no hay), y se les saca el mínimo
+      // que puso la demo. Si no, quedaban existencias y alertas fantasma.
+      if (materialesDemo.length) {
+        await c.query(
+          `update materials m set
+             stock_actual = coalesce((select sm.stock_resultante from stock_movements sm
+                                       where sm.material_id = m.id
+                                       order by sm.fecha desc, sm.created_at desc limit 1), 0),
+             stock_minimo = 0
+           where m.id = any($1)`, [materialesDemo]);
+      }
     }
 
     await c.query('commit');
@@ -402,7 +423,9 @@ export async function generarDemo() {
       const ocId = oc.rows[0].id;
       let totalOC = 0, ln = 0;
       for (const m of mats.slice(0, 3)) {
-        const cant = [12, 8, 6][ln] || 5;
+        // Cantidades holgadas a propósito: si se compra apenas lo que consume el
+        // pedido, el stock queda en cero y la pantalla de Stock no muestra nada.
+        const cant = [60, 40, 30][ln] || 25;
         const costo = Number(m.precio_unit) || 100;
         totalOC += cant * costo;
         await c.query(
@@ -415,7 +438,10 @@ export async function generarDemo() {
              stock_resultante, fecha, notas, registrado_por, demo)
            values ($1,'entrada',$2,$3,'compra',$4,$2,$5,$6,$7,true)`,
           [m.id, cant, costo, ocId, diasAtras(18), 'Recepción ' + ocId, uid]);
-        await c.query(`update materials set stock_actual = stock_actual + $1 where id = $2`, [cant, m.id]);
+        // Un stock mínimo por material para que el tablero de Stock tenga algo que
+        // avisar. El de la mitad queda por debajo a propósito: así se ve la alerta.
+        await c.query(`update materials set stock_actual = stock_actual + $1, stock_minimo = $2 where id = $3`,
+          [cant, [20, 45, 10][ln] || 5, m.id]);
         ln++;
       }
       await c.query(`update purchase_orders set total = $1 where id = $2`, [totalOC, ocId]);
