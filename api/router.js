@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import { q, pool } from './db.js';
 import { construir, ErrorConsulta } from './query.js';
 import { puede, ES_ADMIN } from './registry.js';
+import { generarDemo, reiniciar } from './demo.js';
 import {
   hashPassword, verifyPassword, crearToken, leerToken,
   leerCookies, cookieSesion, cookieBorrar, COOKIE,
@@ -158,6 +159,43 @@ export async function manejar(req, res, pathname) {
       await cliente.query('rollback');
       return json(res, 500, { error: e.message });
     } finally { cliente.release(); }
+  }
+
+  // ── Datos de prueba y reinicio (solo admin) ──
+  //
+  // Van del lado del servidor y no en el navegador porque las dos cosas tocan
+  // muchas tablas encadenadas: acá corren en UNA transacción, así que o queda
+  // todo o no queda nada. Desde el cliente, media docena de llamadas sueltas
+  // podían dejar la base a medio camino.
+  if (pathname === '/api/admin/demo' && req.method === 'POST') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    try {
+      const r = await generarDemo();
+      if (r.ya) return json(res, 409, { error: r.mensaje });
+      return json(res, 200, { ok: true, cuenta: r.cuenta });
+    } catch (e) {
+      console.error('[demo] generar:', e);
+      return json(res, 500, { error: 'No se pudieron generar los datos: ' + e.message });
+    }
+  }
+
+  if (pathname === '/api/admin/reset' && req.method === 'POST') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    let body;
+    try { body = JSON.parse((await leerCuerpo(req, 8192)).toString('utf8')); }
+    catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+    const modo = body.modo === 'operativo' ? 'operativo' : 'demo';
+    // El borrado total pide confirmación escrita: es irreversible.
+    if (modo === 'operativo' && String(body.confirmacion || '').trim().toUpperCase() !== 'REINICIAR') {
+      return json(res, 400, { error: 'Para reiniciar todo hay que escribir REINICIAR' });
+    }
+    try {
+      const r = await reiniciar(modo);
+      return json(res, 200, { ok: true, ...r });
+    } catch (e) {
+      console.error('[demo] reiniciar:', e);
+      return json(res, 500, { error: 'No se pudo reiniciar: ' + e.message });
+    }
   }
 
   // ── Consulta genérica ──

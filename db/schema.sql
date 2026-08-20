@@ -1459,3 +1459,38 @@ create table if not exists notifications (
   created_at  timestamptz not null default now()
 );
 create index if not exists idx_notif_user on notifications(user_id, leida, created_at desc);
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- DATOS DE DEMO Y REINICIO
+--
+-- `demo` marca las filas que generó el botón "Generar datos de prueba" de
+-- Administración. Sirve para poder borrarlas después SIN tocar lo real: el
+-- reinicio de demo filtra por esta columna. Default false, así que nada de lo
+-- que ya existe queda marcado.
+-- ═══════════════════════════════════════════════════════════════════════════
+alter table clients             add column if not exists demo boolean not null default false;
+alter table intake_cards        add column if not exists demo boolean not null default false;
+alter table quotes              add column if not exists demo boolean not null default false;
+alter table sales               add column if not exists demo boolean not null default false;
+alter table production_cards    add column if not exists demo boolean not null default false;
+alter table production_subtasks add column if not exists demo boolean not null default false;
+alter table card_stories        add column if not exists demo boolean not null default false;
+alter table receivables         add column if not exists demo boolean not null default false;
+alter table job_payments        add column if not exists demo boolean not null default false;
+alter table cash_movements      add column if not exists demo boolean not null default false;
+alter table cash_sessions       add column if not exists demo boolean not null default false;
+alter table expenses            add column if not exists demo boolean not null default false;
+alter table supplier_ledger     add column if not exists demo boolean not null default false;
+alter table purchase_orders     add column if not exists demo boolean not null default false;
+alter table stock_movements     add column if not exists demo boolean not null default false;
+alter table suppliers           add column if not exists demo boolean not null default false;
+alter table operators           add column if not exists demo boolean not null default false;
+alter table assets              add column if not exists demo boolean not null default false;
+alter table social_impact       add column if not exists demo boolean not null default false;
+alter table production_weeks    add column if not exists demo boolean not null default false;
+alter table nps_surveys         add column if not exists demo boolean not null default false;
+alter table notifications       add column if not exists demo boolean not null default false;
+
+create index if not exists idx_clients_demo on clients(demo) where demo;
+create index if not exists idx_production_demo on production_cards(demo) where demo;

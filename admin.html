@@ -80,6 +80,7 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
     <button data-t="stages">Etapas Kanban</button>
     <button data-t="fields">Campos personalizados</button>
     <button data-t="users">Usuarios</button>
+    <button data-t="datos">Datos de prueba</button>
   </div>
 
   <div id="content">Cargando…</div>
@@ -368,10 +369,90 @@ function bindUsers() {
   });
 }
 
+/* ───────── Datos de prueba y reinicio ─────────
+   Las dos operaciones corren en el servidor dentro de una transacción
+   (POST /api/admin/demo y /api/admin/reset). Ver api/demo.js. */
+function renderDatos() {
+  return `
+    <div class="card">
+      <h2>Cargar datos de prueba</h2>
+      <p class="subtitle">Genera un juego de datos ficticio pero coherente, que recorre todos los módulos:
+        clientes, leads en distintas etapas, cotizaciones (incluida una en borrador), dos leads ganados con su
+        venta, su pedido en producción y su cuenta a cobrar, subtareas con horas fichadas, una orden de compra
+        recibida con su movimiento de stock y su gasto, cobros, activos, impacto social y encuestas NPS.</p>
+      <p class="subtitle" style="margin-top:8px">Todo queda marcado como <code>demo</code>, así que después se
+        puede borrar sin tocar nada real.</p>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn primary" id="btnDemo">Generar datos de prueba</button>
+        <button class="btn" id="btnBorrarDemo">Borrar solo los datos de prueba</button>
+      </div>
+      <div id="demo-result"></div>
+    </div>
+
+    <div class="card" style="border-color:var(--rojo)">
+      <h2 style="color:var(--rojo)">Reiniciar y empezar de cero</h2>
+      <p class="subtitle">Borra <b>todo el movimiento</b>: clientes, leads, cotizaciones, ventas, pedidos de
+        producción, subtareas, órdenes de compra, movimientos de stock, cuentas a cobrar, cobros, gastos,
+        activos y encuestas. Los saldos de stock y de proveedores vuelven a cero.</p>
+      <p class="subtitle" style="margin-top:8px"><b>Se conservan</b>: usuarios, catálogo (materiales,
+        terminaciones, mano de obra, plantillas), proveedores, operarios, etapas del kanban y cargas sociales.</p>
+      <div class="alert err" style="margin-top:12px">Esto no se puede deshacer. No hay papelera ni respaldo automático.</div>
+      <div class="row2" style="align-items:end">
+        <div class="fg"><label class="label">Escribí REINICIAR para habilitar el botón</label>
+          <input id="conf-reset" placeholder="REINICIAR" autocomplete="off"></div>
+        <div class="fg"><button class="btn danger" id="btnReset" disabled>Reiniciar todo</button></div>
+      </div>
+      <div id="reset-result"></div>
+    </div>`;
+}
+function bindDatos() {
+  const resumen = (obj) => Object.entries(obj || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: <b>${v}</b>`).join(' · ') || 'nada';
+
+  $('btnDemo').onclick = async () => {
+    const b = $('btnDemo'); b.disabled = true; b.textContent = 'Generando…';
+    try {
+      const r = await api.pedir('/admin/demo', { method: 'POST' });
+      if (r.error) throw new Error(r.error);
+      $('demo-result').innerHTML = `<div class="alert ok" style="margin-top:12px">Datos de prueba cargados · ${resumen(r.cuenta)}</div>`;
+      showOk('Datos de prueba cargados');
+    } catch (e) { $('demo-result').innerHTML = `<div class="alert err" style="margin-top:12px">${esc(e.message || e)}</div>`; }
+    finally { b.disabled = false; b.textContent = 'Generar datos de prueba'; }
+  };
+
+  $('btnBorrarDemo').onclick = async () => {
+    if (!confirm('¿Borrar los datos de prueba? Lo real no se toca.')) return;
+    const b = $('btnBorrarDemo'); b.disabled = true; b.textContent = 'Borrando…';
+    try {
+      const r = await api.pedir('/admin/reset', { method: 'POST', body: JSON.stringify({ modo: 'demo' }) });
+      if (r.error) throw new Error(r.error);
+      $('demo-result').innerHTML = `<div class="alert ok" style="margin-top:12px">Datos de prueba borrados · ${resumen(r.borrados)}</div>`;
+      showOk('Datos de prueba borrados');
+    } catch (e) { $('demo-result').innerHTML = `<div class="alert err" style="margin-top:12px">${esc(e.message || e)}</div>`; }
+    finally { b.disabled = false; b.textContent = 'Borrar solo los datos de prueba'; }
+  };
+
+  $('conf-reset').oninput = e => { $('btnReset').disabled = e.target.value.trim().toUpperCase() !== 'REINICIAR'; };
+  $('btnReset').onclick = async () => {
+    if (!confirm('Última confirmación.\n\nSe borra TODO el movimiento de la herrería y no se puede deshacer.\n\n¿Seguís?')) return;
+    const b = $('btnReset'); b.disabled = true; b.textContent = 'Reiniciando…';
+    try {
+      const r = await api.pedir('/admin/reset', {
+        method: 'POST', body: JSON.stringify({ modo: 'operativo', confirmacion: $('conf-reset').value }),
+      });
+      if (r.error) throw new Error(r.error);
+      $('reset-result').innerHTML = `<div class="alert ok" style="margin-top:12px">Listo, arrancás de cero · ${resumen(r.borrados)}</div>`;
+      $('conf-reset').value = '';
+      showOk('Sistema reiniciado');
+    } catch (e) { $('reset-result').innerHTML = `<div class="alert err" style="margin-top:12px">${esc(e.message || e)}</div>`; }
+    finally { b.textContent = 'Reiniciar todo'; }
+  };
+}
+
 function render() {
   renderNavbar('admin');
   pintarMsg();
-  if (state.tab === 'operarios') { $('content').innerHTML = renderOperarios(); bindOperarios(); }
+  if (state.tab === 'datos') { $('content').innerHTML = renderDatos(); bindDatos(); }
+  else if (state.tab === 'operarios') { $('content').innerHTML = renderOperarios(); bindOperarios(); }
   else if (state.tab === 'cargas')  { $('content').innerHTML = renderCargas(); bindCargas(); }
   else if (state.tab === 'impacto') { $('content').innerHTML = renderImpacto(); bindImpacto(); }
   else if (state.tab === 'stages')  { $('content').innerHTML = renderStages(); }
