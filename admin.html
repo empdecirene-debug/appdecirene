@@ -69,17 +69,19 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
 
 <div class="container">
   <h1>Administración</h1>
-  <p class="subtitle">Operarios, cargas sociales, impacto social, etapas del kanban y usuarios.</p>
+  <p class="subtitle">Usuarios y roles, operarios y su PIN de taller, cargas sociales, impacto social, etapas y sugerencias.</p>
 
   <div id="msg"></div>
 
   <div class="tab-bar">
     <button data-t="operarios" class="active">Operarios</button>
+    <button data-t="users">Usuarios</button>
+    <button data-t="roles">Roles y permisos</button>
+    <button data-t="sugerencias">Sugerencias</button>
     <button data-t="cargas">Cargas sociales</button>
     <button data-t="impacto">Impacto social</button>
     <button data-t="stages">Etapas Kanban</button>
     <button data-t="fields">Campos personalizados</button>
-    <button data-t="users">Usuarios</button>
     <button data-t="datos">Datos de prueba</button>
   </div>
 
@@ -87,17 +89,20 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=6';
-import { requireAdmin } from './js/auth.js?v=6';
-import { getSupa, api } from './js/supa.js?v=6';
-import * as data from './js/cirene-data.js?v=6';
-import { money, n } from './js/quote-engine.js?v=6';
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAdmin } from './js/auth.js?v=7';
+import { getSupa, api } from './js/supa.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+import { money, n } from './js/quote-engine.js?v=7';
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-UY', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
 
-const state = { tab: 'operarios', operarios: [], cargas: [], impacto: [], stages: [], fields: [], users: [], msg: null };
+const state = {
+  tab: 'operarios', operarios: [], cargas: [], impacto: [], stages: [], fields: [],
+  users: [], roles: [], sugerencias: [], filtroSug: '', msg: null,
+};
 
 function showError(t) { state.msg = { kind: 'err', text: t }; pintarMsg(); }
 function showOk(t) { state.msg = { kind: 'ok', text: t }; pintarMsg(); setTimeout(() => { state.msg = null; pintarMsg(); }, 2800); }
@@ -113,6 +118,8 @@ async function load() {
     if (state.tab === 'stages')  { const { data: d } = await supa.from('kanban_stages').select('*').order('display_order'); state.stages = d || []; }
     if (state.tab === 'fields')  { const { data: d } = await supa.from('custom_fields').select('*').order('display_order'); state.fields = d || []; }
     if (state.tab === 'users')   { const { data: d } = await supa.from('user_profiles').select('*').order('full_name'); state.users = d || []; }
+    if (state.tab === 'roles')   state.roles = await data.listRoles();
+    if (state.tab === 'sugerencias') state.sugerencias = await data.listSuggestions();
   } catch (e) {
     $('content').innerHTML = `<div class="alert err">No se pudo cargar: ${esc(e.message || e)}
       <button class="btn sm" style="margin-left:10px" onclick="location.reload()">Reintentar</button></div>`;
@@ -138,23 +145,34 @@ function renderOperarios() {
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="tbl">
-        <thead><tr><th style="width:26%">Nombre</th><th>Función / rol</th><th class="num" style="width:120px">Costo/hora</th>
-          <th style="width:22%">Usuario de la app</th><th style="width:130px">Actualizado</th><th style="width:70px">Activo</th><th></th></tr></thead>
+        <thead><tr><th style="width:22%">Nombre</th><th>Función / rol</th><th class="num" style="width:110px">Costo/hora</th>
+          <th style="width:130px">PIN de taller</th>
+          <th style="width:18%">Usuario de la app</th><th style="width:120px">Actualizado</th><th style="width:60px">Activo</th><th></th></tr></thead>
         <tbody>${state.operarios.map(o => `
           <tr data-id="${o.id}" class="${o.activo ? '' : 'inactive'}">
             <td><input data-f="nombre" value="${esc(o.nombre)}"></td>
             <td><input data-f="funcion" value="${esc(o.funcion)}" placeholder="Herrero, ayudante…"></td>
             <td class="num"><input data-f="costo_hora" type="number" step="1" value="${n(o.costo_hora)}"></td>
+            <td style="white-space:nowrap"><input data-f="pin" value="${esc(o.pin)}" placeholder="— sin PIN —"
+                inputmode="numeric" maxlength="8" style="width:62px;text-align:center;font-weight:700;letter-spacing:.12em">
+              <button class="btn sm" data-pin title="Generar un PIN libre de 4 dígitos">🎲</button></td>
             <td><select data-f="user_id"><option value="">— sin usuario —</option>
               ${state.users.map(u => `<option value="${u.id}" ${u.id === o.user_id ? 'selected' : ''}>${esc(u.full_name || u.email)}</option>`).join('')}</select></td>
             <td style="font-size:11px;color:var(--tinta-3)">${fechaHora(o.updated_at)}</td>
             <td style="text-align:center"><input type="checkbox" data-f="activo" style="width:auto" ${o.activo ? 'checked' : ''}></td>
             <td style="text-align:right"><button class="btn sm" data-del>✕</button></td>
-          </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay operarios cargados.</td></tr>'}
+          </tr>`).join('') || '<tr><td colspan="8" class="empty">Todavía no hay operarios cargados.</td></tr>'}
         </tbody>
       </table>
     </div>
-    <div class="alert info">Los operarios sin usuario de la app igual pueden tener subtareas asignadas: el gerente de producción marca inicio, pausa y fin por ellos.</div>`;
+    <div class="alert info"><b>El PIN es la llave del taller.</b> Con esos 4 dígitos el operario entra a
+      <a href="/taller.html" target="_blank">/taller.html</a> desde el tablet del taller y marca INICIO y FIN
+      de lo que está haciendo. No necesita email ni contraseña, y con el PIN <b>no puede</b> ver precios,
+      cotizaciones ni contabilidad: solo fichar. Sin PIN cargado, el operario no puede entrar
+      (igual el gerente puede marcarle los tiempos desde Producción).
+      ${state.operarios.filter(o => o.activo && !o.pin).length
+        ? `<br><b>${state.operarios.filter(o => o.activo && !o.pin).length} operario(s) activo(s) todavía sin PIN.</b>`
+        : ''}</div>`;
 }
 function bindOperarios() {
   $('btnNewOp').onclick = async () => {
@@ -168,12 +186,49 @@ function bindOperarios() {
     tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {
       const o = state.operarios.find(x => x.id === id); if (!o) return;
       const f = el.dataset.f;
-      o[f] = f === 'activo' ? el.checked : (f === 'costo_hora' ? n(el.value) : (el.value || null));
+      if (f === 'activo') o.activo = el.checked;
+      else if (f === 'costo_hora') o.costo_hora = n(el.value);
+      else if (f === 'pin') {
+        // Solo dígitos, y 4 como mínimo: un PIN de 2 dígitos se adivina de una.
+        const limpio = String(el.value || '').replace(/\D+/g, '').slice(0, 8);
+        if (limpio && limpio.length < 4) { showError('El PIN necesita al menos 4 números.'); el.value = esc(o.pin || ''); return; }
+        o.pin = limpio || null;
+        el.value = o.pin || '';
+      } else o[f] = el.value || null;
       try {
-        const saved = await data.upsertOperator({ id, nombre: o.nombre, funcion: o.funcion, costo_hora: n(o.costo_hora), user_id: o.user_id || null, activo: !!o.activo });
+        const saved = await data.upsertOperator({
+          id, nombre: o.nombre, funcion: o.funcion, costo_hora: n(o.costo_hora),
+          user_id: o.user_id || null, activo: !!o.activo, pin: o.pin || null,
+        });
         Object.assign(o, saved); showOk('Guardado');
-      } catch (e) { showError('No se pudo guardar: ' + e.message); }
+      } catch (e) {
+        // El índice único del PIN es lo que garantiza que un PIN identifique a
+        // UNA persona: si choca, hay que avisar en claro y no dejarlo pasar.
+        showError(/pin/i.test(e.message || '')
+          ? 'Ese PIN ya lo tiene otro operario. Poné otro.'
+          : 'No se pudo guardar: ' + e.message);
+        await load();
+      }
     });
+    const btnPin = tr.querySelector('[data-pin]');
+    if (btnPin) btnPin.onclick = async () => {
+      const o = state.operarios.find(x => x.id === id); if (!o) return;
+      const usados = new Set(state.operarios.map(x => x.pin).filter(Boolean));
+      let nuevo = null;
+      for (let i = 0; i < 300 && !nuevo; i++) {
+        const cand = String(Math.floor(1000 + Math.random() * 9000));
+        if (!usados.has(cand)) nuevo = cand;
+      }
+      if (!nuevo) { showError('No encontré un PIN libre. Poné uno a mano.'); return; }
+      try {
+        const saved = await data.upsertOperator({
+          id, nombre: o.nombre, funcion: o.funcion, costo_hora: n(o.costo_hora),
+          user_id: o.user_id || null, activo: !!o.activo, pin: nuevo,
+        });
+        Object.assign(o, saved); render();
+        showOk(`PIN de ${o.nombre}: ${nuevo} — anotalo y dáselo.`);
+      } catch (e) { showError('No se pudo generar el PIN: ' + e.message); }
+    };
     tr.querySelector('[data-del]').onclick = async () => {
       if (!confirm('¿Eliminar el operario? Si ya tiene horas registradas, mejor desactivalo.')) return;
       try {
@@ -315,26 +370,47 @@ function renderUsers() {
         <div class="fg"><label class="label">Email</label><input id="u-email" type="email" placeholder="nombre@decirene.uy"></div>
         <div class="fg"><label class="label">Nombre completo</label><input id="u-nombre"></div>
         <div class="fg"><label class="label">Rol</label><select id="u-rol">
-          <option value="comercial">Comercial</option><option value="produccion">Producción</option>
-          <option value="admin">Admin</option><option value="director">Director</option></select></div>
+          ${opcionesDeRol('comercial')}</select>
+          <p class="subtitle" style="margin-top:4px">El rol define qué módulos ve. Se configuran en
+            <b>Roles y permisos</b>.</p></div>
       </div>
       <button class="btn primary" id="btnNewUser">Crear usuario</button>
       <div id="u-result"></div>
     </div>
     <div class="card" style="padding:0;">
       <table class="tbl">
-        <thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th style="width:70px">Activo</th></tr></thead>
-        <tbody>${state.users.length ? state.users.map(u => `
-          <tr data-uid="${u.id}" class="${u.active ? '' : 'inactive'}">
+        <thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Módulos que ve</th><th style="width:70px">Activo</th></tr></thead>
+        <tbody>${state.users.length ? state.users.map(u => {
+          const rol = state.roles.find(r => r.key === u.role);
+          const mods = rol && Array.isArray(rol.modulos) ? rol.modulos.length : null;
+          return `<tr data-uid="${u.id}" class="${u.active ? '' : 'inactive'}">
             <td>${esc(u.email)}</td>
             <td><input data-f="full_name" value="${esc(u.full_name)}"></td>
-            <td><select data-f="role">
-              ${['comercial','produccion','admin','director'].map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></td>
+            <td><select data-f="role">${opcionesDeRol(u.role)}</select></td>
+            <td style="font-size:12px;color:var(--tinta-3)">${mods === null
+              ? '<span class="badge">rol sin configurar</span>'
+              : `${mods} de ${data.MODULOS.length}`}</td>
             <td style="text-align:center"><input type="checkbox" data-f="active" style="width:auto" ${u.active ? 'checked' : ''}></td>
-          </tr>`).join('') : '<tr><td colspan="4" class="empty">No hay usuarios.</td></tr>'}
+          </tr>`;
+        }).join('') : '<tr><td colspan="5" class="empty">No hay usuarios.</td></tr>'}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    <div class="alert info">Para que alguien solo ficha horas en el taller <b>no hace falta crearle usuario</b>:
+      alcanza con darle de alta como operario y ponerle un PIN (pestaña Operarios).</div>`;
+}
+
+// Los roles ya no son una lista fija en el código: salen de la tabla `app_roles`.
+// Si por lo que sea la tabla no cargó, se muestran los cuatro originales para no
+// dejar la pantalla sin poder asignar rol.
+function opcionesDeRol(actual) {
+  const rs = state.roles.length
+    ? state.roles.filter(r => r.activo !== false || r.key === actual)
+    : [{ key: 'comercial', label: 'Comercial' }, { key: 'produccion', label: 'Producción' },
+       { key: 'admin', label: 'Administrador' }, { key: 'director', label: 'Director' }];
+  const hay = rs.some(r => r.key === actual);
+  return (hay ? rs : [...rs, { key: actual, label: actual + ' (rol que ya no existe)' }])
+    .map(r => `<option value="${esc(r.key)}" ${r.key === actual ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
 }
 function bindUsers() {
   $('btnNewUser').onclick = async () => {
@@ -369,6 +445,227 @@ function bindUsers() {
   });
 }
 
+
+/* ───────── Roles y permisos ─────────
+   Un rol tiene dos partes, y la distinción es importante:
+
+     · PERFIL BASE → de dónde saca los permisos de BASE DE DATOS. Son cuatro y
+       viven en el servidor (api/registry.js). No se editan desde acá a propósito:
+       si esta pantalla pudiera dar permisos de tabla, cualquiera que la abriera
+       podría regalarse la contabilidad.
+     · MÓDULOS → qué pantallas ve en el menú. Eso sí es configurable, porque es
+       una decisión de organización, no de seguridad.
+
+   O sea: los módulos deciden qué VE, el perfil base decide qué PUEDE. */
+function renderRoles() {
+  const usuariosPorRol = {};
+  state.users.forEach(u => { usuariosPorRol[u.role] = (usuariosPorRol[u.role] || 0) + 1; });
+
+  return `
+    <div class="card">
+      <h2>Crear un rol nuevo</h2>
+      <p class="subtitle">Por ejemplo "Encargado de taller" o "Administrativo". Después elegís qué módulos ve.</p>
+      <div class="row3">
+        <div class="fg"><label class="label">Nombre del rol</label><input id="r-label" placeholder="Encargado de taller"></div>
+        <div class="fg"><label class="label">Permisos de base (perfil)</label><select id="r-perfil">
+          ${data.PERFILES_BASE.map(p => `<option value="${p.key}">${esc(p.label)}</option>`).join('')}</select></div>
+        <div class="fg"><label class="label">Para qué es</label><input id="r-desc" placeholder="Planifica el taller y reparte tareas"></div>
+      </div>
+      <button class="btn primary" id="btnNewRole">Crear rol</button>
+      <div id="r-result"></div>
+    </div>
+
+    ${state.roles.map(r => {
+      const mods = Array.isArray(r.modulos) ? r.modulos : [];
+      const perfil = data.PERFILES_BASE.find(p => p.key === r.perfil_base);
+      return `<div class="card" data-rol="${esc(r.key)}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <h2 style="margin:0">${esc(r.label)}</h2>
+          <code>${esc(r.key)}</code>
+          ${r.sistema ? '<span class="badge">del sistema</span>' : ''}
+          ${r.activo ? '' : '<span class="badge">desactivado</span>'}
+          <span class="badge">${usuariosPorRol[r.key] || 0} usuario(s)</span>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600">
+              <input type="checkbox" data-r-activo style="width:auto" ${r.activo ? 'checked' : ''}> Activo</label>
+            ${r.sistema ? '' : '<button class="btn sm" data-r-del>✕ Eliminar</button>'}
+          </div>
+        </div>
+        ${r.descripcion ? `<p class="subtitle" style="margin-bottom:10px">${esc(r.descripcion)}</p>` : ''}
+        <div class="row2">
+          <div class="fg"><label class="label">Nombre visible</label><input data-r-label value="${esc(r.label)}"></div>
+          <div class="fg"><label class="label">Permisos de base de datos</label>
+            <select data-r-perfil ${r.key === 'admin' ? 'disabled' : ''}>
+              ${data.PERFILES_BASE.map(p => `<option value="${p.key}" ${p.key === r.perfil_base ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}
+            </select>
+            <p class="subtitle" style="margin-top:4px">${esc(perfil ? perfil.desc : '')}</p>
+          </div>
+        </div>
+        <label class="label" style="margin-top:6px">Módulos que ve este rol (${mods.length} de ${data.MODULOS.length})</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:6px 14px;margin-bottom:10px">
+          ${data.MODULOS.map(m => `<label style="display:flex;gap:7px;align-items:flex-start;font-size:13px;font-weight:600">
+            <input type="checkbox" data-r-mod="${m.id}" style="width:auto;margin-top:3px" ${mods.includes(m.id) ? 'checked' : ''}>
+            <span>${esc(m.label)}<span style="display:block;font-weight:400;font-size:11px;color:var(--tinta-3)">${esc(m.desc)}</span></span>
+          </label>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary sm" data-r-save>Guardar este rol</button>
+          <button class="btn sm" data-r-todos>Marcar todos</button>
+          <button class="btn sm" data-r-ninguno>Desmarcar todos</button>
+        </div>
+      </div>`;
+    }).join('')}
+
+    <div class="alert info"><b>Cómo se lee esto.</b> Los <b>módulos</b> deciden qué pantallas aparecen en el
+      menú de esa persona. Los <b>permisos de base</b> deciden qué puede tocar de verdad: aunque le marques
+      Contabilidad a un rol con perfil Comercial, el servidor le va a seguir negando los datos contables.
+      Es a propósito: la seguridad no puede depender de una casilla de esta pantalla.
+      El rol <code>admin</code> no cambia de perfil, para que nunca quede el sistema sin nadie que pueda entrar a administrar.</div>`;
+}
+
+function bindRoles() {
+  $('btnNewRole').onclick = async () => {
+    const label = $('r-label').value.trim();
+    if (!label) { showError('Ponele un nombre al rol'); return; }
+    const key = data.claveRol(label);
+    if (!key) { showError('Ese nombre no sirve como identificador. Usá letras.'); return; }
+    if (state.roles.some(r => r.key === key)) { showError('Ya existe un rol con ese nombre.'); return; }
+    const btn = $('btnNewRole'); btn.disabled = true;
+    try {
+      await data.upsertRole({
+        key, label, perfil_base: $('r-perfil').value,
+        descripcion: $('r-desc').value.trim() || null,
+        // Arranca con lo mínimo y el admin marca lo que corresponda: es más
+        // seguro que dar todo y esperar que alguien se acuerde de sacarlo.
+        modulos: ['home', 'manual'], activo: true, sistema: false,
+      });
+      $('r-label').value = ''; $('r-desc').value = '';
+      showOk(`Rol "${label}" creado (${key}). Marcale los módulos y guardá.`);
+      await load();
+    } catch (e) { showError('No se pudo crear: ' + e.message); }
+    finally { btn.disabled = false; }
+  };
+
+  document.querySelectorAll('[data-rol]').forEach(tarjeta => {
+    const key = tarjeta.dataset.rol;
+    const rol = state.roles.find(r => r.key === key);
+    if (!rol) return;
+    const marcar = (val) => tarjeta.querySelectorAll('[data-r-mod]').forEach(c => { c.checked = val; });
+
+    tarjeta.querySelector('[data-r-todos]').onclick = () => marcar(true);
+    tarjeta.querySelector('[data-r-ninguno]').onclick = () => marcar(false);
+
+    tarjeta.querySelector('[data-r-save]').onclick = async () => {
+      const btn = tarjeta.querySelector('[data-r-save]'); btn.disabled = true;
+      const modulos = [...tarjeta.querySelectorAll('[data-r-mod]')].filter(c => c.checked).map(c => c.dataset.rMod);
+      try {
+        const saved = await data.upsertRole({
+          key,
+          label: tarjeta.querySelector('[data-r-label]').value.trim() || rol.label,
+          perfil_base: tarjeta.querySelector('[data-r-perfil]').value,
+          modulos,
+          activo: tarjeta.querySelector('[data-r-activo]').checked,
+          descripcion: rol.descripcion || null,
+        });
+        Object.assign(rol, saved);
+        showOk('Rol guardado. Los usuarios lo ven al recargar la página.');
+        render();
+      } catch (e) { showError('No se pudo guardar: ' + e.message); btn.disabled = false; }
+    };
+
+    const del = tarjeta.querySelector('[data-r-del]');
+    if (del) del.onclick = async () => {
+      if (!confirm(`¿Eliminar el rol "${rol.label}"?`)) return;
+      try { await data.deleteRole(key); showOk('Rol eliminado'); await load(); }
+      catch (e) { showError(e.message); }
+    };
+  });
+}
+
+/* ───────── Sugerencias del equipo ─────────
+   Lo que llega del botón fijo de toda la app. Se responde y se cierra desde acá,
+   así quien la escribió sabe que la leyeron (y no vuelve a decirla de palabra). */
+function renderSugerencias() {
+  const ESTADOS = {
+    nueva:      { label: 'Nueva', clase: 'alert info' },
+    en_curso:   { label: 'En curso', clase: 'alert' },
+    resuelta:   { label: 'Resuelta', clase: 'alert ok' },
+    descartada: { label: 'Descartada', clase: 'alert' },
+  };
+  const CATS = {};
+  data.CATEGORIAS_SUGERENCIA.forEach(c => { CATS[c.key] = c.label; });
+
+  const filtradas = state.filtroSug
+    ? state.sugerencias.filter(s => s.estado === state.filtroSug)
+    : state.sugerencias;
+  const cuenta = (e) => state.sugerencias.filter(s => s.estado === e).length;
+
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2>Sugerencias del equipo (${state.sugerencias.length})</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${[['', 'Todas'], ['nueva', `Nuevas (${cuenta('nueva')})`], ['en_curso', `En curso (${cuenta('en_curso')})`],
+             ['resuelta', `Resueltas (${cuenta('resuelta')})`], ['descartada', 'Descartadas']]
+            .map(([k, l]) => `<button class="btn sm ${state.filtroSug === k ? 'primary' : ''}" data-fs="${k}">${l}</button>`).join('')}
+        </div>
+      </div>
+      <p class="subtitle">Las escribe cualquiera desde el botón 💡 que está abajo a la derecha en toda la app.</p>
+    </div>
+
+    ${filtradas.length ? filtradas.map(s => {
+      const est = ESTADOS[s.estado] || ESTADOS.nueva;
+      const adj = Array.isArray(s.adjuntos) ? s.adjuntos : [];
+      return `<div class="card" data-sug="${s.id}">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge">${esc(CATS[s.categoria] || s.categoria)}</span>
+          ${s.pagina ? `<span class="badge">en ${esc(s.pagina)}</span>` : ''}
+          <span class="badge">${esc(est.label)}</span>
+          <span style="font-size:12px;color:var(--tinta-3);margin-left:auto">
+            ${esc(s.user_label || 'Alguien')} · ${fechaHora(s.created_at)}</span>
+        </div>
+        <div style="font-size:14px;line-height:1.55;white-space:pre-wrap">${esc(s.texto)}</div>
+        ${adj.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          ${adj.map(f => (f.type || '').startsWith('image/')
+            ? `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt=""
+                 style="width:78px;height:78px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"></a>`
+            : `<a class="btn sm" href="${esc(f.url)}" target="_blank">📄 ${esc((f.name || 'archivo').slice(0, 18))}</a>`).join('')}
+        </div>` : ''}
+        <div class="row2" style="margin-top:12px;align-items:end">
+          <div class="fg"><label class="label">Respuesta (la ve administración)</label>
+            <input data-s-resp value="${esc(s.respuesta)}" placeholder="Qué se hizo o por qué no"></div>
+          <div class="fg"><label class="label">Estado</label>
+            <div style="display:flex;gap:6px">
+              <select data-s-estado>${data.ESTADOS_SUGERENCIA.map(e =>
+                `<option value="${e}" ${s.estado === e ? 'selected' : ''}>${esc((ESTADOS[e] || {}).label || e)}</option>`).join('')}</select>
+              <button class="btn primary sm" data-s-save>Guardar</button>
+            </div></div>
+        </div>
+      </div>`;
+    }).join('') : '<div class="card"><div class="empty">No hay sugerencias con ese filtro.</div></div>'}`;
+}
+
+function bindSugerencias() {
+  document.querySelectorAll('[data-fs]').forEach(b => b.onclick = () => {
+    state.filtroSug = b.dataset.fs; render();
+  });
+  document.querySelectorAll('[data-sug]').forEach(tarjeta => {
+    const id = tarjeta.dataset.sug;
+    tarjeta.querySelector('[data-s-save]').onclick = async () => {
+      const btn = tarjeta.querySelector('[data-s-save]'); btn.disabled = true;
+      try {
+        const saved = await data.saveSuggestion({
+          id,
+          estado: tarjeta.querySelector('[data-s-estado]').value,
+          respuesta: tarjeta.querySelector('[data-s-resp]').value.trim() || null,
+        });
+        const i = state.sugerencias.findIndex(x => x.id === id);
+        if (i >= 0) state.sugerencias[i] = saved;
+        showOk('Sugerencia actualizada'); render();
+      } catch (e) { showError('No se pudo guardar: ' + e.message); btn.disabled = false; }
+    };
+  });
+}
 /* ───────── Datos de prueba y reinicio ─────────
    Las dos operaciones corren en el servidor dentro de una transacción
    (POST /api/admin/demo y /api/admin/reset). Ver api/demo.js. */
@@ -458,12 +755,16 @@ function render() {
   else if (state.tab === 'stages')  { $('content').innerHTML = renderStages(); }
   else if (state.tab === 'fields')  { $('content').innerHTML = renderFields(); }
   else if (state.tab === 'users')   { $('content').innerHTML = renderUsers(); bindUsers(); }
+  else if (state.tab === 'roles')   { $('content').innerHTML = renderRoles(); bindRoles(); }
+  else if (state.tab === 'sugerencias') { $('content').innerHTML = renderSugerencias(); bindSugerencias(); }
 }
 
 (async () => {
   if (!(await requireAdmin())) return;
-  // Los operarios se enlazan con usuarios: la lista de perfiles se precarga siempre.
+  // Los operarios se enlazan con usuarios y los usuarios con roles: las dos
+  // listas se precargan siempre, porque las usan varias pestañas a la vez.
   try { const { data: d } = await getSupa().from('user_profiles').select('*').order('full_name'); state.users = d || []; } catch {}
+  try { state.roles = await data.listRoles(); } catch {}
   await load();
 })();
 </script>

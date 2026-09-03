@@ -1,22 +1,30 @@
 // Top navbar compartida entre las páginas de la app (intake, production, admin, etc.).
 // Llamar `renderNavbar('intake')` desde cada página al iniciar.
 
-import { getCurrentUser, getProfile, signOut } from './auth.js?v=6';
+import { getCurrentUser, getProfile, signOut } from './auth.js?v=7';
+import { modulosDelRol } from './cirene-data.js?v=7';
+import { mountSugerencias } from './sugerencias.js?v=7';
 
+// Qué tab corresponde a cada módulo. QUIÉN ve cada módulo ya no se decide acá:
+// lo declara el rol (tabla `app_roles`, pantalla Administración → Roles). El
+// `roles` que quedaba en cada fila era una regla escondida en el código que el
+// administrador no podía cambiar sin un deploy.
 const PAGES = [
-  { id: 'home',         href: '/home.html',         label: 'Inicio',       roles: 'all' },
-  { id: 'intake',       href: '/intake.html',       label: 'CRM',          roles: 'all' },
-  { id: 'clientes',     href: '/clientes.html',     label: 'Clientes',     roles: 'all' },
-  { id: 'cot',          href: '/index.html',        label: 'Cotizar',      roles: 'all' },
-  { id: 'production',   href: '/production.html',   label: 'Producción',   roles: 'all' },
-  { id: 'catalog',      href: '/catalog.html',      label: 'Catálogo',     roles: 'all' },
-  { id: 'compras',      href: '/compras.html',      label: 'Compras',      roles: 'admin' },
-  { id: 'stock',        href: '/stock.html',        label: 'Stock',        roles: 'all' },
-  { id: 'ventas',       href: '/ventas.html',       label: 'Ventas',       roles: 'all' },
-  { id: 'nps',          href: '/nps.html',          label: 'NPS',          roles: 'all' },
-  { id: 'contabilidad', href: '/contabilidad.html', label: 'Contabilidad', roles: 'admin' },
-  { id: 'dashboard',    href: '/dashboard.html',    label: 'Dashboard',    roles: 'admin' },
-  { id: 'admin',        href: '/admin.html',        label: 'Admin',        roles: 'admin' },
+  { id: 'home',         href: '/home.html',         label: 'Inicio' },
+  { id: 'intake',       href: '/intake.html',       label: 'CRM' },
+  { id: 'clientes',     href: '/clientes.html',     label: 'Clientes' },
+  { id: 'cot',          href: '/index.html',        label: 'Cotizar' },
+  { id: 'production',   href: '/production.html',   label: 'Producción' },
+  { id: 'metricas',     href: '/metricas.html',     label: 'Métricas' },
+  { id: 'catalog',      href: '/catalog.html',      label: 'Catálogo' },
+  { id: 'compras',      href: '/compras.html',      label: 'Compras' },
+  { id: 'stock',        href: '/stock.html',        label: 'Stock' },
+  { id: 'ventas',       href: '/ventas.html',       label: 'Ventas' },
+  { id: 'nps',          href: '/nps.html',          label: 'NPS' },
+  { id: 'contabilidad', href: '/contabilidad.html', label: 'Contabilidad' },
+  { id: 'dashboard',    href: '/dashboard.html',    label: 'Dashboard' },
+  { id: 'admin',        href: '/admin.html',        label: 'Admin' },
+  { id: 'manual',       href: '/manual.html',       label: 'Manual' },
 ];
 
 // Lockup de marca: isotipo (mano+brote, blanco) + wordmark. El isotipo queda
@@ -74,9 +82,13 @@ export async function renderNavbar(activeId) {
   if (myToken !== _navToken) return;
   const profile = user ? await getProfile().catch(() => null) : null;
   if (myToken !== _navToken) return;
-  const admin = profile ? ['admin','director','ceo'].includes(profile.role) : false;
 
-  const visiblePages = PAGES.filter(p => p.roles === 'all' || (p.roles === 'admin' && admin));
+  // Los módulos salen del rol. Si la consulta falla (red, esquema viejo),
+  // `modulosDelRol` ya devuelve un mínimo seguro en vez de tirar.
+  const modulos = profile ? await modulosDelRol(profile.role).catch(() => ['home']) : [];
+  if (myToken !== _navToken) return;
+
+  const visiblePages = PAGES.filter(p => modulos.includes(p.id));
 
   const html = `
     <nav class="cirene-nav">
@@ -114,4 +126,8 @@ export async function renderNavbar(activeId) {
     await signOut();
     location.href = '/login.html';
   };
+
+  // El botón de sugerencias se monta acá y no en cada página: así aparece en
+  // todas sin repetir el mismo import trece veces (y no se olvida en la nueva).
+  if (user) { try { mountSugerencias(); } catch (e) { console.warn('[sugerencias]', e.message); } }
 }

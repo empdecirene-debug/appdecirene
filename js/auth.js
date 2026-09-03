@@ -1,15 +1,18 @@
 // Auth wrapper sobre Supabase Auth. Manejo de login/logout, sesión actual y rol.
 //
 // Uso:
-//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=6';
+//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=7';
 //   const user = await requireAuth();   // redirige a /login.html si no hay sesión
 //   if (await isAdmin()) { ... }
 
-import { getSupa } from './supa.js?v=6';
+import { getSupa } from './supa.js?v=7';
 
 const LOGIN_URL = '/login.html';
 
 let _profileCache = null;
+// Va acá arriba, junto al otro cache, porque signOut() la limpia y signOut()
+// está escrita más arriba que isAdmin(), que es donde se llena.
+let _perfilCache = null;
 
 export async function signIn(email, password) {
   const supa = getSupa();
@@ -23,6 +26,7 @@ export async function signOut() {
   const supa = getSupa();
   await supa.auth.signOut();
   _profileCache = null;
+  _perfilCache = null;
 }
 
 export async function getCurrentUser() {
@@ -56,9 +60,27 @@ export async function getProfile() {
   return data;
 }
 
+// ¿Es administrador? Ya no alcanza con mirar si el rol se llama 'admin' o
+// 'director': los roles se crean desde Administración y cada uno declara un
+// PERFIL BASE (ver `app_roles` y api/registry.js). Un rol "Encargado general"
+// con perfil base admin tiene que pasar por acá, o el cliente le esconde
+// pantallas que el servidor sí le permite.
+//
+// El servidor decide igual, siempre: esto es solo para no mostrar de menos.
+const PERFILES_ADMIN = ['admin', 'director'];
+
 export async function isAdmin() {
   const p = await getProfile();
-  return !!p && ['admin','director'].includes(p.role);
+  if (!p) return false;
+  if (PERFILES_ADMIN.includes(p.role)) return true;
+  if (_perfilCache && _perfilCache.role === p.role) return _perfilCache.esAdmin;
+  let esAdmin = false;
+  try {
+    const { data } = await getSupa().from('app_roles').select('perfil_base').eq('key', p.role).limit(1);
+    esAdmin = !!(data && data[0] && data[0].perfil_base === 'admin');
+  } catch (e) { console.warn('[auth] no pude leer el perfil del rol:', e.message); }
+  _perfilCache = { role: p.role, esAdmin };
+  return esAdmin;
 }
 
 export async function isCanMoveCards() {

@@ -2,9 +2,9 @@
 // Materiales, terminaciones, tarifas de mano de obra, plantillas de producto (BOM)
 // y cotizaciones. TODA página de datos pasa por acá.
 
-import { getSupa } from './supa.js?v=6';
-import { normalizePhoneUY } from './phone-normalizer.js?v=6';
-import { arr } from './quote-engine.js?v=6';
+import { getSupa } from './supa.js?v=7';
+import { normalizePhoneUY } from './phone-normalizer.js?v=7';
+import { arr } from './quote-engine.js?v=7';
 
 const db = () => getSupa();
 
@@ -683,8 +683,10 @@ export async function cashReport({ from, to } = {}) {
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ───────────── Fechas y semanas ─────────────
-   La planificación de producción es SEMANAL (la capacidad diaria varía demasiado
-   como para prometer por día). Semana ISO: 'YYYY-Www'. */
+   La planificación se COMPROMETE por día (ver `semaforoDia`): en un taller de
+   inserción laboral la asistencia cambia de un día al otro, así que la capacidad
+   se carga por fecha. La semana ISO ('YYYY-Www') se conserva para agrupar y para
+   el histórico que ya estaba cargado. */
 export function semanaISO(d = new Date()) {
   const f = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dia = f.getUTCDay() || 7;           // lunes = 1 … domingo = 7
@@ -1044,6 +1046,148 @@ export const SEMAFORO = {
   amarillo: { emoji: '🟡', label: 'Capacidad reducida', color: '#C9A227', ayuda: 'Faltas o menor rendimiento: priorizar lo más urgente.' },
   rojo:     { emoji: '🔴', label: 'Capacidad crítica',  color: '#A33A3A', ayuda: 'No alcanza: hay que reprogramar pedidos.' },
 };
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CAPACIDAD Y SEMÁFORO POR DÍA  (método operativo desde 2026-09)
+   ═══════════════════════════════════════════════════════════════════════
+   Por qué por día y no por semana: la semana promediaba y escondía el
+   problema. Un lunes con tres faltas y un viernes completo daban "semana
+   verde" mientras el lunes se caían las entregas. El compromiso ahora es
+   diario: capacidad del día contra horas planificadas para ese día.
+
+   El día de un pedido es `production_date` (fecha de fabricación). Las horas
+   REALES del día NO salen de la tarjeta: salen de la bitácora de tiempos
+   (`subtask_time_logs`), que es lo único que sabe qué se trabajó ese día. */
+export function hoyISO() { return new Date().toISOString().slice(0, 10); }
+
+export function etiquetaDia(fecha) {
+  if (!fecha) return '—';
+  const d = new Date(String(fecha).slice(0, 10) + 'T12:00:00');
+  if (isNaN(d)) return String(fecha);
+  return d.toLocaleDateString('es-UY', { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+// Nombre corto del día ('lun 03/09'), para tablas y selectores.
+export function etiquetaDiaCorta(fecha) {
+  if (!fecha) return '—';
+  const d = new Date(String(fecha).slice(0, 10) + 'T12:00:00');
+  if (isNaN(d)) return String(fecha);
+  return d.toLocaleDateString('es-UY', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+export function sumarDias(fecha, dias) {
+  const d = new Date(String(fecha).slice(0, 10) + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+// Ventana de días alrededor de hoy, para el selector del tablero.
+export function diasAlrededor(cantidad = 14, desdeOffset = -3) {
+  const out = [];
+  for (let i = desdeOffset; i < desdeOffset + cantidad; i++) out.push(sumarDias(hoyISO(), i));
+  return out;
+}
+export function esFinDeSemana(fecha) {
+  const d = new Date(String(fecha).slice(0, 10) + 'T12:00:00').getDay();
+  return d === 0 || d === 6;
+}
+
+export async function listDays({ desde, hasta } = {}) {
+  let q = db().from('production_days').select('*').order('fecha', { ascending: false });
+  if (desde) q = q.gte('fecha', desde);
+  if (hasta) q = q.lte('fecha', hasta);
+  const { data, error } = await q.limit(400);
+  if (error) throw error;
+  return data || [];
+}
+// Igual que las semanas: con la fecha ya cargada actualiza, si no inserta.
+export async function upsertDay(d) {
+  const sb = db();
+  const row = { ...d, updated_by: await currentUserId() };
+  const { data: ya } = await sb.from('production_days').select('fecha').eq('fecha', row.fecha).limit(1);
+  if (ya && ya[0]) {
+    const { fecha, ...patch } = row;
+    const { data, error } = await sb.from('production_days').update(patch).eq('fecha', fecha).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await sb.from('production_days').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Segundos trabajados por fecha, a partir de la bitácora. Un tramo cuenta en el
+// día en que ARRANCÓ (si alguien ficha de 23:30 a 00:30, va todo al primer día:
+// es una sola jornada y partirlo confundiría más de lo que precisa).
+export function segundosPorDia(timeLogs) {
+  const out = {};
+  (timeLogs || []).forEach(l => {
+    const f = String(l.started_at || '').slice(0, 10);
+    if (!f) return;
+    out[f] = (out[f] || 0) + num(l.segundos);
+  });
+  return out;
+}
+
+/* Semáforo del día.
+   verde    → la capacidad del día alcanza para lo planificado
+   amarillo → ajustado: hay que priorizar
+   rojo     → no da: hay que mover algo de día
+
+   Igual que en el semanal, cumplimiento y capacidad vuelven SEPARADOS: un día
+   con poco avance puede ser un día con tres faltas, no un día de bajo
+   rendimiento, y mezclarlos lleva a retar a quien vino a trabajar. */
+export function semaforoDia({ fecha, day, cards, timeLogs }) {
+  const delDia = (cards || []).filter(c => String(c.production_date || '').slice(0, 10) === fecha);
+  const planificadas = delDia.reduce((s, c) => s + n(c.horas_estimadas), 0);
+  const prevista = n(day?.capacidad_prevista_horas);
+  const real = n(day?.capacidad_real_horas) || prevista;
+
+  // Lo trabajado ese día sale de los tramos fichados, no de la tarjeta: la
+  // tarjeta acumula todo su historial y no sabe de qué día es cada hora.
+  const segundos = (timeLogs || [])
+    .filter(l => String(l.started_at || '').slice(0, 10) === fecha)
+    .reduce((s, l) => s + num(l.segundos), 0);
+  const realizadas = segundos / 3600;
+
+  const terminadas = delDia.filter(c => c.stage_key === 'entregado' || c.fecha_real_fin).length;
+  const cumplimiento = delDia.length ? (terminadas / delDia.length) * 100 : 0;
+  const adicional = Math.max(0, realizadas - planificadas);
+
+  const hoy = hoyISO();
+  const atrasados = delDia.filter(c => {
+    const lim = c.fecha_objetivo_interna || c.due_date;
+    return lim && lim < hoy && c.stage_key !== 'entregado' && c.stage_key !== 'cancelado';
+  });
+  const prioritarios = delDia.filter(c => c.priority === 'urgente' || (c.due_date && c.due_date <= fecha));
+
+  let estado = 'verde';
+  if (day?.semaforo_manual) estado = day.semaforo_manual;
+  else if (!real && planificadas > 0) estado = 'amarillo';
+  else if (planificadas > real * 1.1) estado = 'rojo';
+  else if (planificadas > real * 0.9) estado = 'amarillo';
+
+  return {
+    fecha, prevista, real, planificadas, realizadas, adicional,
+    cumplimiento, terminadas, total: delDia.length,
+    atrasados, prioritarios, cards: delDia, estado,
+    holgura: real - planificadas,
+    operariosPrevistos: parseInt(day?.operarios_previstos, 10) || 0,
+    operariosReales: parseInt(day?.operarios_reales, 10) || 0,
+    notas: day?.notas || '',
+  };
+}
+
+/* ───────────── Bitácora de tiempos ─────────────
+   Es la fuente única de las horas reales: subtareas y pedidos se recalculan a
+   partir de ella (lo hace api/taller.js del lado del servidor). */
+export async function listTimeLogs({ desde, hasta, operatorId, cardId, limite = 4000 } = {}) {
+  let q = db().from('subtask_time_logs').select('*').order('started_at', { ascending: false });
+  if (desde) q = q.gte('started_at', desde);
+  if (hasta) q = q.lte('started_at', hasta + 'T23:59:59');
+  if (operatorId) q = q.eq('operator_id', operatorId);
+  if (cardId) q = q.eq('card_id', cardId);
+  const { data, error } = await q.limit(limite);
+  if (error) throw error;
+  return data || [];
+}
 
 /* ───────────── Proveedores ───────────── */
 export async function listSuppliers({ incluirInactivos = false } = {}) {
@@ -1677,4 +1821,339 @@ export function productividad({ timeLogs, operarios, horasPagadas = 0 }) {
       costo: ((porOperario.get(o.id) || 0) / 3600) * num(o.costo_hora),
     })).sort((a, b) => b.horas - a.horas),
   };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MÉTRICAS DE PRODUCCIÓN
+   ═══════════════════════════════════════════════════════════════════════
+   Para esto se pusieron los operarios a fichar: cada INICIO y cada FIN es una
+   fila de `subtask_time_logs`, y con muchas filas se puede contestar lo que
+   antes se contestaba de memoria.
+
+     ¿Cuánto lleva fabricar un portón?           → tiempoPorProducto
+     ¿Qué proceso se come las horas?             → tiempoPorProceso
+     ¿Cuántos días pasa un pedido en el taller?  → plazoDePedidos
+     ¿Cuánto rinde cada operario y en qué?       → horasPorOperario
+
+   Regla de lectura: TIEMPO DE TRABAJO (horas fichadas) y PLAZO (días de
+   calendario) son cosas distintas. Un portón de 6 horas puede tardar 20 días
+   porque esperó materiales. Las dos métricas se devuelven separadas: mezclarlas
+   es la forma más rápida de sacar una conclusión equivocada.
+*/
+
+// Cuántas unidades salieron de un pedido (para poder dividir horas por unidad).
+export function unidadesDePedido(card) {
+  const lineas = arr(card?.product_lines);
+  if (!lineas.length) return 1;
+  return lineas.reduce((s, l) => s + (num(l.cantidad) || 1), 0) || 1;
+}
+
+// Horas fichadas de un pedido, desde la bitácora (no desde el campo de la tarjeta:
+// así la métrica no depende de que el recálculo haya corrido).
+function horasDeCard(timeLogs, cardId) {
+  return (timeLogs || [])
+    .filter(l => l.card_id === cardId)
+    .reduce((s, l) => s + num(l.segundos), 0) / 3600;
+}
+
+/* Tiempo por PRODUCTO. Se agrupa por el nombre del producto de cada línea, y las
+   horas del pedido se reparten entre sus líneas a prorrata de las unidades: es
+   una aproximación, y está dicho en la pantalla. Cuando un pedido tiene un solo
+   producto —el caso normal en la herrería— el número es exacto. */
+export function tiempoPorProducto({ cards, timeLogs }) {
+  const acc = new Map();
+  for (const c of (cards || [])) {
+    const horas = horasDeCard(timeLogs, c.id);
+    if (!horas) continue;
+    const lineas = arr(c.product_lines).filter(l => l.producto);
+    const unidades = unidadesDePedido(c);
+    if (!lineas.length) continue;
+    for (const l of lineas) {
+      const cant = num(l.cantidad) || 1;
+      const nombre = String(l.producto).trim();
+      const parte = horas * (cant / unidades);      // prorrata por unidades
+      const a = acc.get(nombre) || { producto: nombre, pedidos: 0, unidades: 0, horas: 0, valor: 0 };
+      a.pedidos += 1; a.unidades += cant; a.horas += parte; a.valor += num(l.precio) * cant;
+      acc.set(nombre, a);
+    }
+  }
+  return [...acc.values()].map(a => ({
+    ...a,
+    horasPorUnidad: a.unidades ? a.horas / a.unidades : 0,
+    valorHora: a.horas ? a.valor / a.horas : 0,
+  })).sort((x, y) => y.horas - x.horas);
+}
+
+/* Tiempo por PROCESO (corte, soldadura, pintura…). El proceso es el nombre de la
+   subtarea, normalizado: 'Soldadura', 'soldadura ' y 'SOLDADURA' son el mismo. */
+export function nombreProceso(nombre) {
+  const t = String(nombre || '').trim().toLowerCase();
+  if (!t) return 'Sin nombre';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+export function tiempoPorProceso({ subtareas, timeLogs }) {
+  const nombrePorSubtarea = new Map((subtareas || []).map(t => [t.id, nombreProceso(t.nombre)]));
+  const acc = new Map();
+  for (const l of (timeLogs || [])) {
+    const nombre = nombrePorSubtarea.get(l.subtask_id) || 'Sin nombre';
+    const a = acc.get(nombre) || { proceso: nombre, horas: 0, tramos: 0, pedidos: new Set(), subtareas: new Set() };
+    a.horas += num(l.segundos) / 3600; a.tramos += 1;
+    if (l.card_id) a.pedidos.add(l.card_id);
+    if (l.subtask_id) a.subtareas.add(l.subtask_id);
+    acc.set(nombre, a);
+  }
+  // Estimadas: para comparar plan contra realidad proceso por proceso.
+  const estimadasPorNombre = new Map();
+  (subtareas || []).forEach(t => {
+    const k = nombreProceso(t.nombre);
+    estimadasPorNombre.set(k, (estimadasPorNombre.get(k) || 0) + num(t.horas_estimadas));
+  });
+  return [...acc.values()].map(a => {
+    const veces = a.subtareas.size || 1;
+    const estimadas = estimadasPorNombre.get(a.proceso) || 0;
+    return {
+      proceso: a.proceso, horas: a.horas, tramos: a.tramos,
+      pedidos: a.pedidos.size, veces,
+      promedio: a.horas / veces,
+      estimadas, desvio: a.horas - estimadas,
+    };
+  }).sort((x, y) => y.horas - x.horas);
+}
+
+/* PLAZO de los pedidos: días de calendario. Tres tramos, porque cada uno se
+   arregla de manera distinta:
+     espera   → de la venta hasta el primer inicio fichado (falta material, cola)
+     taller   → del primer inicio al último fin (el trabajo en sí)
+     entrega  → del último fin a la entrega (logística, coordinación con el cliente) */
+export function plazoDePedidos({ cards, timeLogs }) {
+  const primeros = new Map(), ultimos = new Map();
+  for (const l of (timeLogs || [])) {
+    if (!l.card_id) continue;
+    const ini = l.started_at, fin = l.ended_at || l.started_at;
+    if (!primeros.has(l.card_id) || ini < primeros.get(l.card_id)) primeros.set(l.card_id, ini);
+    if (!ultimos.has(l.card_id) || fin > ultimos.get(l.card_id)) ultimos.set(l.card_id, fin);
+  }
+  const dias = (a, b) => (a && b) ? Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000)) : null;
+  const filas = (cards || []).map(c => {
+    const inicio = primeros.get(c.id) || null;
+    const fin = ultimos.get(c.id) || null;
+    const entrega = c.fecha_real_fin || (c.stage_key === 'entregado' ? (c.completed_at || null) : null);
+    return {
+      id: c.id, cliente: c.client_name || '—',
+      producto: arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', '),
+      creado: c.created_at, inicio, fin, entrega,
+      horas: horasDeCard(timeLogs, c.id),
+      espera: dias(c.created_at, inicio),
+      taller: dias(inicio, fin),
+      logistica: dias(fin, entrega),
+      total: dias(c.created_at, entrega),
+      entregado: c.stage_key === 'entregado',
+      pedida: c.fecha_solicitada_cliente || c.due_date || null,
+      aTiempo: (c.fecha_real_fin && (c.due_date || c.fecha_objetivo_interna))
+        ? c.fecha_real_fin <= (c.due_date || c.fecha_objetivo_interna) : null,
+    };
+  });
+  const prom = (campo) => {
+    const vals = filas.map(f => f[campo]).filter(v => v !== null && v !== undefined);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  };
+  const conVeredicto = filas.filter(f => f.aTiempo !== null);
+  return {
+    filas: filas.sort((a, b) => String(b.creado).localeCompare(String(a.creado))),
+    promedios: { espera: prom('espera'), taller: prom('taller'), logistica: prom('logistica'), total: prom('total'), horas: prom('horas') },
+    entregados: filas.filter(f => f.entregado).length,
+    aTiempo: conVeredicto.filter(f => f.aTiempo).length,
+    conVeredicto: conVeredicto.length,
+    puntualidad: conVeredicto.length ? (conVeredicto.filter(f => f.aTiempo).length / conVeredicto.length) * 100 : 0,
+  };
+}
+
+/* Horas por OPERARIO, con en qué las gastó. `costo` usa el costo/hora del
+   catálogo de operarios: es costo real de mano de obra, no una estimación. */
+export function horasPorOperario({ timeLogs, operarios, subtareas }) {
+  const nombrePorSubtarea = new Map((subtareas || []).map(t => [t.id, nombreProceso(t.nombre)]));
+  const acc = new Map();
+  for (const l of (timeLogs || [])) {
+    if (!l.operator_id) continue;
+    const a = acc.get(l.operator_id) || { horas: 0, tramos: 0, procesos: new Map(), dias: new Set(), pedidos: new Set() };
+    const h = num(l.segundos) / 3600;
+    a.horas += h; a.tramos += 1;
+    const p = nombrePorSubtarea.get(l.subtask_id) || 'Sin nombre';
+    a.procesos.set(p, (a.procesos.get(p) || 0) + h);
+    if (l.started_at) a.dias.add(String(l.started_at).slice(0, 10));
+    if (l.card_id) a.pedidos.add(l.card_id);
+    acc.set(l.operator_id, a);
+  }
+  return (operarios || []).map(o => {
+    const a = acc.get(o.id) || { horas: 0, tramos: 0, procesos: new Map(), dias: new Set(), pedidos: new Set() };
+    const procesos = [...a.procesos.entries()].map(([proceso, horas]) => ({ proceso, horas })).sort((x, y) => y.horas - x.horas);
+    return {
+      id: o.id, nombre: o.nombre, funcion: o.funcion || '',
+      horas: a.horas, tramos: a.tramos, dias: a.dias.size, pedidos: a.pedidos.size,
+      horasPorDia: a.dias.size ? a.horas / a.dias.size : 0,
+      costo: a.horas * num(o.costo_hora),
+      procesos, especialidad: procesos[0]?.proceso || '—',
+    };
+  }).sort((x, y) => y.horas - x.horas);
+}
+
+// Horas fichadas por día (para la curva del módulo de métricas).
+export function horasPorDia({ timeLogs, desde, hasta }) {
+  const porDia = segundosPorDia(timeLogs);
+  const out = [];
+  let f = desde;
+  let guarda = 0;
+  while (f <= hasta && guarda++ < 800) {
+    out.push({ fecha: f, horas: (porDia[f] || 0) / 3600 });
+    f = sumarDias(f, 1);
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SUGERENCIAS DEL EQUIPO
+   ═══════════════════════════════════════════════════════════════════════
+   Botón fijo en toda la app (js/sugerencias.js). Sirve para que lo que hoy se
+   dice de palabra —"esta pantalla no me deja hacer X"— quede escrito, con foto
+   si hace falta, y no se pierda. */
+export const CATEGORIAS_SUGERENCIA = [
+  { key: 'mejora', label: 'Una idea para mejorar' },
+  { key: 'error',  label: 'Algo que no funciona' },
+  { key: 'duda',   label: 'No entiendo cómo se hace' },
+  { key: 'otro',   label: 'Otra cosa' },
+];
+export const ESTADOS_SUGERENCIA = ['nueva', 'en_curso', 'resuelta', 'descartada'];
+
+export async function listSuggestions({ estado } = {}) {
+  let q = db().from('suggestions').select('*').order('created_at', { ascending: false });
+  if (estado) q = q.eq('estado', estado);
+  const { data, error } = await q.limit(400);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createSuggestion({ texto, categoria = 'mejora', pagina, adjuntos = [] }) {
+  const limpio = String(texto || '').trim();
+  if (!limpio) throw new Error('Escribí tu sugerencia antes de enviarla.');
+  const sb = db();
+  const { data: { user } } = await sb.auth.getUser();
+  let label = user?.email || 'Usuario';
+  try {
+    const { data: p } = await sb.from('user_profiles').select('full_name,vendor_name').eq('id', user.id).single();
+    if (p) label = p.vendor_name || p.full_name || label;
+  } catch {}
+  const { data, error } = await sb.from('suggestions').insert({
+    texto: limpio, categoria, pagina: pagina || null,
+    user_id: user?.id || null, user_label: label,
+    adjuntos, estado: 'nueva',
+  }).select().single();
+  if (error) throw new Error('No se pudo enviar la sugerencia: ' + error.message);
+  auditar('sugerencia_nueva', { entity_type: 'suggestion', entity_id: data.id, details: { categoria, pagina } });
+  return data;
+}
+
+export async function saveSuggestion(s) {
+  const sb = db();
+  const { id, ...patch } = s;
+  if (patch.estado === 'resuelta' && !patch.resuelta_at) patch.resuelta_at = new Date().toISOString();
+  const { data, error } = await sb.from('suggestions').update(patch).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Los adjuntos de una sugerencia van al mismo volumen que los de producción,
+// en su propia carpeta (`sugerencias/`), con el mismo endpoint de subida.
+export async function uploadSuggestionFile(file) {
+  return uploadAttachment(file, 'sugerencias');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ROLES Y MÓDULOS
+   ═══════════════════════════════════════════════════════════════════════
+   Un rol es: un nombre + un PERFIL BASE (de dónde saca los permisos de base de
+   datos) + la lista de MÓDULOS que ve. Lo único editable desde la pantalla es la
+   lista de módulos y el perfil base; los permisos de tabla siguen viviendo en
+   api/registry.js, que es servidor. Una pantalla no puede regalarse acceso a la
+   contabilidad. */
+export const MODULOS = [
+  { id: 'home',         label: 'Inicio',         desc: 'Centro de actividad y accesos' },
+  { id: 'intake',       label: 'CRM / Leads',    desc: 'Consultas y pipeline comercial' },
+  { id: 'clientes',     label: 'Clientes',       desc: 'Cartera de clientes' },
+  { id: 'cot',          label: 'Cotizar',        desc: 'Cotizador y PDF' },
+  { id: 'production',   label: 'Producción',     desc: 'Tablero del taller y subtareas' },
+  { id: 'metricas',     label: 'Métricas',       desc: 'Tiempos por producto, proceso y operario' },
+  { id: 'catalog',      label: 'Catálogo',       desc: 'Materiales, terminaciones y tarifas' },
+  { id: 'compras',      label: 'Compras',        desc: 'Proveedores y órdenes de compra' },
+  { id: 'stock',        label: 'Stock',          desc: 'Existencias y movimientos' },
+  { id: 'ventas',       label: 'Ventas',         desc: 'KPIs y panel por vendedor' },
+  { id: 'nps',          label: 'NPS',            desc: 'Satisfacción de clientes' },
+  { id: 'contabilidad', label: 'Contabilidad',   desc: 'Cobros, gastos, caja y activos' },
+  { id: 'dashboard',    label: 'Dashboard',      desc: 'Resumen ejecutivo' },
+  { id: 'admin',        label: 'Administración', desc: 'Usuarios, roles y configuración' },
+  { id: 'manual',       label: 'Manual',         desc: 'Manuales de uso' },
+  { id: 'diagrama',     label: 'Diagrama',       desc: 'Flujo completo del ERP' },
+];
+export const PERFILES_BASE = [
+  { key: 'admin',      label: 'Administración', desc: 'Acceso total, incluida la contabilidad.' },
+  { key: 'comercial',  label: 'Comercial',      desc: 'Leads, clientes y cotizaciones. Sin contabilidad.' },
+  { key: 'produccion', label: 'Producción',     desc: 'Taller, subtareas y stock. Sin contabilidad.' },
+  { key: 'operario',   label: 'Operario',       desc: 'Solo fichar su trabajo. Sin precios ni clientes.' },
+];
+
+export async function listRoles({ incluirInactivos = true } = {}) {
+  let q = db().from('app_roles').select('*').order('label');
+  if (!incluirInactivos) q = q.eq('activo', true);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+export async function getRole(key) {
+  const { data } = await db().from('app_roles').select('*').eq('key', key).limit(1);
+  return (data && data[0]) || null;
+}
+// La clave del rol es su identificador en `user_profiles.role`: se normaliza para
+// que no entren espacios ni acentos, y no se cambia después de creada.
+export function claveRol(texto) {
+  return String(texto || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
+}
+export async function upsertRole(r) {
+  const sb = db();
+  const row = { ...r };
+  const { data: ya } = await sb.from('app_roles').select('key').eq('key', row.key).limit(1);
+  if (ya && ya[0]) {
+    const { key, sistema, created_at, ...patch } = row;
+    const { data, error } = await sb.from('app_roles').update(patch).eq('key', key).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await sb.from('app_roles').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteRole(key) {
+  const rol = await getRole(key);
+  if (rol?.sistema) throw new Error('Los roles del sistema no se pueden eliminar. Podés desactivarlo.');
+  const { data: usuarios } = await db().from('user_profiles').select('id').eq('role', key).limit(1);
+  if (usuarios && usuarios[0]) throw new Error('Hay usuarios con ese rol. Cambialos de rol antes de eliminarlo.');
+  const { error } = await db().from('app_roles').delete().eq('key', key);
+  if (error) throw error;
+}
+
+// Módulos visibles para un rol. Si el rol no está configurado, se cae a un
+// mínimo seguro (Inicio y el manual): antes que mostrar de más, mostrar de menos.
+export async function modulosDelRol(role) {
+  if (!role) return ['home', 'manual'];
+  try {
+    const r = await getRole(role);
+    const mods = arr(r?.modulos);
+    if (r && mods.length) return mods;
+    if (r && r.perfil_base === 'admin') return MODULOS.map(m => m.id);
+  } catch (e) { console.warn('[roles] no pude leer los módulos del rol:', e.message); }
+  // Sin tabla de roles (esquema viejo) los cuatro originales siguen andando.
+  if (['admin', 'director'].includes(role)) return MODULOS.map(m => m.id);
+  if (role === 'comercial') return ['home', 'intake', 'clientes', 'cot', 'production', 'catalog', 'stock', 'ventas', 'nps', 'manual', 'diagrama'];
+  if (role === 'produccion') return ['home', 'production', 'metricas', 'catalog', 'stock', 'clientes', 'manual', 'diagrama'];
+  return ['home', 'production', 'manual'];
 }

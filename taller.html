@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Taller · De Cirene</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<meta name="theme-color" content="#0A0A0A">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@600;700;800&family=Raleway:wght@700&display=swap" rel="stylesheet">
+<style>
+  /* ── PANTALLA DEL TALLER ───────────────────────────────────────────────────
+     Esta pantalla la usan personas en proceso de inserción laboral, muchas con
+     escolaridad corta, en un tablet colgado en la pared con las manos sucias.
+     Las decisiones de diseño salen de ahí y no son estéticas:
+
+       · TODO gigante. Los botones de acción no bajan de 90 px de alto: se
+         aprietan con un dedo de guante, sin apuntar.
+       · UNA decisión por pantalla. Nunca hay dos cosas para elegir a la vez.
+       · Color con significado fijo y siempre el mismo: VERDE = empezar,
+         ROJO = terminar. Nada más usa esos dos colores.
+       · Cada botón dice un VERBO ("EMPEZAR", "TERMINÉ"), no un sustantivo.
+       · Sin texto chico, sin abreviaturas, sin palabras en inglés.
+       · Números grandes de reloj: el operario ve cuánto lleva sin leer nada. */
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Public Sans', system-ui, -apple-system, sans-serif; background: #14161A;
+    color: #fff; min-height: 100vh; font-size: 18px; -webkit-font-smoothing: antialiased; }
+  .app { max-width: 620px; margin: 0 auto; padding: 14px 14px 34px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .top { display: flex; align-items: center; gap: 10px; padding: 6px 2px 14px; }
+  .top img { width: 34px; height: 34px; }
+  .top .marca { font-family: 'Raleway', sans-serif; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; font-size: 15px; }
+  .top .salir { margin-left: auto; background: rgba(255,255,255,.14); color: #fff; border: none;
+    padding: 9px 14px; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  h1 { font-family: 'Raleway', sans-serif; font-size: 26px; line-height: 1.2; margin-bottom: 4px; }
+  .ayuda { font-size: 16px; color: #B9BDC2; line-height: 1.45; margin-bottom: 16px; }
+
+  /* Botones grandes */
+  .grande { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 96px;
+    padding: 18px 20px; border: none; border-radius: 18px; background: #23262B; color: #fff;
+    font: inherit; font-size: 21px; font-weight: 800; text-align: left; cursor: pointer;
+    margin-bottom: 12px; line-height: 1.2; }
+  .grande:active { transform: scale(.985); }
+  .grande .ico { font-size: 34px; line-height: 1; flex: 0 0 auto; }
+  .grande .sub { display: block; font-size: 15px; font-weight: 600; color: #B9BDC2; margin-top: 3px; }
+  .grande.verde { background: #1E7A44; }
+  .grande.roja  { background: #A32D2D; }
+  .grande.clara { background: #fff; color: #14161A; }
+  .grande.clara .sub { color: #5A5F66; }
+  .grande.chica { min-height: 62px; font-size: 17px; padding: 12px 16px; }
+
+  /* Teclado numérico del PIN */
+  .puntos { display: flex; gap: 12px; justify-content: center; margin: 10px 0 22px; }
+  .puntos i { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,.2); display: block; }
+  .puntos i.on { background: #fff; }
+  .teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .teclado button { min-height: 82px; border: none; border-radius: 16px; background: #23262B; color: #fff;
+    font: inherit; font-size: 32px; font-weight: 800; cursor: pointer; }
+  .teclado button:active { background: #33373D; }
+  .teclado button.aux { font-size: 20px; background: rgba(255,255,255,.1); }
+
+  /* Trabajo en curso */
+  .encurso { background: #1E7A44; border-radius: 20px; padding: 20px; margin-bottom: 14px; }
+  .encurso .et { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+  .encurso .qn { font-size: 26px; font-weight: 800; line-height: 1.2; margin-top: 4px; }
+  .encurso .tn { font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .encurso .reloj { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums;
+    letter-spacing: .02em; margin-top: 10px; line-height: 1; }
+
+  .hoy { background: #23262B; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; }
+  .hoy .n { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hoy .l { font-size: 15px; color: #B9BDC2; line-height: 1.3; }
+
+  .lista { display: flex; flex-direction: column; }
+  .chip { display: inline-block; background: rgba(255,255,255,.16); border-radius: 999px;
+    padding: 2px 10px; font-size: 13px; font-weight: 700; margin-right: 6px; }
+  .chip.urg { background: #A32D2D; }
+  .chip.mio { background: #1E7A44; }
+
+  .msg { border-radius: 14px; padding: 14px 16px; font-size: 17px; font-weight: 700;
+    line-height: 1.4; margin-bottom: 14px; }
+  .msg.err { background: #A32D2D; }
+  .msg.ok  { background: #1E7A44; }
+  .cargando { font-size: 19px; color: #B9BDC2; padding: 40px 4px; text-align: center; }
+  .pie { margin-top: auto; padding-top: 22px; text-align: center; font-size: 14px; color: #7C8288; }
+  .pie a { color: #B9BDC2; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <img src="/assets/logo-mark.png" alt="">
+    <span class="marca">De C&#x0268;rene</span>
+    <button class="salir" id="salir" style="display:none">Salir</button>
+  </div>
+  <div id="pant"><div class="cargando">Cargando…</div></div>
+  <div class="pie">
+    ¿No sabés cómo se usa? <a href="/manual-taller.html">Mirá el manual con dibujos</a>
+  </div>
+</div>
+
+<script>
+/* Sin módulos ni imports a propósito: esta pantalla no usa la sesión de la app
+   (el operario no tiene usuario) y habla solo con /api/taller/*, que devuelve
+   los datos ya recortados. Cuanto menos código, menos cosas que puedan fallar
+   en un tablet viejo colgado en la pared. */
+(function () {
+  'use strict';
+
+  var pant = document.getElementById('pant');
+  var btnSalir = document.getElementById('salir');
+  var estado = null;      // respuesta de /api/taller/estado
+  var pin = '';
+  var elegido = null;     // tarjeta elegida mientras se elige la tarea
+  var timer = null;
+  var aviso = null;       // { tipo: 'ok'|'err', texto }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function pedir(ruta, cuerpo) {
+    return fetch('/api/taller/' + ruta, {
+      method: cuerpo === undefined ? 'GET' : 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo || {})
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        return { ok: r.ok, status: r.status, cuerpo: j };
+      });
+    });
+  }
+
+  function reloj(segundos) {
+    var s = Math.max(0, Math.round(segundos));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+  // "3 horas 20 minutos": para el total del día se lee mejor en palabras que en
+  // decimales. 3,33 h no le dice nada a nadie.
+  function enPalabras(segundos) {
+    var m = Math.round(segundos / 60);
+    var h = Math.floor(m / 60), mm = m % 60;
+    if (!m) return 'Todavía nada';
+    if (!h) return mm + (mm === 1 ? ' minuto' : ' minutos');
+    return h + (h === 1 ? ' hora ' : ' horas ') + (mm ? mm + (mm === 1 ? ' minuto' : ' minutos') : '');
+  }
+
+  function pintarAviso() {
+    if (!aviso) return '';
+    return '<div class="msg ' + aviso.tipo + '">' + esc(aviso.texto) + '</div>';
+  }
+
+  /* ── 1 · ENTRAR CON EL NÚMERO ─────────────────────────────────────────── */
+  function pantallaPin() {
+    btnSalir.style.display = 'none';
+    if (timer) { clearInterval(timer); timer = null; }
+    var teclas = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'borrar', '0', 'entrar'];
+    pant.innerHTML =
+      '<h1>Escribí tu número</h1>' +
+      '<div class="ayuda">Es el número que te dio el encargado. Son 4 números.</div>' +
+      pintarAviso() +
+      '<div class="puntos">' +
+        [0, 1, 2, 3].map(function (i) { return '<i class="' + (pin.length > i ? 'on' : '') + '"></i>'; }).join('') +
+      '</div>' +
+      '<div class="teclado">' +
+        teclas.map(function (t) {
+          if (t === 'borrar') return '<button class="aux" data-t="borrar">← Borrar</button>';
+          if (t === 'entrar') return '<button class="aux" data-t="entrar">✓ Entrar</button>';
+          return '<button data-t="' + t + '">' + t + '</button>';
+        }).join('') +
+      '</div>';
+
+    Array.prototype.forEach.call(pant.querySelectorAll('[data-t]'), function (b) {
+      b.onclick = function () {
+        var t = b.dataset.t;
+        if (t === 'borrar') { pin = pin.slice(0, -1); aviso = null; pantallaPin(); return; }
+        if (t === 'entrar') { entrar(); return; }
+        if (pin.length >= 8) return;
+        pin += t;
+        aviso = null;
+        // Con 4 números entra sola: un botón menos para apretar.
+        if (pin.length === 4) { pantallaPin(); entrar(); return; }
+        pantallaPin();
+      };
+    });
+  }
+
+  function entrar() {
+    if (pin.length < 4) { aviso = { tipo: 'err', texto: 'Faltan números.' }; pantallaPin(); return; }
+    pant.innerHTML = '<div class="cargando">Entrando…</div>';
+    pedir('login', { pin: pin }).then(function (r) {
+      if (!r.ok) {
+        pin = '';
+        aviso = { tipo: 'err', texto: (r.cuerpo && r.cuerpo.error) || 'No pude entrar.' };
+        pantallaPin();
+        return;
+      }
+      pin = '';
+      aviso = null;
+      cargar();
+    }).catch(function () {
+      aviso = { tipo: 'err', texto: 'No hay internet. Avisale al encargado.' };
+      pin = '';
+      pantallaPin();
+    });
+  }
+
+  /* ── 2 · PANTALLA PRINCIPAL ───────────────────────────────────────────── */
+  function pantallaInicio() {
+    btnSalir.style.display = '';
+    var ab = estado.abierto;
+    var html = '<h1>Hola, ' + esc((estado.operario.nombre || '').split(' ')[0]) + '</h1>';
+
+    if (ab) {
+      html +=
+        '<div class="encurso">' +
+          '<div class="et">Estás trabajando en</div>' +
+          '<div class="qn">' + esc(ab.cliente || 'Trabajo') + '</div>' +
+          '<div class="tn">' + esc(ab.tarea || '') + '</div>' +
+          '<div class="reloj" id="reloj">00:00:00</div>' +
+        '</div>' +
+        pintarAviso() +
+        '<button class="grande roja" data-a="fin"><span class="ico">✋</span>' +
+          '<span>TERMINÉ POR AHORA<span class="sub">Para el reloj. Después podés seguir.</span></span></button>' +
+        '<button class="grande chica" data-a="fin-listo"><span class="ico">✅</span>' +
+          '<span>ESTA TAREA YA ESTÁ LISTA<span class="sub">Se marca terminada y para el reloj.</span></span></button>' +
+        '<button class="grande chica" data-a="cambiar"><span class="ico">🔁</span>' +
+          '<span>CAMBIAR DE TRABAJO<span class="sub">Cierra esta y empieza otra.</span></span></button>';
+    } else {
+      html +=
+        '<div class="ayuda">Cuando empieces a trabajar, apretá el botón verde.</div>' +
+        pintarAviso() +
+        '<div class="hoy"><span class="ico" style="font-size:28px">📅</span>' +
+          '<div><div class="n">' + enPalabras(estado.hoy.segundos) + '</div>' +
+          '<div class="l">es lo que trabajaste hoy</div></div></div>' +
+        '<button class="grande verde" data-a="empezar"><span class="ico">▶</span>' +
+          '<span>EMPEZAR A TRABAJAR<span class="sub">Elegí el trabajo y la tarea.</span></span></button>';
+    }
+    pant.innerHTML = html;
+    aviso = null;
+
+    if (ab) {
+      var desde = new Date(ab.started_at).getTime();
+      var tic = function () {
+        var el = document.getElementById('reloj');
+        if (el) el.textContent = reloj((Date.now() - desde) / 1000);
+      };
+      tic();
+      if (timer) clearInterval(timer);
+      timer = setInterval(tic, 1000);
+    } else if (timer) { clearInterval(timer); timer = null; }
+
+    Array.prototype.forEach.call(pant.querySelectorAll('[data-a]'), function (b) {
+      b.onclick = function () {
+        var a = b.dataset.a;
+        if (a === 'empezar' || a === 'cambiar') { pantallaTrabajos(); return; }
+        if (a === 'fin') { fin(false, b); return; }
+        if (a === 'fin-listo') { fin(true, b); return; }
+      };
+    });
+  }
+
+  /* ── 3 · ELEGIR EL TRABAJO ────────────────────────────────────────────── */
+  function pantallaTrabajos() {
+    if (timer) { clearInterval(timer); timer = null; }
+    var t = estado.tarjetas || [];
+    pant.innerHTML =
+      '<h1>¿En qué trabajo estás?</h1>' +
+      '<div class="ayuda">Apretá el nombre del cliente.</div>' +
+      (t.length
+        ? '<div class="lista">' + t.map(function (c) {
+            return '<button class="grande" data-c="' + esc(c.id) + '"><span class="ico">🔨</span><span>' +
+              (c.urgente ? '<span class="chip urg">URGENTE</span>' : '') +
+              esc(c.cliente) +
+              '<span class="sub">' + esc(c.resumen || 'Sin detalle') + '</span></span></button>';
+          }).join('') + '</div>'
+        : '<div class="msg err">No hay trabajos en el tablero. Avisale al encargado.</div>') +
+      '<button class="grande chica" data-volver="1"><span class="ico">←</span><span>VOLVER</span></button>';
+
+    Array.prototype.forEach.call(pant.querySelectorAll('[data-c]'), function (b) {
+      b.onclick = function () {
+        elegido = (estado.tarjetas || []).filter(function (x) { return x.id === b.dataset.c; })[0] || null;
+        pantallaTareas();
+      };
+    });
+    pant.querySelector('[data-volver]').onclick = pantallaInicio;
+  }
+
+  /* ── 4 · ELEGIR LA TAREA ──────────────────────────────────────────────── */
+  function pantallaTareas() {
+    if (!elegido) { pantallaTrabajos(); return; }
+    var iconos = {
+      'corte': '✂️', 'preparación': '📐', 'preparacion': '📐', 'soldadura': '🔥',
+      'pulido': '🧽', 'pintura': '🎨', 'armado': '🔧', 'colocación': '🚚', 'colocacion': '🚚'
+    };
+    var yaTiene = (elegido.tareas || []).map(function (x) { return String(x.nombre).toLowerCase(); });
+    // Primero las tareas que el encargado ya cargó en el pedido; después los
+    // procesos del taller que falten, para no obligar a nadie a escribir.
+    var extras = (estado.procesos || []).filter(function (p) { return yaTiene.indexOf(p.toLowerCase()) < 0; });
+
+    pant.innerHTML =
+      '<h1>¿Qué vas a hacer?</h1>' +
+      '<div class="ayuda">Trabajo: <b>' + esc(elegido.cliente) + '</b></div>' +
+      '<div class="lista">' +
+        (elegido.tareas || []).map(function (t) {
+          var ic = iconos[String(t.nombre).toLowerCase()] || '📋';
+          var hecho = t.segundos ? Math.round(t.segundos / 60) : 0;
+          return '<button class="grande" data-st="' + esc(t.id) + '"><span class="ico">' + ic + '</span><span>' +
+            (t.estado === 'terminada' ? '<span class="chip">YA ESTÁ LISTA</span>' : '') +
+            (t.mio ? '<span class="chip mio">TUYA</span>' : '') +
+            esc(t.nombre) +
+            (hecho ? '<span class="sub">Ya hay ' + hecho + ' minutos hechos</span>' : '') +
+            '</span></button>';
+        }).join('') +
+        extras.map(function (p) {
+          var ic = iconos[p.toLowerCase()] || '📋';
+          return '<button class="grande" data-nueva="' + esc(p) + '"><span class="ico">' + ic + '</span><span>' +
+            esc(p) + '<span class="sub">Empezar esta tarea</span></span></button>';
+        }).join('') +
+      '</div>' +
+      '<button class="grande chica" data-volver="1"><span class="ico">←</span><span>VOLVER</span></button>';
+
+    Array.prototype.forEach.call(pant.querySelectorAll('[data-st]'), function (b) {
+      b.onclick = function () { inicio({ card_id: elegido.id, subtask_id: b.dataset.st }, b); };
+    });
+    Array.prototype.forEach.call(pant.querySelectorAll('[data-nueva]'), function (b) {
+      b.onclick = function () { inicio({ card_id: elegido.id, tarea: b.dataset.nueva }, b); };
+    });
+    pant.querySelector('[data-volver]').onclick = pantallaTrabajos;
+  }
+
+  /* ── Acciones ─────────────────────────────────────────────────────────── */
+  function inicio(cuerpo, boton) {
+    if (boton) boton.disabled = true;
+    pant.innerHTML = '<div class="cargando">Guardando…</div>';
+    pedir('inicio', cuerpo).then(function (r) {
+      if (!r.ok) { aviso = { tipo: 'err', texto: (r.cuerpo && r.cuerpo.error) || 'No se pudo empezar.' }; }
+      else { aviso = { tipo: 'ok', texto: '¡Listo! El reloj está andando.' }; }
+      cargar();
+    }).catch(function () {
+      aviso = { tipo: 'err', texto: 'No hay internet. Probá de nuevo.' };
+      cargar();
+    });
+  }
+
+  function fin(terminada, boton) {
+    if (boton) boton.disabled = true;
+    pant.innerHTML = '<div class="cargando">Guardando…</div>';
+    pedir('fin', { terminada: !!terminada }).then(function (r) {
+      if (!r.ok) aviso = { tipo: 'err', texto: (r.cuerpo && r.cuerpo.error) || 'No se pudo terminar.' };
+      else if (r.cuerpo && r.cuerpo.sinTramo) aviso = { tipo: 'ok', texto: 'No tenías nada andando.' };
+      else aviso = { tipo: 'ok', texto: 'Anotado: ' + enPalabras((r.cuerpo && r.cuerpo.segundos) || 0) + '. ¡Gracias!' };
+      cargar();
+    }).catch(function () {
+      aviso = { tipo: 'err', texto: 'No hay internet. Probá de nuevo.' };
+      cargar();
+    });
+  }
+
+  function cargar() {
+    pedir('estado').then(function (r) {
+      if (r.status === 401) { estado = null; pantallaPin(); return; }
+      if (!r.ok) {
+        pant.innerHTML = '<div class="msg err">' + esc((r.cuerpo && r.cuerpo.error) || 'Algo falló.') + '</div>' +
+          '<button class="grande chica" onclick="location.reload()"><span class="ico">🔄</span><span>PROBAR DE NUEVO</span></button>';
+        return;
+      }
+      estado = r.cuerpo;
+      pantallaInicio();
+    }).catch(function () {
+      pant.innerHTML = '<div class="msg err">No hay internet. Avisale al encargado.</div>' +
+        '<button class="grande chica" onclick="location.reload()"><span class="ico">🔄</span><span>PROBAR DE NUEVO</span></button>';
+    });
+  }
+
+  btnSalir.onclick = function () {
+    if (!confirm('¿Salir? Después vas a tener que escribir tu número otra vez.')) return;
+    pedir('logout', {}).then(function () { estado = null; pin = ''; pantallaPin(); });
+  };
+
+  // Si el tablet quedó abierto toda la noche, al volver se refresca solo.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && estado) cargar();
+  });
+
+  cargar();
+})();
+</script>
+</body>
+</html>

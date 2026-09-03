@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Diagrama de flujo del ERP</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 18px 20px 80px; }
+  .hd { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .lienzo { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 4px;
+    overflow-x: auto; margin-bottom: 8px; }
+  .lienzo svg { display: block; min-width: 1100px; }
+  .ayuda { font-size: 12px; color: var(--tinta-3); margin-bottom: 18px; }
+  .leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--tinta-2);
+    background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; }
+  .leyenda span { display: inline-flex; align-items: center; gap: 7px; }
+  .leyenda i { width: 26px; height: 15px; border-radius: 4px; display: inline-block; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15.5px; margin-bottom: 4px; font-family: 'Raleway'; }
+  .card p { font-size: 13.5px; line-height: 1.6; color: var(--tinta); margin-bottom: 10px; }
+  table.g { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.g th { text-align: left; padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); }
+  table.g td { padding: 8px 10px; border-bottom: 1px solid var(--surface-3); vertical-align: top; line-height: 1.5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  @media print {
+    @page { size: A3 landscape; margin: 8mm; }
+    body { background: #fff; }
+    .cirene-nav, .btns, .cirene-sug-btn { display: none !important; }
+    .wrap { max-width: 100%; padding: 0; }
+    .lienzo { border: none; overflow: visible; page-break-after: always; }
+    .lienzo svg { min-width: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <div>
+      <h1 style="font-family:'Raleway'">Flujo completo del ERP</h1>
+      <p class="cirene-subtitle">De la consulta del cliente al cobro y la encuesta de satisfacción, con lo que crea cada paso.</p>
+    </div>
+    <div class="btns">
+      <button class="cirene-btn cirene-btn-primary" id="btn-print">🖨 Imprimir / PDF</button>
+      <a class="cirene-btn" href="/manual.html">Manual de uso</a>
+    </div>
+  </div>
+
+  <div class="lienzo" id="lienzo"></div>
+  <p class="ayuda">El diagrama se desplaza a lo ancho. Para imprimirlo entra en una hoja A3 apaisada.</p>
+
+  <div class="leyenda" id="leyenda"></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Los pasos que no se pueden duplicar</h2>
+      <p>Cada salto del flujo <b>busca antes de crear</b>. Es lo que permite apretar dos veces, recargar la
+        página o reintentar sin que queden dos ventas del mismo pedido.</p>
+      <table class="g">
+        <thead><tr><th>Paso</th><th>Qué lo garantiza</th></tr></thead>
+        <tbody>
+          <tr><td>Guardar cotización</td><td>El número lo da una secuencia y, si ya tiene id, actualiza en vez de crear</td></tr>
+          <tr><td>Lead → cotización</td><td>Reusa el borrador que ya tenía el lead</td></tr>
+          <tr><td>Lead ganado</td><td>Una venta por cotización y por pedido (restricción única en la base)</td></tr>
+          <tr><td>Cuenta a cobrar</td><td>Una sola por pedido</td></tr>
+          <tr><td>Recibir orden de compra</td><td>Si ya figura recibida, no vuelve a sumar stock</td></tr>
+          <tr><td>Descontar materiales</td><td>Verifica si ese pedido ya tiene movimientos de consumo</td></tr>
+          <tr><td>Entregar</td><td>Una encuesta NPS por pedido</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Dónde se decide cada cosa</h2>
+      <table class="g">
+        <thead><tr><th>Decisión</th><th>Quién y dónde</th></tr></thead>
+        <tbody>
+          <tr><td>Qué precio se cobra</td><td>Comercial, en el cotizador (costo × multiplicador)</td></tr>
+          <tr><td>Si el pedido está listo para producir</td><td>Producción, marcando "listo" en la tarjeta</td></tr>
+          <tr><td>Qué se fabrica cada día</td><td>Producción, en la vista Día (día de fabricación)</td></tr>
+          <tr><td>Cuánta capacidad hay ese día</td><td>Producción, cargando operarios y horas reales</td></tr>
+          <tr><td>Si hay que comprar material</td><td>Administración, con la alerta de stock mínimo</td></tr>
+          <tr><td>Cuánto lleva cada tarea</td><td>Nadie: sale de los INICIO/FIN de los operarios</td></tr>
+          <tr><td>Si se entregó a tiempo</td><td>Nadie: fecha real contra fecha comprometida</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>El ciclo se cierra</h2>
+    <p>La flecha de abajo que vuelve al principio no es decorativa y es la razón de todo el módulo de
+      métricas: <b>las horas que fichan los operarios se convierten en el número de horas por unidad de
+      cada producto</b>, y ese número es el que usa el comercial para cotizar la próxima vez. Sin ese
+      retorno, el cotizador seguiría estimando de memoria y el taller seguiría heredando fechas imposibles.</p>
+  </div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth } from './js/auth.js?v=7';
+
+/* El diagrama se DIBUJA a partir de estas dos listas, no se escribe a mano en
+   SVG. Hacerlo así tiene una razón práctica: cuando el flujo del ERP cambie
+   —y va a cambiar— se corrige una línea de datos y el dibujo se reacomoda,
+   en vez de tener que mover treinta coordenadas a mano y que queden flechas
+   apuntando a cualquier lado. */
+
+// Carriles: quién hace cada cosa. El orden es el orden vertical del dibujo.
+const CARRILES = [
+  { id: 'cliente', label: 'Cliente',        color: '#6B7280' },
+  { id: 'comercial', label: 'Comercial',    color: '#1F5FA8' },
+  { id: 'produccion', label: 'Producción',  color: '#1F6B45' },
+  { id: 'taller', label: 'Taller · Operarios', color: '#8A6D1B' },
+  { id: 'admin', label: 'Administración',   color: '#7A3E8F' },
+  { id: 'direccion', label: 'Dirección',    color: '#A33A3A' },
+];
+
+// tipo: inicio | paso | decision | dato | fin | auto (lo hace el sistema solo)
+const NODOS = [
+  { id: 'consulta', carril: 'cliente', col: 0, tipo: 'inicio',
+    label: 'Llega una consulta', sub: 'WhatsApp, teléfono, redes o el taller' },
+
+  { id: 'lead', carril: 'comercial', col: 1, tipo: 'paso',
+    label: 'Lead en el CRM', sub: 'CRM · teléfono obligatorio, ficha única de cliente' },
+  { id: 'cot', carril: 'comercial', col: 2, tipo: 'paso',
+    label: 'Cotización', sub: 'Cotizador · materiales + mano de obra + terminación × 1,5 · PDF' },
+  { id: 'dec', carril: 'comercial', col: 3, tipo: 'decision',
+    label: '¿El cliente acepta?' },
+  { id: 'perdido', carril: 'comercial', col: 3, off: 1, tipo: 'fin',
+    label: 'Lead perdido', sub: 'Queda el motivo para el análisis' },
+  { id: 'ganado', carril: 'comercial', col: 4, tipo: 'paso',
+    label: 'Botón "Lead ganado"', sub: 'Un clic dispara los tres pasos siguientes' },
+  { id: 'venta', carril: 'comercial', col: 5, off: 1, tipo: 'dato',
+    label: 'Venta registrada', sub: 'Una por cotización · alimenta Ventas' },
+
+  { id: 'pedido', carril: 'produccion', col: 5, tipo: 'auto',
+    label: 'Pedido en el tablero', sub: 'Con medidas, terminación y comentarios del comercial' },
+  { id: 'mat', carril: 'produccion', col: 6, tipo: 'paso',
+    label: '¿Hay material?', sub: 'Materiales del pedido contra el stock disponible' },
+  { id: 'plan', carril: 'produccion', col: 8, tipo: 'paso',
+    label: 'Plan del día', sub: 'Capacidad del día + semáforo 🟢🟡🔴' },
+  { id: 'subt', carril: 'produccion', col: 8, off: 1, tipo: 'paso',
+    label: 'Subtareas y etiqueta', sub: 'Corte, soldadura, pintura… + etiqueta térmica' },
+  { id: 'consumo', carril: 'produccion', col: 10, off: 1, tipo: 'paso',
+    label: 'Descontar material', sub: 'Cuando sale del depósito · movimiento de stock' },
+  { id: 'entrega', carril: 'produccion', col: 10, tipo: 'paso',
+    label: 'Entregado', sub: 'Marca la fecha real de finalización' },
+
+  { id: 'fichar', carril: 'taller', col: 9, tipo: 'paso',
+    label: 'INICIO / FIN con PIN', sub: 'Pantalla del taller · sin usuario ni contraseña' },
+  { id: 'bitacora', carril: 'taller', col: 9, off: 1, tipo: 'dato',
+    label: 'Bitácora de tiempos', sub: 'Un tramo por cada INICIO→FIN' },
+
+  { id: 'cobrar', carril: 'admin', col: 5, tipo: 'dato',
+    label: 'Cuenta a cobrar', sub: 'Una por pedido · sin IVA' },
+  { id: 'oc', carril: 'admin', col: 7, tipo: 'paso',
+    label: 'Orden de compra', sub: 'Al recibir: suma stock y actualiza el costo' },
+  { id: 'cobro', carril: 'admin', col: 11, tipo: 'paso',
+    label: 'Cobro', sub: 'Seña y saldo contra la cuenta a cobrar' },
+  { id: 'caja', carril: 'admin', col: 12, off: 1, tipo: 'dato',
+    label: 'Caja y balance', sub: 'Contabilidad · ingresos, gastos y resultado' },
+
+  { id: 'nps', carril: 'cliente', col: 11, tipo: 'paso',
+    label: 'Encuesta NPS', sub: 'Puntaje, aspectos y comentario del cliente' },
+
+  { id: 'metricas', carril: 'direccion', col: 12, tipo: 'auto',
+    label: 'Métricas y Dashboard', sub: 'Horas por producto y proceso · plazos · puntualidad · NPS' },
+];
+
+const FLECHAS = [
+  { de: 'consulta', a: 'lead' },
+  { de: 'lead', a: 'cot', txt: 'se cotiza' },
+  { de: 'cot', a: 'dec', txt: 'PDF enviado' },
+  { de: 'dec', a: 'perdido', txt: 'No' },
+  { de: 'dec', a: 'ganado', txt: 'Sí' },
+  { de: 'ganado', a: 'venta', txt: 'crea' },
+  { de: 'ganado', a: 'pedido', txt: 'crea' },
+  { de: 'ganado', a: 'cobrar', txt: 'crea' },
+  { de: 'pedido', a: 'mat' },
+  { de: 'mat', a: 'oc', txt: 'falta' },
+  { de: 'oc', a: 'plan', txt: 'material recibido' },
+  { de: 'mat', a: 'plan', txt: 'hay' },
+  { de: 'plan', a: 'subt' },
+  { de: 'subt', a: 'fichar', txt: 'orden al taller' },
+  { de: 'subt', a: 'consumo' },
+  { de: 'fichar', a: 'bitacora', txt: 'cada tramo' },
+  { de: 'bitacora', a: 'entrega', txt: 'horas reales' },
+  { de: 'consumo', a: 'entrega' },
+  { de: 'entrega', a: 'nps', txt: 'queda lista' },
+  { de: 'entrega', a: 'cobro', txt: 'a cobrar' },
+  { de: 'cobro', a: 'caja' },
+  { de: 'nps', a: 'metricas' },
+  { de: 'bitacora', a: 'metricas', txt: 'tiempos' },
+  // El retorno: lo que aprendimos vuelve al precio. Ver la nota de abajo.
+  { de: 'metricas', a: 'cot', txt: 'horas reales por unidad → cotizar mejor', vuelta: true },
+];
+
+const ESTILOS = {
+  inicio:   { relleno: '#0A0A0A', texto: '#fff',     borde: '#0A0A0A', label: 'Entrada del flujo' },
+  paso:     { relleno: '#fff',    texto: '#14161A',  borde: '#0A0A0A', label: 'Alguien lo hace' },
+  auto:     { relleno: '#F0F0EF', texto: '#14161A',  borde: '#9AA0A6', label: 'Lo hace el sistema solo' },
+  decision: { relleno: '#FAEFD6', texto: '#5B4708',  borde: '#8A6D1B', label: 'Decisión' },
+  dato:     { relleno: '#E7EEF7', texto: '#123A66',  borde: '#1F5FA8', label: 'Registro que queda' },
+  fin:      { relleno: '#FDECEE', texto: '#791F1F',  borde: '#A33A3A', label: 'Fin del camino' },
+};
+
+const COL_W = 232, NODO_W = 186, NODO_H = 74, FILA_H = 92;
+const CARRIL_H = 196, X0 = 176, Y0 = 40;
+const COLS = Math.max(...NODOS.map(n => n.col)) + 1;
+const ANCHO = X0 + COLS * COL_W + 34;
+const ALTO = Y0 + CARRILES.length * CARRIL_H + 76;
+
+await requireAuth();
+renderNavbar('diagrama');
+dibujar();
+document.getElementById('btn-print').onclick = () => window.print();
+
+// Todo `function`: el arranque de arriba ya las llama (regla 7b de CLAUDE.md).
+function carrilY(id) {
+  return Y0 + CARRILES.findIndex(c => c.id === id) * CARRIL_H;
+}
+function caja(n) {
+  return {
+    x: X0 + n.col * COL_W + (COL_W - NODO_W) / 2,
+    y: carrilY(n.carril) + 26 + (n.off || 0) * FILA_H,
+    w: NODO_W, h: NODO_H,
+  };
+}
+// Corta un texto en líneas de a lo sumo `max` caracteres, sin partir palabras.
+function lineas(txt, max) {
+  const out = [];
+  let linea = '';
+  for (const p of String(txt || '').split(' ')) {
+    if ((linea + ' ' + p).trim().length > max && linea) { out.push(linea); linea = p; }
+    else linea = (linea + ' ' + p).trim();
+  }
+  if (linea) out.push(linea);
+  return out;
+}
+function esc(s) {
+  return (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/* Ruteo de flechas. Cuatro casos y ninguno más, para que no haya sorpresas:
+     · misma columna (una debajo de la otra) → recta vertical
+     · misma altura, hacia adelante → recta horizontal
+     · distinta altura, hacia adelante → codo (sale, baja o sube, entra)
+     · hacia atrás (el retorno de métricas) → vuelta por abajo de todo
+   El caso de la misma columna hay que tratarlo aparte: con el codo genérico la
+   flecha salía hacia la derecha y volvía hacia la izquierda, y quedaba un
+   garabato apuntando al revés. */
+function mismaColumna(a, b) {
+  return Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) < 4;
+}
+function ruta(a, b, vuelta) {
+  if (vuelta) {
+    const yb = ALTO - 42;
+    return `M ${a.x + a.w / 2} ${a.y + a.h} V ${yb} H ${b.x + b.w / 2} V ${b.y + b.h}`;
+  }
+  if (mismaColumna(a, b)) {
+    const cx = a.x + a.w / 2;
+    return b.y > a.y
+      ? `M ${cx} ${a.y + a.h} V ${b.y}`
+      : `M ${cx} ${a.y} V ${b.y + b.h}`;
+  }
+  const x1 = a.x + a.w, y1 = a.y + a.h / 2;
+  const x2 = b.x, y2 = b.y + b.h / 2;
+  if (Math.abs(y1 - y2) < 2) return `M ${x1} ${y1} H ${x2}`;
+  const mx = x1 + Math.max(26, (x2 - x1) / 2);
+  return `M ${x1} ${y1} H ${mx} V ${y2} H ${x2}`;
+}
+function medioDeRuta(a, b, vuelta) {
+  if (vuelta) return { x: (a.x + a.w / 2 + b.x + b.w / 2) / 2, y: ALTO - 50 };
+  if (mismaColumna(a, b)) {
+    return b.y > a.y
+      ? { x: a.x + a.w / 2 + 26, y: (a.y + a.h + b.y) / 2 }
+      : { x: a.x + a.w / 2 + 26, y: (a.y + b.y + b.h) / 2 };
+  }
+  const x1 = a.x + a.w, y1 = a.y + a.h / 2;
+  const x2 = b.x, y2 = b.y + b.h / 2;
+  if (Math.abs(y1 - y2) < 2) return { x: (x1 + x2) / 2, y: y1 - 7 };
+  const mx = x1 + Math.max(26, (x2 - x1) / 2);
+  return { x: mx + 5, y: (y1 + y2) / 2 };
+}
+
+function dibujar() {
+  const porId = {};
+  NODOS.forEach(n => { porId[n.id] = { n, c: caja(n) }; });
+
+  // Bandas de los carriles, con su etiqueta girada a la izquierda.
+  const bandas = CARRILES.map((c, i) => {
+    const y = carrilY(c.id);
+    return `<g>
+      <rect x="0" y="${y}" width="${ANCHO}" height="${CARRIL_H}" fill="${i % 2 ? '#FAFAFA' : '#FFFFFF'}"/>
+      <line x1="0" y1="${y}" x2="${ANCHO}" y2="${y}" stroke="#E2E2E0"/>
+      <rect x="0" y="${y}" width="${X0 - 22}" height="${CARRIL_H}" fill="${c.color}" opacity="0.07"/>
+      <line x1="${X0 - 22}" y1="${y}" x2="${X0 - 22}" y2="${y + CARRIL_H}" stroke="${c.color}" stroke-width="3"/>
+      <text x="${(X0 - 22) / 2}" y="${y + CARRIL_H / 2}" text-anchor="middle" dominant-baseline="middle"
+        font-size="14.5" font-weight="700" fill="${c.color}" font-family="Raleway, sans-serif">
+        ${lineas(c.label, 13).map((l, k, ar) => `<tspan x="${(X0 - 22) / 2}" dy="${k === 0 ? -(ar.length - 1) * 9 : 18}">${esc(l)}</tspan>`).join('')}
+      </text>
+    </g>`;
+  }).join('');
+
+  const flechas = FLECHAS.map(f => {
+    const a = porId[f.de], b = porId[f.a];
+    if (!a || !b) return '';
+    const d = ruta(a.c, b.c, f.vuelta);
+    const m = medioDeRuta(a.c, b.c, f.vuelta);
+    const etq = f.txt ? `
+      <rect x="${m.x - (f.txt.length * 3.15 + 7)}" y="${m.y - 9}" width="${f.txt.length * 6.3 + 14}" height="17"
+        rx="8" fill="#fff" opacity="0.94"/>
+      <text x="${m.x}" y="${m.y}" text-anchor="middle" dominant-baseline="middle"
+        font-size="10.5" font-weight="600" fill="#5A5F66">${esc(f.txt)}</text>` : '';
+    return `<g><path d="${d}" fill="none" stroke="${f.vuelta ? '#A33A3A' : '#5A5F66'}"
+      stroke-width="${f.vuelta ? 2.2 : 1.7}" ${f.vuelta ? 'stroke-dasharray="7 5"' : ''}
+      marker-end="url(#punta${f.vuelta ? 'R' : ''})"/>${etq}</g>`;
+  }).join('');
+
+  const cajas = NODOS.map(n => {
+    const c = caja(n);
+    const e = ESTILOS[n.tipo] || ESTILOS.paso;
+    const titulo = lineas(n.label, n.tipo === 'decision' ? 15 : 22);
+    const sub = n.sub ? lineas(n.sub, 30).slice(0, 3) : [];
+    const yTexto = c.y + (sub.length ? 24 : c.h / 2 - 2) - (titulo.length - 1) * 6;
+
+    const forma = n.tipo === 'decision'
+      ? `<path d="M ${c.x + c.w / 2} ${c.y - 6} L ${c.x + c.w + 4} ${c.y + c.h / 2}
+                  L ${c.x + c.w / 2} ${c.y + c.h + 6} L ${c.x - 4} ${c.y + c.h / 2} Z"
+           fill="${e.relleno}" stroke="${e.borde}" stroke-width="1.6"/>`
+      : n.tipo === 'dato'
+        ? `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6"
+             fill="${e.relleno}" stroke="${e.borde}" stroke-width="1.6" stroke-dasharray="6 4"/>`
+        : `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="11"
+             fill="${e.relleno}" stroke="${e.borde}" stroke-width="${n.tipo === 'inicio' ? 2 : 1.6}"/>`;
+
+    return `<g>
+      ${forma}
+      <text x="${c.x + c.w / 2}" y="${yTexto}" text-anchor="middle" font-size="13" font-weight="700"
+        fill="${e.texto}" font-family="'Public Sans', sans-serif">
+        ${titulo.map((l, k) => `<tspan x="${c.x + c.w / 2}" dy="${k === 0 ? 0 : 15}">${esc(l)}</tspan>`).join('')}
+      </text>
+      ${sub.length ? `<text x="${c.x + c.w / 2}" y="${c.y + 26 + titulo.length * 15}" text-anchor="middle"
+        font-size="10" fill="${e.texto}" opacity="0.72" font-family="'Public Sans', sans-serif">
+        ${sub.map((l, k) => `<tspan x="${c.x + c.w / 2}" dy="${k === 0 ? 0 : 12}">${esc(l)}</tspan>`).join('')}
+      </text>` : ''}
+    </g>`;
+  }).join('');
+
+  document.getElementById('lienzo').innerHTML = `
+    <svg viewBox="0 0 ${ANCHO} ${ALTO}" width="${ANCHO}" height="${ALTO}" role="img"
+      aria-label="Diagrama de flujo del ERP de De Cirene, de la consulta al cobro y la encuesta">
+      <defs>
+        <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5A5F66"/>
+        </marker>
+        <marker id="puntaR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#A33A3A"/>
+        </marker>
+      </defs>
+      <rect width="${ANCHO}" height="${ALTO}" fill="#fff"/>
+      ${bandas}
+      <text x="${X0}" y="24" font-size="15" font-weight="700" fill="#14161A" font-family="Raleway, sans-serif">
+        De Cirene · de la consulta al cobro</text>
+      <text x="${ANCHO - 20}" y="24" text-anchor="end" font-size="11" fill="#9AA0A6">
+        Cotización → Venta → Producción → Taller → Entrega → Cobro → NPS → Métricas</text>
+      ${flechas}
+      ${cajas}
+    </svg>`;
+
+  document.getElementById('leyenda').innerHTML =
+    Object.entries(ESTILOS).map(([, e]) =>
+      `<span><i style="background:${e.relleno};border:1.5px solid ${e.borde}"></i>${esc(e.label)}</span>`).join('') +
+    '<span><i style="background:#fff;border-top:2px dashed #A33A3A;border-radius:0;height:2px"></i>El aprendizaje vuelve al precio</span>';
+}
+</script>
+</body>
+</html>

@@ -1519,3 +1519,136 @@ alter table notifications       add column if not exists demo boolean not null d
 
 create index if not exists idx_clients_demo on clients(demo) where demo;
 create index if not exists idx_production_demo on production_cards(demo) where demo;
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AMPLIACIÓN 2026-09 · FASE 8
+--   1. Semáforo DIARIO de capacidad (reemplaza al semanal como método operativo)
+--   2. Interfaz de taller para operarios (PIN) + bitácora de tiempos por día
+--   3. Sugerencias del equipo, con imágenes adjuntas
+--   4. Roles configurables: qué módulos ve cada rol
+-- Todo idempotente. Nada destructivo: las columnas nuevas traen default neutro.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── 1 · CAPACIDAD Y SEMÁFORO POR DÍA ────────────────────────────────────────
+-- La planificación semanal quedó demasiado gruesa: en un taller de inserción
+-- laboral la asistencia cambia día a día, así que la capacidad y el semáforo se
+-- cargan por FECHA. `production_weeks` se conserva (histórico y capacidad
+-- agregada de la semana), pero el método operativo es este.
+create table if not exists production_days (
+  fecha                    date primary key,
+  capacidad_prevista_horas numeric(8,2) not null default 0,
+  capacidad_real_horas     numeric(8,2) not null default 0,
+  operarios_previstos      int not null default 0,
+  operarios_reales         int not null default 0,
+  semaforo_manual          text check (semaforo_manual in ('verde','amarillo','rojo')),
+  notas                    text,
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now(),
+  updated_by               uuid references app_users(id)
+);
+drop trigger if exists trg_days_updated on production_days;
+create trigger trg_days_updated before update on production_days
+  for each row execute function set_updated_at();
+
+-- ── 2 · TALLER: OPERARIOS CON PIN ───────────────────────────────────────────
+-- El operario entra a /taller.html y se identifica con un PIN de 4 dígitos. No
+-- necesita usuario de la app ni email: el PIN es su credencial y solo habilita
+-- fichar tiempos (nunca leer precios, cotizaciones ni contabilidad).
+alter table operators add column if not exists pin text;
+create unique index if not exists idx_operators_pin on operators(pin) where pin is not null;
+
+-- De dónde salió el tramo de tiempo: 'app' (lo marcó el gerente en Producción)
+-- o 'taller' (lo marcó el propio operario en la interfaz simple).
+alter table subtask_time_logs add column if not exists fuente text not null default 'app';
+alter table subtask_time_logs add column if not exists nota text;
+
+-- ── 3 · SUGERENCIAS DEL EQUIPO ──────────────────────────────────────────────
+-- Botón fijo abajo a la derecha en toda la app. Cualquiera puede escribir y
+-- adjuntar fotos; admin las lee y las resuelve desde Administración.
+create table if not exists suggestions (
+  id          uuid primary key default gen_random_uuid(),
+  texto       text not null,
+  categoria   text not null default 'mejora'
+    check (categoria in ('mejora','error','duda','otro')),
+  pagina      text,
+  user_id     uuid references app_users(id),
+  user_label  text,
+  adjuntos    jsonb not null default '[]'::jsonb,
+  estado      text not null default 'nueva'
+    check (estado in ('nueva','en_curso','resuelta','descartada')),
+  respuesta   text,
+  resuelta_at timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists idx_suggestions_estado on suggestions(estado, created_at desc);
+drop trigger if exists trg_suggestions_updated on suggestions;
+create trigger trg_suggestions_updated before update on suggestions
+  for each row execute function set_updated_at();
+
+-- ── 4 · ROLES CONFIGURABLES ─────────────────────────────────────────────────
+-- Antes los roles eran 4 constantes en el código. Ahora se crean desde
+-- Administración y cada uno declara QUÉ MÓDULOS VE (`modulos`).
+--
+-- `perfil_base` es la clave de que esto sea seguro: los permisos de TABLA
+-- (api/registry.js) no se editan desde la pantalla — cada rol se apoya en uno de
+-- los cuatro perfiles conocidos y hereda sus permisos de base de datos. La
+-- pantalla decide qué se VE, el perfil base decide qué se PUEDE.
+create table if not exists app_roles (
+  key         text primary key,
+  label       text not null,
+  perfil_base text not null default 'comercial'
+    check (perfil_base in ('admin','comercial','produccion','operario')),
+  modulos     jsonb not null default '[]'::jsonb,
+  descripcion text,
+  activo      boolean not null default true,
+  sistema     boolean not null default false,     -- los 4 originales no se borran
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+drop trigger if exists trg_roles_updated on app_roles;
+create trigger trg_roles_updated before update on app_roles
+  for each row execute function set_updated_at();
+
+-- El CHECK original de user_profiles.role encerraba los 4 roles fijos: con roles
+-- creados desde la pantalla, cualquier alta con un rol nuevo fallaba. Se quita el
+-- CHECK (no borra datos) y la validación pasa a la API, que compara contra
+-- app_roles. Se busca por catálogo porque el nombre autogenerado puede variar.
+do $$
+declare c record;
+begin
+  for c in
+    select con.conname
+      from pg_constraint con
+      join pg_class rel on rel.oid = con.conrelid
+      join pg_namespace ns on ns.oid = rel.relnamespace
+     where ns.nspname = 'public' and rel.relname = 'user_profiles'
+       and con.contype = 'c' and pg_get_constraintdef(con.oid) ilike '%role%'
+  loop
+    execute format('alter table user_profiles drop constraint %I', c.conname);
+  end loop;
+end $$;
+
+-- Seed de los roles que ya existían, con los módulos que hoy ve cada uno.
+-- `on conflict do nothing`: si el admin ya los editó, no se le pisa la config.
+insert into app_roles (key, label, perfil_base, modulos, descripcion, sistema) values
+  ('admin', 'Administrador', 'admin',
+   '["home","intake","clientes","cot","production","metricas","catalog","compras","stock","ventas","nps","contabilidad","dashboard","admin","manual","diagrama"]'::jsonb,
+   'Acceso total, incluida la contabilidad y la configuración.', true),
+  ('director', 'Director', 'admin',
+   '["home","intake","clientes","cot","production","metricas","catalog","compras","stock","ventas","nps","contabilidad","dashboard","admin","manual","diagrama"]'::jsonb,
+   'Igual que Administrador: mira todo y decide.', true),
+  ('comercial', 'Comercial', 'comercial',
+   '["home","intake","clientes","cot","production","catalog","stock","ventas","nps","manual","diagrama"]'::jsonb,
+   'Vende: leads, clientes, cotizaciones y seguimiento del pedido.', true),
+  ('produccion', 'Producción', 'produccion',
+   '["home","production","metricas","catalog","stock","clientes","manual","diagrama"]'::jsonb,
+   'Planifica el taller, reparte tareas y mide las horas reales.', true),
+  ('operario', 'Operario', 'operario',
+   '["home","production","manual"]'::jsonb,
+   'Ficha su trabajo. Normalmente entra por /taller.html con PIN, sin usuario.', true)
+on conflict (key) do nothing;
+
+-- Marca de demo de las tablas nuevas (ver bloque anterior).
+alter table production_days add column if not exists demo boolean not null default false;

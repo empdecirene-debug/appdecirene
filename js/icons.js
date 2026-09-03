@@ -2,7 +2,7 @@
 // los emojis. Sin dependencia de red ni build: los paths viven acá.
 //
 // Uso:
-//   import { icon } from './icons.js?v=6';
+//   import { icon } from './icons.js?v=7';
 //   el.innerHTML = icon('cart', { size: 20, color: 'var(--azul)' });
 //
 // Por default heredan `currentColor` (toman el color del texto del contenedor),

@@ -103,25 +103,34 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=6';
-import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=6';
-import { icon } from './js/icons.js?v=6';
-import * as data from './js/cirene-data.js?v=6';
-import { api } from './js/supa.js?v=6';
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=7';
+import { icon } from './js/icons.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+import { api } from './js/supa.js?v=7';
 
+// `mod` es el id del módulo en la configuración del rol (ver Administración →
+// Roles), el mismo que filtra las pestañas de la navbar: así nadie ve un cuadrado
+// que después le contesta "tu rol no puede". Dos accesos existen solo acá y no en
+// la navbar, porque no son pantallas de trabajo diario: la del taller (vive en el
+// tablet del taller) y el diagrama (es material de consulta).
 const TILES = [
-  { id: 'intake',   icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',        desc: 'Consultas y seguimiento' },
-  { id: 'clientes', icon: 'users',      label: 'Clientes',     href: '/clientes.html',      desc: 'Tu cartera de clientes' },
-  { id: 'cot',      icon: 'calculator', label: 'Cotizar',      href: '/index.html',         desc: 'Presupuesto + PDF' },
-  { id: 'catalog',  icon: 'package',    label: 'Catálogo',     href: '/catalog.html',       desc: 'Materiales, terminaciones y tarifas' },
-  { id: 'prod',     icon: 'clipboard',  label: 'Producción',   href: '/production.html',    desc: 'Kanban, semana y subtareas' },
-  { id: 'stock',    icon: 'stock',      label: 'Stock',        href: '/stock.html',         desc: 'Existencias y movimientos' },
-  { id: 'compras',  icon: 'oc',         label: 'Compras',      href: '/compras.html',       desc: 'Proveedores y órdenes', adminOnly: true },
-  { id: 'ventas',   icon: 'chart',      label: 'Ventas',       href: '/ventas.html',        desc: 'KPIs e indicadores' },
-  { id: 'nps',      icon: 'trending',   label: 'NPS',          href: '/nps.html',           desc: 'Satisfacción de clientes' },
-  { id: 'conta',    icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html',  desc: 'Cobros, gastos y activos', adminOnly: true },
-  { id: 'dash',     icon: 'metrics',    label: 'Dashboard',    href: '/dashboard.html',     desc: 'Resumen ejecutivo', adminOnly: true },
-  { id: 'admin',    icon: 'settings',   label: 'Admin',        href: '/admin.html',         desc: 'Operarios, cargas y usuarios', adminOnly: true },
+  { id: 'intake',   mod: 'intake',       icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',       desc: 'Consultas y seguimiento' },
+  { id: 'clientes', mod: 'clientes',     icon: 'users',      label: 'Clientes',     href: '/clientes.html',     desc: 'Tu cartera de clientes' },
+  { id: 'cot',      mod: 'cot',          icon: 'calculator', label: 'Cotizar',      href: '/index.html',        desc: 'Presupuesto + PDF' },
+  { id: 'catalog',  mod: 'catalog',      icon: 'package',    label: 'Catálogo',     href: '/catalog.html',      desc: 'Materiales, terminaciones y tarifas' },
+  { id: 'prod',     mod: 'production',   icon: 'clipboard',  label: 'Producción',   href: '/production.html',   desc: 'Kanban, día y subtareas' },
+  { id: 'metricas', mod: 'metricas',     icon: 'metrics',    label: 'Métricas',     href: '/metricas.html',     desc: 'Tiempos por producto y proceso' },
+  { id: 'taller',   mod: 'production',   icon: 'clipboard',  label: 'Taller',       href: '/taller.html',       desc: 'Pantalla de fichadas del operario' },
+  { id: 'stock',    mod: 'stock',        icon: 'stock',      label: 'Stock',        href: '/stock.html',        desc: 'Existencias y movimientos' },
+  { id: 'compras',  mod: 'compras',      icon: 'oc',         label: 'Compras',      href: '/compras.html',      desc: 'Proveedores y órdenes' },
+  { id: 'ventas',   mod: 'ventas',       icon: 'chart',      label: 'Ventas',       href: '/ventas.html',       desc: 'KPIs y panel por vendedor' },
+  { id: 'nps',      mod: 'nps',          icon: 'trending',   label: 'NPS',          href: '/nps.html',          desc: 'Satisfacción de clientes' },
+  { id: 'conta',    mod: 'contabilidad', icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html', desc: 'Cobros, gastos y activos' },
+  { id: 'dash',     mod: 'dashboard',    icon: 'metrics',    label: 'Dashboard',    href: '/dashboard.html',    desc: 'Resumen ejecutivo' },
+  { id: 'admin',    mod: 'admin',        icon: 'settings',   label: 'Admin',        href: '/admin.html',        desc: 'Usuarios, roles y configuración' },
+  { id: 'manual',   mod: 'manual',       icon: 'file',       label: 'Manual',       href: '/manual.html',       desc: 'Cómo se usa cada módulo' },
+  { id: 'diagrama', mod: 'diagrama',     icon: 'metrics',    label: 'Diagrama',     href: '/diagrama.html',     desc: 'El flujo completo del ERP' },
 ];
 
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -142,11 +151,12 @@ const cuando = (iso) => {
   const name = profile?.vendor_name || profile?.full_name || profile?.email || 'De Cirene';
   document.getElementById('welcomeText').textContent = `Hola ${name}, ¿qué hacés hoy?`;
 
+  const modulos = await data.modulosDelRol(profile?.role).catch(() => ['home']);
   const grid = document.getElementById('tileGrid');
   grid.innerHTML = TILES
-    .filter(t => admin || !t.adminOnly)
+    .filter(t => modulos.includes(t.mod))
     .map(t => `
-      <a class="tile ${t.adminOnly ? 'admin-only' : ''}" href="${t.href}">
+      <a class="tile ${admin && ['admin', 'contabilidad', 'dashboard', 'compras'].includes(t.mod) ? 'admin-only' : ''}" href="${t.href}">
         <div class="icon">${icon(t.icon, { size: 40, stroke: 1.6 })}</div>
         <div class="label">${t.label}</div>
         ${t.desc ? `<div class="desc">${t.desc}</div>` : ''}

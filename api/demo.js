@@ -42,7 +42,7 @@ const ORDEN_BORRADO = [
   'receivables', 'stock_movements', 'purchase_order_lines', 'purchase_orders',
   'card_stories', 'notifications', 'production_card_transitions',
   'sales', 'production_cards', 'quote_lines', 'quotes', 'intake_cards',
-  'clients', 'production_weeks', 'assets', 'social_impact',
+  'clients', 'production_weeks', 'production_days', 'assets', 'social_impact',
 ];
 
 export async function reiniciar(modo = 'demo') {

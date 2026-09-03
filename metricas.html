@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Métricas de producción</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 20px 80px; }
+  .hd { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+  .seg button { border: none; background: transparent; padding: 7px 13px; border-radius: 6px; font: inherit;
+    font-size: 12.5px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg button.active { background: #0A0A0A; color: #fff; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; }
+  .kpi .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--tinta-3); font-weight: 700; }
+  .kpi .v { font-size: 25px; font-weight: 800; font-family: 'Raleway'; line-height: 1.15; margin-top: 2px; }
+  .kpi .s { font-size: 11.5px; color: var(--tinta-3); line-height: 1.4; }
+  .kpi.dark { background: #0A0A0A; color: #fff; } .kpi.dark .k, .kpi.dark .s { color: rgba(255,255,255,.72); }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin-bottom: 3px; }
+  .card .expl { font-size: 12px; color: var(--tinta-3); line-height: 1.5; margin-bottom: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th { text-align: left; padding: 7px 8px; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--tinta-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.grid td { padding: 7px 8px; border-bottom: 1px solid var(--surface-3); }
+  table.grid tbody tr:hover td { background: var(--surface-2); }
+  td.num, th.num { text-align: right; }
+  .barra { height: 8px; border-radius: 4px; background: #0A0A0A; }
+  .muted { color: var(--tinta-3); font-size: 12px; }
+  .pos { color: #A33A3A; font-weight: 700; } .neg { color: #1F6B45; font-weight: 700; }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 8px;
+    border-radius: 999px; background: var(--surface-3); color: var(--tinta-2); }
+  .chip.ok { background: #E1F5EE; color: #1F6B45; } .chip.no { background: #FDECEE; color: #A33A3A; }
+  .vacio { padding: 26px 10px; text-align: center; color: var(--tinta-3); font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <div>
+      <h1 style="font-family:'Raleway'">Métricas de producción</h1>
+      <p class="cirene-subtitle">Todo lo que se puede saber a partir de los INICIO y FIN que marcan los operarios.</p>
+    </div>
+    <div class="seg" id="periodo">
+      <button data-p="30">30 días</button>
+      <button data-p="90" class="active">3 meses</button>
+      <button data-p="180">6 meses</button>
+      <button data-p="365">1 año</button>
+      <button data-p="all">Todo</button>
+    </div>
+  </div>
+  <div id="dash"><div class="card">Cargando métricas…</div></div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth } from './js/auth.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+import { money, n, arr } from './js/quote-engine.js?v=7';
+
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let cards = [], subtareas = [], logs = [], operarios = [];
+let periodo = '90';
+
+await requireAuth();
+renderNavbar('metricas');
+document.querySelectorAll('#periodo button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#periodo button').forEach(x => x.classList.toggle('active', x === b));
+  periodo = b.dataset.p; render();
+});
+try {
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout).')), 20000));
+  [cards, subtareas, logs, operarios] = await Promise.race([Promise.all([
+    data.listProductionCards().catch(() => []),
+    data.listAllSubtasks().catch(() => []),
+    data.listTimeLogs({ limite: 6000 }).catch(() => []),
+    data.listOperators({ incluirInactivos: true }).catch(() => []),
+  ]), timeout]);
+} catch (e) {
+  $('#dash').innerHTML = `<div class="card" style="color:#A33A3A">No se pudieron cargar las métricas.<br>
+    <span class="muted">${esc(e.message || e)}</span><br>
+    <button class="cirene-btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
+  throw e;
+}
+render();
+
+// Todas van como `function`: render() ya corrió arriba (regla 7b de CLAUDE.md).
+function desdeDelPeriodo() {
+  if (periodo === 'all') return null;
+  return data.sumarDias(data.hoyISO(), -parseInt(periodo, 10));
+}
+function horas(h) { return (Math.round(n(h) * 10) / 10).toLocaleString('es-UY') + ' h'; }
+function dias(d) { return d === null || d === undefined ? '—' : (Math.round(n(d) * 10) / 10) + ' d'; }
+
+function render() {
+ try {
+  const desde = desdeDelPeriodo();
+  // Los tramos se filtran por período; los pedidos y las subtareas se dejan
+  // completos porque un pedido de marzo puede tener horas fichadas en abril.
+  const lp = desde ? logs.filter(l => String(l.started_at || '') >= desde) : logs;
+  const idsConHoras = new Set(lp.map(l => l.card_id).filter(Boolean));
+  const cp = cards.filter(c => idsConHoras.has(c.id));
+
+  const productos = data.tiempoPorProducto({ cards: cp, timeLogs: lp });
+  const procesos = data.tiempoPorProceso({ subtareas, timeLogs: lp });
+  const plazos = data.plazoDePedidos({ cards: cp, timeLogs: lp });
+  const porOp = data.horasPorOperario({ timeLogs: lp, operarios, subtareas });
+
+  const horasTotales = lp.reduce((s, l) => s + n(l.segundos), 0) / 3600;
+  const diasConFichadas = new Set(lp.map(l => String(l.started_at || '').slice(0, 10)).filter(Boolean)).size;
+  const abiertos = lp.filter(l => !l.ended_at).length;
+
+  const hastaCurva = data.hoyISO();
+  const desdeCurva = desde || (lp.length
+    ? String(lp[lp.length - 1].started_at || hastaCurva).slice(0, 10)
+    : data.sumarDias(hastaCurva, -30));
+  const curva = data.horasPorDia({ timeLogs: lp, desde: desdeCurva, hasta: hastaCurva }).slice(-92);
+
+  if (!lp.length) {
+    $('#dash').innerHTML = `<div class="card"><div class="vacio">
+      <b style="font-size:15px;color:var(--tinta)">Todavía no hay tiempos fichados en este período.</b><br>
+      Las métricas se alimentan de los INICIO y FIN que marcan los operarios en
+      <a href="/taller.html" target="_blank">la pantalla del taller</a>, o de los cronómetros de las
+      subtareas en Producción.<br>En cuanto haya fichadas, esta pantalla se llena sola.
+    </div></div>`;
+    return;
+  }
+
+  $('#dash').innerHTML = `
+    <div class="kpis">
+      <div class="kpi dark"><div class="k">Horas trabajadas</div><div class="v">${horas(horasTotales)}</div>
+        <div class="s">${lp.length} tramos fichados${abiertos ? ` · ${abiertos} sin cerrar` : ''}</div></div>
+      <div class="kpi"><div class="k">Días con trabajo</div><div class="v">${diasConFichadas}</div>
+        <div class="s">${diasConFichadas ? horas(horasTotales / diasConFichadas) + ' por día' : ''}</div></div>
+      <div class="kpi"><div class="k">Horas por pedido</div><div class="v">${horas(plazos.promedios.horas)}</div>
+        <div class="s">promedio de trabajo real</div></div>
+      <div class="kpi"><div class="k">Plazo del pedido</div><div class="v">${dias(plazos.promedios.total)}</div>
+        <div class="s">de la venta a la entrega</div></div>
+      <div class="kpi"><div class="k">Puntualidad</div><div class="v">${plazos.puntualidad.toFixed(0)}%</div>
+        <div class="s">${plazos.aTiempo} de ${plazos.conVeredicto} entregados a tiempo</div></div>
+      <div class="kpi"><div class="k">Pedidos entregados</div><div class="v">${plazos.entregados}</div>
+        <div class="s">de ${cp.length} con horas fichadas</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Cuánto se trabajó cada día</h2>
+      <p class="expl">Horas fichadas por día. Los huecos son días sin fichadas: feriados, o días en que
+        nadie marcó INICIO (que es distinto de días sin trabajo, y vale revisarlo).</p>
+      ${curvaHtml(curva)}
+    </div>
+
+    <div class="card">
+      <h2>Cuánto lleva cada producto</h2>
+      <p class="expl">Horas reales de taller por producto. <b>Horas por unidad</b> es el número para cotizar:
+        es lo que de verdad cuesta fabricar uno. Cuando un pedido tiene varios productos distintos, sus horas
+        se reparten a prorrata de las unidades, así que en esos casos el número es aproximado.</p>
+      <table class="grid"><thead><tr><th>Producto</th><th class="num">Pedidos</th><th class="num">Unidades</th>
+        <th class="num">Horas totales</th><th class="num">Horas por unidad</th><th class="num">Venta por hora</th><th style="width:22%"></th></tr></thead>
+      <tbody>${productos.length ? productos.slice(0, 25).map(p => `<tr>
+        <td><b>${esc(p.producto)}</b></td>
+        <td class="num">${p.pedidos}</td><td class="num">${p.unidades}</td>
+        <td class="num">${horas(p.horas)}</td>
+        <td class="num"><b>${horas(p.horasPorUnidad)}</b></td>
+        <td class="num">${p.valorHora ? money(p.valorHora) : '—'}</td>
+        <td><div class="barra" style="width:${Math.max(3, (p.horas / productos[0].horas) * 100)}%"></div></td>
+      </tr>`).join('') : '<tr><td colspan="7" class="vacio">Sin datos en el período.</td></tr>'}</tbody></table>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Cuánto lleva cada proceso</h2>
+        <p class="expl">Dónde se van las horas del taller. <b>Desvío</b> compara lo fichado contra las horas
+          estimadas de esas mismas subtareas: en rojo, los procesos que siempre llevan más de lo que se estima.</p>
+        <table class="grid"><thead><tr><th>Proceso</th><th class="num">Horas</th><th class="num">Veces</th>
+          <th class="num">Promedio</th><th class="num">Desvío</th></tr></thead>
+        <tbody>${procesos.length ? procesos.map(p => `<tr>
+          <td><b>${esc(p.proceso)}</b><div class="muted">${p.pedidos} pedido${p.pedidos === 1 ? '' : 's'} · ${p.tramos} tramos</div></td>
+          <td class="num">${horas(p.horas)}</td><td class="num">${p.veces}</td>
+          <td class="num">${horas(p.promedio)}</td>
+          <td class="num">${p.estimadas ? `<span class="${p.desvio > 0 ? 'pos' : 'neg'}">${p.desvio > 0 ? '+' : ''}${horas(p.desvio)}</span>` : '—'}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="vacio">Sin datos.</td></tr>'}</tbody></table>
+      </div>
+
+      <div class="card">
+        <h2>Horas por operario</h2>
+        <p class="expl">Horas fichadas, en qué se especializa cada uno y el costo real de esa mano de obra
+          (horas × costo/hora del catálogo de operarios). No es una nota de desempeño: alguien que ayuda
+          en todo ficha menos horas seguidas que quien tiene una sola tarea.</p>
+        <table class="grid"><thead><tr><th>Operario</th><th class="num">Horas</th><th class="num">Días</th>
+          <th class="num">H./día</th><th>Más hace</th><th class="num">Costo</th></tr></thead>
+        <tbody>${porOp.filter(o => o.horas > 0).map(o => `<tr>
+          <td><b>${esc(o.nombre)}</b>${o.funcion ? `<div class="muted">${esc(o.funcion)}</div>` : ''}</td>
+          <td class="num">${horas(o.horas)}</td><td class="num">${o.dias}</td>
+          <td class="num">${horas(o.horasPorDia)}</td>
+          <td>${esc(o.especialidad)}</td>
+          <td class="num">${money(o.costo)}</td>
+        </tr>`).join('') || '<tr><td colspan="6" class="vacio">Nadie fichó en el período.</td></tr>'}</tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Cuántos días lleva un pedido</h2>
+      <p class="expl">El plazo se parte en tres porque cada tramo se arregla distinto:
+        <b>espera</b> = desde que se vendió hasta el primer INICIO (falta de material o cola de trabajo),
+        <b>taller</b> = del primer INICIO al último FIN (el trabajo en sí),
+        <b>entrega</b> = del último FIN a la entrega (logística y coordinación con el cliente).
+        Un pedido de 6 horas de trabajo puede tardar 20 días: mirando los tres tramos se ve dónde.</p>
+      <div class="kpis" style="margin-bottom:14px">
+        <div class="kpi"><div class="k">Espera antes de empezar</div><div class="v">${dias(plazos.promedios.espera)}</div></div>
+        <div class="kpi"><div class="k">En el taller</div><div class="v">${dias(plazos.promedios.taller)}</div></div>
+        <div class="kpi"><div class="k">Hasta la entrega</div><div class="v">${dias(plazos.promedios.logistica)}</div></div>
+        <div class="kpi"><div class="k">Plazo total</div><div class="v">${dias(plazos.promedios.total)}</div></div>
+      </div>
+      <table class="grid"><thead><tr><th>Pedido</th><th>Cliente</th><th>Producto</th>
+        <th class="num">Horas</th><th class="num">Espera</th><th class="num">Taller</th>
+        <th class="num">Entrega</th><th class="num">Total</th><th>Puntual</th></tr></thead>
+      <tbody>${plazos.filas.slice(0, 60).map(f => `<tr>
+        <td><a href="/production.html?card=${encodeURIComponent(f.id)}">${esc(f.id)}</a></td>
+        <td><b>${esc(f.cliente)}</b></td>
+        <td>${esc((f.producto || '').slice(0, 46))}</td>
+        <td class="num">${horas(f.horas)}</td>
+        <td class="num">${dias(f.espera)}</td><td class="num">${dias(f.taller)}</td>
+        <td class="num">${dias(f.logistica)}</td><td class="num"><b>${dias(f.total)}</b></td>
+        <td>${f.aTiempo === null ? '<span class="chip">sin dato</span>'
+              : (f.aTiempo ? '<span class="chip ok">a tiempo</span>' : '<span class="chip no">tarde</span>')}</td>
+      </tr>`).join('')}</tbody></table>
+      ${plazos.filas.length > 60 ? `<p class="muted" style="margin-top:8px">Se muestran los 60 pedidos más recientes de ${plazos.filas.length}.</p>` : ''}
+    </div>`;
+ } catch (e) {
+  $('#dash').innerHTML = `<div class="card" style="color:#A33A3A">Error al mostrar las métricas: ${esc(e.message || e)}</div>`;
+  console.error(e);
+ }
+}
+
+// Curva de horas por día. SVG a mano: es una línea, no justifica una librería.
+function curvaHtml(serie) {
+  if (!serie.length) return '<p class="muted">Sin datos.</p>';
+  const W = 900, H = 190, pad = 30;
+  const max = Math.max(1, ...serie.map(p => p.horas));
+  const x = i => pad + (serie.length === 1 ? (W - 2 * pad) / 2 : i * (W - 2 * pad) / (serie.length - 1));
+  const y = v => H - pad - (v / max) * (H - 2 * pad);
+  const barras = serie.map((p, i) => {
+    const ancho = Math.max(2, (W - 2 * pad) / serie.length - 1.5);
+    return `<rect x="${(x(i) - ancho / 2).toFixed(1)}" y="${y(p.horas).toFixed(1)}"
+      width="${ancho.toFixed(1)}" height="${(H - pad - y(p.horas)).toFixed(1)}"
+      fill="${p.horas ? '#0A0A0A' : '#E2E2E0'}" rx="1"><title>${p.fecha}: ${p.horas.toFixed(1)} h</title></rect>`;
+  }).join('');
+  const cada = Math.ceil(serie.length / 12);
+  const etiquetas = serie.map((p, i) => i % cada === 0
+    ? `<text x="${x(i).toFixed(1)}" y="${H - 9}" font-size="9.5" text-anchor="middle" fill="#9AA0A6">${p.fecha.slice(8, 10)}/${p.fecha.slice(5, 7)}</text>`
+    : '').join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}" stroke="#E2E2E0"/>
+    ${barras}${etiquetas}
+    <text x="${pad}" y="17" font-size="10.5" fill="#9AA0A6">máximo ${max.toFixed(1)} h en un día</text></svg>`;
+}
+</script>
+</body>
+</html>

@@ -126,7 +126,7 @@
     <div class="seg" id="viewSeg">
       <button data-v="kanban" class="active">Kanban</button>
       <button data-v="lista">Lista</button>
-      <button data-v="semana">Semana</button>
+      <button data-v="dia">Día</button>
       <button data-v="cal">Calendario</button>
       <button data-v="cola">Listos para producir</button>
     </div>
@@ -138,10 +138,10 @@
 <div id="toast"></div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=6';
-import { requireAuth } from './js/auth.js?v=6';
-import * as data from './js/cirene-data.js?v=6';
-import { money, n, dimsText, arr } from './js/quote-engine.js?v=6';
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth } from './js/auth.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+import { money, n, dimsText, arr } from './js/quote-engine.js?v=7';
 
 const $ = s => document.querySelector(s);
 const toast = (m, err = false) => {
@@ -152,9 +152,11 @@ const toast = (m, err = false) => {
 const fail = (e, ctx) => { console.error('[produccion]', ctx || '', e); toast((ctx ? ctx + ': ' : '') + (e?.message || e), true); };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let stages = [], cards = [], commentCounts = {}, operarios = [], semanas = [];
+let stages = [], cards = [], commentCounts = {}, operarios = [], dias = [], timeLogs = [];
 let view = 'kanban', calMode = 'entrega', calDate = new Date();
-let semanaSel = data.semanaISO();
+// El compromiso de producción es DIARIO: la capacidad y el semáforo se cargan por
+// fecha, no por semana (ver el bloque de semáforo en js/cirene-data.js).
+let fechaSel = data.hoyISO();
 let cronoTimer = null;
 
 $('#view').innerHTML = '<div class="muted" style="padding:30px 6px">Cargando producción…</div>';
@@ -166,9 +168,14 @@ await requireAuth();
 renderNavbar('production');
 try {
   const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado. Probá Reintentar.')), 20000));
-  [stages, cards, operarios, semanas] = await Promise.race([Promise.all([
+  // Las horas realmente trabajadas en un día no están en la tarjeta (que acumula
+  // todo su historial): salen de la bitácora de tiempos. Se traen los últimos dos
+  // meses, que es la ventana que puede mirar el selector de día.
+  [stages, cards, operarios, dias, timeLogs] = await Promise.race([Promise.all([
     data.listStages(), data.listProductionCards(),
-    data.listOperators().catch(() => []), data.listWeeks().catch(() => []),
+    data.listOperators().catch(() => []),
+    data.listDays({ desde: data.sumarDias(data.hoyISO(), -60) }).catch(() => []),
+    data.listTimeLogs({ desde: data.sumarDias(data.hoyISO(), -60), limite: 3000 }).catch(() => []),
   ]), timeout]);
   stages = stages.filter(s => ['produccion', 'finalizado', 'cancelado'].includes(s.category));
 } catch (e) {
@@ -182,7 +189,7 @@ if (cid && cards.find(c => c.id === cid)) openCard(cid);
 
 function render() {
   try {
-    ({ kanban: renderKanban, lista: renderLista, semana: renderSemana, cal: renderCal, cola: renderCola }[view] || renderKanban)();
+    ({ kanban: renderKanban, lista: renderLista, dia: renderDia, cal: renderCal, cola: renderCola }[view] || renderKanban)();
   } catch (e) {
     $('#view').innerHTML = `<div class="kpi" style="color:#A33A3A;padding:18px">Error al mostrar el tablero: ${esc(e.message || e)}
       <br><button class="btn" style="margin-top:10px" onclick="location.reload()">Reintentar</button></div>`;
@@ -206,8 +213,8 @@ function renderTablero() {
   const horas = enCurso.reduce((s, c) => s + Math.max(0, n(c.horas_estimadas) - n(c.horas_reales)), 0);
   const tarde = enCurso.filter(atrasado);
   const valor = enCurso.reduce((s, c) => s + n(c.total_venta), 0);
-  const week = semanas.find(w => w.semana === semanaSel);
-  const s = data.semaforoSemana({ semana: semanaSel, week, cards });
+  const day = dias.find(d => String(d.fecha).slice(0, 10) === fechaSel);
+  const s = data.semaforoDia({ fecha: fechaSel, day, cards, timeLogs });
   const sem = data.SEMAFORO[s.estado];
   const pctPlan = s.real ? Math.min(100, (s.planificadas / s.real) * 100) : (s.planificadas ? 100 : 0);
 
@@ -222,16 +229,34 @@ function renderTablero() {
       <div class="s">venta de los pedidos en curso</div></div>
     <div class="semaforo">
       <div class="top"><span>${sem.emoji}</span><span>${sem.label}</span>
-        <span class="muted" style="font-weight:500;margin-left:auto">${esc(semanaSel)} · ${esc(data.etiquetaSemana(semanaSel))}</span></div>
+        <span class="muted" style="font-weight:500;margin-left:auto;text-transform:capitalize">${esc(data.etiquetaDia(fechaSel))}</span></div>
       <div class="s muted">${sem.ayuda}</div>
       <div class="bars">
-        <div class="lin"><span>Planificado ${s.planificadas.toFixed(1)} h</span><span>Capacidad real ${s.real.toFixed(1)} h</span></div>
+        <div class="lin"><span>Planificado ${s.planificadas.toFixed(1)} h</span><span>Capacidad del día ${s.real.toFixed(1)} h</span></div>
         <div class="bar"><i style="width:${pctPlan}%;background:${sem.color}"></i></div>
-        <div class="lin"><span>Realizado ${s.realizadas.toFixed(1)} h${s.adicional > 0 ? ` · <b>+${s.adicional.toFixed(1)} h adicional</b>` : ''}</span>
+        <div class="lin"><span>Fichado hoy ${s.realizadas.toFixed(1)} h${s.adicional > 0 ? ` · <b>+${s.adicional.toFixed(1)} h adicional</b>` : ''}</span>
           <span>Cumplimiento ${s.cumplimiento.toFixed(0)}%</span></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <input type="date" id="t-fecha" value="${fechaSel}" style="padding:4px 7px;border:1px solid var(--border);border-radius:7px;font:inherit;font-size:12px">
+        <button class="btn sm" id="t-ayer">‹ Día anterior</button>
+        <button class="btn sm" id="t-hoy">Hoy</button>
+        <button class="btn sm" id="t-manana">Día siguiente ›</button>
+        <button class="btn sm" id="t-cap" style="margin-left:auto">Cargar capacidad del día</button>
       </div>
     </div>
   </div>`;
+
+  const ir = (f) => { fechaSel = f; renderTablero(); if (view === 'dia' || view === 'cola') render(); };
+  $('#t-fecha').onchange = e => ir(e.target.value || data.hoyISO());
+  $('#t-ayer').onclick = () => ir(data.sumarDias(fechaSel, -1));
+  $('#t-hoy').onclick = () => ir(data.hoyISO());
+  $('#t-manana').onclick = () => ir(data.sumarDias(fechaSel, 1));
+  $('#t-cap').onclick = () => {
+    view = 'dia';
+    document.querySelectorAll('#viewSeg button').forEach(x => x.classList.toggle('active', x.dataset.v === 'dia'));
+    render();
+  };
 }
 
 /* ── KANBAN ── */
@@ -252,7 +277,7 @@ function tkHtml(c) {
       <span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></div>
     <div class="mt"><span>${c.due_date ? '📅 ' + c.due_date : ''} ${esc(c.entrega || '')}</span>
       <span>${commentCounts[c.id] ? '💬 ' + commentCounts[c.id] : ''}</span></div>
-    <div class="mt"><span>${c.semana_produccion ? `<span class="chip">${esc(c.semana_produccion)}</span>` : ''}
+    <div class="mt"><span>${c.production_date ? `<span class="chip">🔧 ${esc(data.etiquetaDiaCorta(c.production_date))}</span>` : ''}
       ${n(c.horas_estimadas) ? `<span class="chip">${n(c.horas_estimadas)} h</span>` : ''}
       ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</span></div>
   </div>`;
@@ -282,80 +307,115 @@ function renderLista() {
     <td>${esc(arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', ') || c.description || '')}</td>
     <td class="num">${noPrice(c) ? '<span class="warn">⚠ sin precio</span>' : money(c.total_venta)}</td>
     <td><span class="pay pay-${c.estado_pago || 'NO'}">${c.estado_pago || 'NO'}</span></td>
-    <td>${esc(c.semana_produccion || '—')}</td>
+    <td>${c.production_date ? esc(data.etiquetaDiaCorta(c.production_date)) : '—'}</td>
     <td class="num">${n(c.horas_estimadas)} / ${n(c.horas_reales)} h</td>
     <td>${c.due_date || ''} ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</td>
-    <td>${arr(c.attachments).length ? '📎' + arr(c.attachments).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td></tr>`;
+    <td>${arr(c.attachments).length ? '📎' + arr(c.attachments).length : ''} ${commentCounts[c.id] ? '💬' + commentCounts[c.id] : ''}</td>
+    <td style="text-align:right"><button class="btn sm" data-etiq="${c.id}" title="Imprimir la etiqueta térmica">🖨</button></td></tr>`;
   let html = '';
   for (const st of stages) {
     const cs = cards.filter(c => (c.stage_key || 'procesar') === st.key);
     if (!cs.length) continue;
     html += `<div class="sect"><div class="sect-h">${esc(st.label)} <span class="cnt">${cs.length}</span></div>
       <table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Total</th><th>Pago</th>
-        <th>Semana</th><th class="num">Horas est./real</th><th>Entrega</th><th></th></tr></thead>
+        <th>Día de fabricación</th><th class="num">Horas est./real</th><th>Entrega</th><th></th><th></th></tr></thead>
       <tbody>${cs.map(rowHtml).join('')}</tbody></table></div>`;
   }
   $('#view').innerHTML = html || '<p class="muted">Sin trabajos.</p>';
-  $('#view').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
+  $('#view').querySelectorAll('tbody tr').forEach(tr => tr.onclick = e => { if (e.target.tagName !== 'BUTTON') openCard(tr.dataset.id); });
+  $('#view').querySelectorAll('[data-etiq]').forEach(b => b.onclick = e => { e.stopPropagation(); imprimirEtiqueta(b.dataset.etiq); });
 }
 
-/* ── SEMANA: planificación + capacidad ──
-   Acá se carga la capacidad real de la semana (cuánta gente hubo y cuánto se
-   pudo trabajar de verdad) y se ve si el plan entra o hay que reprogramar. */
-function renderSemana() {
-  const week = semanas.find(w => w.semana === semanaSel) || { semana: semanaSel };
-  const s = data.semaforoSemana({ semana: semanaSel, week, cards });
+// Etiqueta térmica: se abre en una ventana chica que se imprime sola y se cierra.
+// Va en su propia página (etiqueta.html) porque el CSS de impresión es
+// incompatible con el de la app: 80 mm de ancho, sin márgenes y sin navbar.
+function imprimirEtiqueta(id) {
+  window.open('/etiqueta.html?card=' + encodeURIComponent(id), 'etiqueta_' + id,
+    'width=420,height=680,menubar=no,toolbar=no');
+}
+
+/* ── DÍA: compromiso, capacidad y semáforo ──
+   El semáforo es DIARIO. Antes era semanal y promediaba: un lunes con tres
+   faltas y un viernes completo daban "semana verde" mientras el lunes se caían
+   las entregas. Acá se carga cuánta gente hubo y cuántas horas hubo de verdad
+   ESE día, y el semáforo compara eso contra lo planificado para ese día.
+
+   El día de un pedido es su `production_date` (fecha de fabricación). Al
+   planificar también se guarda la semana ISO, así los agregados semanales y el
+   histórico de `production_weeks` siguen sirviendo. */
+function renderDia() {
+  const day = dias.find(d => String(d.fecha).slice(0, 10) === fechaSel) || { fecha: fechaSel };
+  const s = data.semaforoDia({ fecha: fechaSel, day, cards, timeLogs });
   const sem = data.SEMAFORO[s.estado];
-  const opciones = data.semanasAlrededor(10, -2);
-  if (!opciones.includes(semanaSel)) opciones.unshift(semanaSel);
+  const sinDia = cards.filter(c => activo(c) && !c.production_date);
+  const opciones = data.diasAlrededor(15, -4);
+  if (!opciones.includes(fechaSel)) opciones.unshift(fechaSel);
+
+  // Quién fichó ese día: es el control de que la capacidad cargada a mano se
+  // parezca a la realidad.
+  const logsDia = timeLogs.filter(l => String(l.started_at || '').slice(0, 10) === fechaSel);
+  const porOperario = {};
+  logsDia.forEach(l => { if (l.operator_id) porOperario[l.operator_id] = (porOperario[l.operator_id] || 0) + n(l.segundos); });
+  const fichadas = Object.entries(porOperario)
+    .map(([id, segs]) => ({ nombre: (operarios.find(o => o.id === id) || {}).nombre || 'Operario', horas: segs / 3600 }))
+    .sort((a, b) => b.horas - a.horas);
 
   $('#view').innerHTML = `
     <div class="calhd">
-      <label class="muted">Semana</label>
-      <select id="w-sel" class="btn" style="font-weight:500">${opciones.map(w => `<option value="${w}" ${w === semanaSel ? 'selected' : ''}>${w} · ${data.etiquetaSemana(w)}</option>`).join('')}</select>
+      <label class="muted">Día</label>
+      <select id="d-sel" class="btn" style="font-weight:500">${opciones.map(f => `<option value="${f}" ${f === fechaSel ? 'selected' : ''}>${data.etiquetaDiaCorta(f)}${f === data.hoyISO() ? ' · hoy' : ''}</option>`).join('')}</select>
       <span class="chip">${sem.emoji} ${esc(sem.label)}</span>
+      ${data.esFinDeSemana(fechaSel) ? '<span class="chip">fin de semana</span>' : ''}
+      <span class="muted">Semana ${esc(data.semanaISO(new Date(fechaSel + 'T12:00:00')))}</span>
     </div>
 
     <div class="kpi" style="margin-bottom:12px">
-      <div class="blabel">Capacidad de la semana</div>
+      <div class="blabel">Capacidad de este día</div>
       <div class="row3">
-        <div class="fg"><label>Capacidad prevista (h)</label><input id="w-prev" type="number" step="0.5" value="${n(week.capacidad_prevista_horas)}"></div>
-        <div class="fg"><label>Capacidad disponible real (h)</label><input id="w-real" type="number" step="0.5" value="${n(week.capacidad_real_horas)}"></div>
-        <div class="fg"><label>Semáforo</label><select id="w-sem">
+        <div class="fg"><label>Capacidad prevista (h)</label><input id="d-prev" type="number" step="0.5" value="${n(day.capacidad_prevista_horas)}"></div>
+        <div class="fg"><label>Capacidad real del día (h)</label><input id="d-real" type="number" step="0.5" value="${n(day.capacidad_real_horas)}"></div>
+        <div class="fg"><label>Semáforo</label><select id="d-sem">
           <option value="">Automático (${sem.label})</option>
-          <option value="verde" ${week.semaforo_manual === 'verde' ? 'selected' : ''}>🟢 Capacidad normal</option>
-          <option value="amarillo" ${week.semaforo_manual === 'amarillo' ? 'selected' : ''}>🟡 Capacidad reducida</option>
-          <option value="rojo" ${week.semaforo_manual === 'rojo' ? 'selected' : ''}>🔴 Capacidad crítica</option>
+          <option value="verde" ${day.semaforo_manual === 'verde' ? 'selected' : ''}>🟢 Capacidad normal</option>
+          <option value="amarillo" ${day.semaforo_manual === 'amarillo' ? 'selected' : ''}>🟡 Capacidad reducida</option>
+          <option value="rojo" ${day.semaforo_manual === 'rojo' ? 'selected' : ''}>🔴 Capacidad crítica</option>
         </select></div>
       </div>
       <div class="row3">
-        <div class="fg"><label>Operarios previstos</label><input id="w-op" type="number" min="0" value="${n(week.operarios_previstos)}"></div>
-        <div class="fg"><label>Operarios reales</label><input id="w-opr" type="number" min="0" value="${n(week.operarios_reales)}"></div>
-        <div class="fg"><label>Notas de la semana</label><input id="w-notas" value="${esc(week.notas)}" placeholder="Faltas, feriados, imprevistos…"></div>
+        <div class="fg"><label>Operarios previstos</label><input id="d-op" type="number" min="0" value="${n(day.operarios_previstos)}"></div>
+        <div class="fg"><label>Operarios que vinieron</label><input id="d-opr" type="number" min="0" value="${n(day.operarios_reales)}"></div>
+        <div class="fg"><label>Notas del día</label><input id="d-notas" value="${esc(day.notas)}" placeholder="Faltas, feriado, corte de luz, lluvia…"></div>
       </div>
-      <button class="btn primary" id="w-save">Guardar capacidad</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn primary" id="d-save">Guardar capacidad del día</button>
+        <button class="btn sm" id="d-copiar">Copiar la capacidad de ayer</button>
+        ${fichadas.length ? `<span class="muted">Fichado por ${fichadas.length} operario${fichadas.length === 1 ? '' : 's'}: ${fichadas.map(f => `${esc(f.nombre)} ${f.horas.toFixed(1)} h`).join(' · ')}</span>` : '<span class="muted">Todavía nadie fichó en este día.</span>'}
+      </div>
     </div>
 
     <div class="kpis">
-      <div class="kpi"><div class="k">Capacidad prevista</div><div class="v">${s.prevista.toFixed(1)} h</div></div>
-      <div class="kpi"><div class="k">Capacidad real</div><div class="v">${s.real.toFixed(1)} h</div></div>
+      <div class="kpi"><div class="k">Capacidad prevista</div><div class="v">${s.prevista.toFixed(1)} h</div>
+        <div class="s">${s.operariosPrevistos || '—'} operarios previstos</div></div>
+      <div class="kpi"><div class="k">Capacidad real</div><div class="v">${s.real.toFixed(1)} h</div>
+        <div class="s">${s.operariosReales || '—'} operarios presentes</div></div>
       <div class="kpi"><div class="k">Horas planificadas</div><div class="v">${s.planificadas.toFixed(1)} h</div>
         <div class="s">${s.holgura >= 0 ? `sobran ${s.holgura.toFixed(1)} h` : `faltan ${(-s.holgura).toFixed(1)} h`}</div></div>
-      <div class="kpi"><div class="k">Horas realizadas</div><div class="v">${s.realizadas.toFixed(1)} h</div>
-        <div class="s">${s.adicional > 0 ? `+${s.adicional.toFixed(1)} h de producción adicional` : 'sin producción adicional'}</div></div>
-      <div class="kpi"><div class="k">Cumplimiento del plan</div><div class="v">${s.cumplimiento.toFixed(0)}%</div>
-        <div class="s">${s.terminadas} de ${s.total} trabajos planificados</div></div>
+      <div class="kpi"><div class="k">Horas fichadas</div><div class="v">${s.realizadas.toFixed(1)} h</div>
+        <div class="s">${s.adicional > 0 ? `+${s.adicional.toFixed(1)} h de producción adicional` : 'según lo planificado'}</div></div>
+      <div class="kpi"><div class="k">Trabajos terminados</div><div class="v">${s.terminadas} / ${s.total}</div>
+        <div class="s">cumplimiento ${s.cumplimiento.toFixed(0)}%</div></div>
       <div class="kpi ${s.atrasados.length ? 'alert' : ''}"><div class="k">Pedidos atrasados</div><div class="v">${s.atrasados.length}</div></div>
     </div>
 
     <p class="muted" style="margin:4px 0 12px">
-      Un cumplimiento bajo no significa bajo rendimiento: hay que leerlo contra la capacidad real de la semana
+      Un cumplimiento bajo no significa bajo rendimiento: hay que leerlo contra la capacidad real del día
       (${s.real.toFixed(1)} h disponibles frente a ${s.planificadas.toFixed(1)} h planificadas).
+      Las horas fichadas salen de los INICIO/FIN que marcan los operarios en <a href="/taller.html" target="_blank">la pantalla del taller</a>.
     </p>
 
-    <div class="sect"><div class="sect-h">Pedidos de la semana <span class="cnt">${s.cards.length}</span></div>
+    <div class="sect"><div class="sect-h">Pedidos de este día <span class="cnt">${s.cards.length}</span></div>
       ${s.cards.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Etapa</th><th class="num">Horas est.</th>
-        <th class="num">Horas reales</th><th>Objetivo interno</th><th>Entrega</th><th>Responsable</th></tr></thead>
+        <th class="num">Horas reales</th><th>Objetivo interno</th><th>Entrega</th><th>Responsable</th><th></th></tr></thead>
         <tbody>${s.cards.map(c => `<tr data-id="${c.id}">
           <td><b>${esc(c.client_name || '—')}</b>${c.priority === 'urgente' ? ' <span class="chip urg">urgente</span>' : ''}</td>
           <td>${esc((stages.find(x => x.key === c.stage_key) || {}).label || c.stage_key)}</td>
@@ -363,41 +423,84 @@ function renderSemana() {
           <td>${esc(c.fecha_objetivo_interna || '—')}</td>
           <td>${esc(c.due_date || '—')} ${atrasado(c) ? '<span class="chip urg">atrasado</span>' : ''}</td>
           <td>${esc((operarios.find(o => o.id === c.responsable_operator_id) || {}).nombre || '—')}</td>
-        </tr>`).join('')}</tbody></table>` : '<p class="muted">Todavía no hay pedidos planificados para esta semana.</p>'}
+          <td style="text-align:right"><button class="btn sm" data-mover="${c.id}" title="Pasarlo al día siguiente">→ mañana</button></td>
+        </tr>`).join('')}</tbody></table>` : '<p class="muted">Todavía no hay pedidos planificados para este día.</p>'}
     </div>
+
+    ${sinDia.length ? `<div class="sect"><div class="sect-h">Sin día asignado <span class="cnt">${sinDia.length}</span></div>
+      <table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Horas est.</th><th>Entrega</th><th></th></tr></thead>
+      <tbody>${sinDia.slice(0, 40).map(c => `<tr data-id="${c.id}">
+        <td><b>${esc(c.client_name || '—')}</b></td>
+        <td>${esc(arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', '))}</td>
+        <td class="num">${n(c.horas_estimadas)}</td>
+        <td>${esc(c.due_date || '—')}</td>
+        <td style="text-align:right"><button class="btn sm" data-poner="${c.id}">Poner en este día</button></td>
+      </tr>`).join('')}</tbody></table></div>` : ''}
 
     ${s.atrasados.length ? `<div class="sect"><div class="sect-h" style="border-color:#A33A3A">Necesitan reprogramación <span class="cnt">${s.atrasados.length}</span></div>
       <table class="grid"><tbody>${s.atrasados.map(c => `<tr data-id="${c.id}">
         <td><b>${esc(c.client_name)}</b></td><td>${esc(c.fecha_objetivo_interna || c.due_date)}</td>
         <td class="num">${n(c.horas_estimadas)} h</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 
-  $('#w-sel').onchange = e => { semanaSel = e.target.value; renderTablero(); renderSemana(); };
-  $('#w-save').onclick = async () => {
-    const btn = $('#w-save'); btn.disabled = true;
-    try {
-      const saved = await data.upsertWeek({
-        semana: semanaSel,
-        capacidad_prevista_horas: n($('#w-prev').value), capacidad_real_horas: n($('#w-real').value),
-        operarios_previstos: parseInt($('#w-op').value, 10) || 0, operarios_reales: parseInt($('#w-opr').value, 10) || 0,
-        semaforo_manual: $('#w-sem').value || null, notas: $('#w-notas').value || null,
-      });
-      semanas = [saved, ...semanas.filter(w => w.semana !== saved.semana)];
-      renderTablero(); renderSemana(); toast('Capacidad guardada');
-    } catch (e) { fail(e, 'No se pudo guardar'); }
-    finally { btn.disabled = false; }
+  $('#d-sel').onchange = e => { fechaSel = e.target.value; renderTablero(); renderDia(); };
+  $('#d-save').onclick = () => guardarDia({
+    capacidad_prevista_horas: n($('#d-prev').value), capacidad_real_horas: n($('#d-real').value),
+    operarios_previstos: parseInt($('#d-op').value, 10) || 0, operarios_reales: parseInt($('#d-opr').value, 10) || 0,
+    semaforo_manual: $('#d-sem').value || null, notas: $('#d-notas').value || null,
+  });
+  // Copiar de ayer: la capacidad casi nunca cambia de un día al otro, y cargarla
+  // a mano todos los días es la forma más rápida de que nadie la cargue.
+  $('#d-copiar').onclick = () => {
+    const ayer = dias.find(d => String(d.fecha).slice(0, 10) === data.sumarDias(fechaSel, -1));
+    if (!ayer) { toast('Ayer no tiene capacidad cargada.', true); return; }
+    $('#d-prev').value = n(ayer.capacidad_prevista_horas);
+    $('#d-real').value = n(ayer.capacidad_real_horas);
+    $('#d-op').value = n(ayer.operarios_previstos);
+    $('#d-opr').value = n(ayer.operarios_reales);
+    toast('Copiado de ayer. Revisá y guardá.');
   };
-  $('#view').querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = () => openCard(tr.dataset.id));
+  $('#view').querySelectorAll('[data-poner]').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    await planificarEnDia(b.dataset.poner, fechaSel);
+    renderTablero(); renderDia();
+  });
+  $('#view').querySelectorAll('[data-mover]').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    await planificarEnDia(b.dataset.mover, data.sumarDias(fechaSel, 1));
+    renderTablero(); renderDia();
+  });
+  $('#view').querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = e => { if (e.target.tagName !== 'BUTTON') openCard(tr.dataset.id); });
+}
+
+async function guardarDia(patch) {
+  const btn = $('#d-save');
+  if (btn) btn.disabled = true;
+  try {
+    const saved = await data.upsertDay({ fecha: fechaSel, ...patch });
+    dias = [saved, ...dias.filter(d => String(d.fecha).slice(0, 10) !== String(saved.fecha).slice(0, 10))];
+    renderTablero(); renderDia(); toast('Capacidad del día guardada');
+  } catch (e) { fail(e, 'No se pudo guardar'); }
+  finally { if ($('#d-save')) $('#d-save').disabled = false; }
+}
+
+// Planificar = fijar el día de fabricación. La semana se guarda derivada, para
+// que los agregados semanales y el histórico sigan cuadrando sin cargarla aparte.
+async function planificarEnDia(id, fecha) {
+  await patchCard(id, {
+    production_date: fecha,
+    semana_produccion: data.semanaISO(new Date(fecha + 'T12:00:00')),
+  }, 'Planificado para el ' + data.etiquetaDiaCorta(fecha));
 }
 
 /* ── COLA: listos para producir ──
-   Trabajos aprobados, con información y materiales, que todavía no están dentro
-   del compromiso de la semana. Si se termina antes, se toma el siguiente. */
+   Trabajos aprobados, con información y materiales, que todavía no tienen día
+   asignado. Si el día se termina antes, el gerente toma el siguiente. */
 function renderCola() {
-  const enCola = cards.filter(c => c.listo_para_producir && activo(c) && !c.semana_produccion);
+  const enCola = cards.filter(c => c.listo_para_producir && activo(c) && !c.production_date);
   const candidatos = cards.filter(c => !c.listo_para_producir && activo(c));
   $('#view').innerHTML = `
-    <p class="muted" style="margin-bottom:12px">Pedidos aprobados, con diseño y materiales definidos, que todavía no están comprometidos en una semana.
-      Si la producción planificada se termina antes, el gerente toma el siguiente de esta lista.</p>
+    <p class="muted" style="margin-bottom:12px">Pedidos aprobados, con diseño y materiales definidos, que todavía no tienen día de fabricación.
+      Si la producción del día se termina antes, el gerente toma el siguiente de esta lista.</p>
     <div class="sect"><div class="sect-h">Listos para producir <span class="cnt">${enCola.length}</span></div>
       ${enCola.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Producto</th><th class="num">Horas est.</th>
         <th class="num">Valor</th><th>Entrega pedida</th><th></th></tr></thead><tbody>
@@ -406,15 +509,15 @@ function renderCola() {
           <td>${esc(arr(c.product_lines).map(l => l.producto).filter(Boolean).join(', '))}</td>
           <td class="num">${n(c.horas_estimadas)}</td><td class="num">${money(c.total_venta)}</td>
           <td>${esc(c.fecha_solicitada_cliente || c.due_date || '—')}</td>
-          <td style="text-align:right"><button class="btn sm" data-plan="${c.id}">Planificar en ${esc(semanaSel)}</button></td>
+          <td style="text-align:right"><button class="btn sm" data-plan="${c.id}">Planificar el ${esc(data.etiquetaDiaCorta(fechaSel))}</button></td>
         </tr>`).join('')}</tbody></table>` : '<p class="muted">La cola está vacía.</p>'}
     </div>
     <div class="sect"><div class="sect-h">Otros pedidos en curso <span class="cnt">${candidatos.length}</span></div>
-      ${candidatos.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Etapa</th><th>Semana</th><th></th></tr></thead><tbody>
+      ${candidatos.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Etapa</th><th>Día de fabricación</th><th></th></tr></thead><tbody>
         ${candidatos.map(c => `<tr data-id="${c.id}">
           <td><b>${esc(c.client_name || '—')}</b></td>
           <td>${esc((stages.find(x => x.key === c.stage_key) || {}).label || c.stage_key)}</td>
-          <td>${esc(c.semana_produccion || '—')}</td>
+          <td>${c.production_date ? esc(data.etiquetaDiaCorta(c.production_date)) : '—'}</td>
           <td style="text-align:right"><button class="btn sm" data-cola="${c.id}">Marcar listo</button></td>
         </tr>`).join('')}</tbody></table>` : '<p class="muted">Sin pedidos.</p>'}
     </div>`;
@@ -424,7 +527,7 @@ function renderCola() {
     renderCola();
   });
   $('#view').querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => {
-    await patchCard(b.dataset.plan, { semana_produccion: semanaSel }, 'Planificado en ' + semanaSel);
+    await planificarEnDia(b.dataset.plan, fechaSel);
     renderTablero(); renderCola();
   });
 }
@@ -486,8 +589,6 @@ async function openCard(id) {
   const c = cards.find(x => x.id === id); if (!c) return;
   const lines = arr(c.product_lines);
   const opts = (sel) => operarios.map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
-  const semOpts = data.semanasAlrededor(12, -3);
-  if (c.semana_produccion && !semOpts.includes(c.semana_produccion)) semOpts.unshift(c.semana_produccion);
 
   $('#modal').innerHTML = `<h2>${esc(c.client_name || 'Trabajo')}</h2>
     <div class="sub">${esc(c.id)} ${c.quote_id ? '· ' + esc(c.quote_id) : ''} · ${esc(c.vendor || '')}</div>
@@ -522,9 +623,8 @@ async function openCard(id) {
     <div class="bloque">
       <label class="blabel">Planificación</label>
       <div class="row3">
-        <div class="fg"><label>Semana de producción</label><select id="e-sem">
-          <option value="">— sin planificar —</option>
-          ${semOpts.map(w => `<option value="${w}" ${w === c.semana_produccion ? 'selected' : ''}>${w} · ${data.etiquetaSemana(w)}</option>`).join('')}</select></div>
+        <div class="fg"><label>Día de fabricación</label><input id="e-dia" type="date" value="${esc(c.production_date)}">
+          <div class="muted" style="font-size:11px;margin-top:3px">El compromiso es por día: de acá sale el semáforo${c.production_date ? ' · semana ' + esc(data.semanaISO(new Date(String(c.production_date).slice(0, 10) + 'T12:00:00'))) : ''}</div></div>
         <div class="fg"><label>Horas estimadas</label><input id="e-hest" type="number" step="0.5" value="${n(c.horas_estimadas)}"></div>
         <div class="fg"><label>Prioridad</label><select id="e-prio">
           ${['baja', 'normal', 'urgente'].map(p => `<option value="${p}" ${(c.priority || 'normal') === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
@@ -543,11 +643,12 @@ async function openCard(id) {
       </div>
       <div class="row2">
         <div class="fg"><label>Fecha comprometida de entrega</label><input id="e-due" type="date" value="${esc(c.due_date)}"></div>
-        <div class="fg"><label>Fecha de fabricación</label><input id="e-prod" type="date" value="${esc(c.production_date)}"></div>
+        <div class="fg" style="display:flex;align-items:flex-end"><span class="muted">Horas fichadas por los operarios: <b>${n(c.horas_reales)} h</b></span></div>
       </div>
     </div>
 
     <div class="mact"><button class="btn primary" id="e-save">Guardar</button>
+      <button class="btn" id="e-etiq">🖨 Etiqueta para la orden</button>
       <button class="btn sm" id="e-close" style="margin-left:auto">Cerrar</button></div>
 
     <div class="bloque">
@@ -588,14 +689,19 @@ async function openCard(id) {
     </div>`;
   $('#ov').classList.add('show');
   $('#e-close').onclick = cerrar;
+  $('#e-etiq').onclick = () => imprimirEtiqueta(id);
   $('#e-save').onclick = async () => {
     const patch = {
       id, total_venta: n($('#e-total').value), estado_pago: $('#e-pago').value,
       description: $('#e-desc').value || null, client_phone_e164: $('#e-tel').value || null,
       direccion: $('#e-dir').value || null, entrega: $('#e-ent').value || null,
-      due_date: $('#e-due').value || null, production_date: $('#e-prod').value || null,
+      due_date: $('#e-due').value || null,
       stage_key: $('#e-stage').value,
-      semana_produccion: $('#e-sem').value || null, horas_estimadas: n($('#e-hest').value),
+      // La semana se DERIVA del día: es un dato de agrupación, no algo que haya
+      // que cargar aparte (cargarlo dos veces era la forma de que no coincidieran).
+      production_date: $('#e-dia').value || null,
+      semana_produccion: $('#e-dia').value ? data.semanaISO(new Date($('#e-dia').value + 'T12:00:00')) : null,
+      horas_estimadas: n($('#e-hest').value),
       priority: $('#e-prio').value, responsable_operator_id: $('#e-resp').value || null,
       listo_para_producir: $('#e-cola').checked,
       fecha_solicitada_cliente: $('#e-fsol').value || null,

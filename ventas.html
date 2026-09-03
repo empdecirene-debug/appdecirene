@@ -29,6 +29,14 @@
   td.num, th.num { text-align: right; }
   .bar { height: 9px; background: #0A0A0A; border-radius: 5px; }
   .muted { color: var(--tinta-3); font-size: 12px; }
+  .vsel { padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; font: inherit;
+    font-size: 13px; font-weight: 600; background: #fff; color: var(--tinta); max-width: 230px; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    background: var(--surface-3); color: var(--tinta-2); }
+  .chip.ok { background: #E1F5EE; color: #1F6B45; } .chip.no { background: #FDECEE; color: #A33A3A; }
+  .chip.warn { background: #FAEFD6; color: #8A6D1B; }
+  .rank { display: flex; align-items: baseline; gap: 8px; }
+  .rank b { font-size: 30px; font-family: 'Raleway'; }
 </style>
 </head>
 <body>
@@ -36,28 +44,36 @@
 <div class="wrap">
   <div class="hd">
     <h1 style="font-family:'Raleway'">Ventas</h1>
-    <div class="seg" id="period">
-      <button data-p="1m" class="active">Este mes</button>
-      <button data-p="3m">3 meses</button>
-      <button data-p="6m">6 meses</button>
-      <button data-p="ytd">Año</button>
-      <button data-p="all">Todo</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label class="muted" for="vendSel">Panel</label>
+      <select id="vendSel" class="vsel"><option value="">Global (todo el equipo)</option></select>
+      <div class="seg" id="period">
+        <button data-p="1m" class="active">Este mes</button>
+        <button data-p="3m">3 meses</button>
+        <button data-p="6m">6 meses</button>
+        <button data-p="ytd">Año</button>
+        <button data-p="all">Todo</button>
+      </div>
     </div>
   </div>
   <div id="dash"><div class="card">Cargando…</div></div>
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=6';
-import { requireAuth } from './js/auth.js?v=6';
-import * as data from './js/cirene-data.js?v=6';
-import { money, pct, n, arr as lista } from './js/quote-engine.js?v=6';
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth } from './js/auth.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+import { money, pct, n, arr as lista } from './js/quote-engine.js?v=7';
 
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let cards = [], quotes = [], payments = [], leads = [], stages = [], sales = [], clientes = [];
 let period = '1m';
+// Panel activo: '' = global, o el nombre del vendedor. Cada vendedor mira lo suyo
+// sin tener que filtrar la tabla del equipo con el dedo en la pantalla.
+let vendedorSel = '';
+let miNombre = '';
 
 await requireAuth();
 renderNavbar('ventas');
@@ -65,6 +81,7 @@ document.querySelectorAll('#period button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#period button').forEach(x => x.classList.toggle('active', x === b));
   period = b.dataset.p; render();
 });
+$('#vendSel').onchange = e => { vendedorSel = e.target.value; render(); };
 try {
   const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('La carga está demorando demasiado (timeout).')), 15000));
   [cards, quotes, payments, leads, stages, sales, clientes] = await Promise.race([Promise.all([
@@ -76,6 +93,8 @@ try {
   $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">No se pudo cargar Ventas.<br>${esc(e.message || e)}<br><button onclick="location.reload()" style="margin-top:8px;padding:7px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer">Reintentar</button></div>`;
   throw e;
 }
+try { miNombre = (await data.currentVendorName()) || ''; } catch {}
+poblarVendedores();
 render();
 
 function lastMonths(k) { const arr = []; const d = new Date(); for (let i = k - 1; i >= 0; i--) { const dd = new Date(d.getFullYear(), d.getMonth() - i, 1); arr.push(dd.toISOString().slice(0, 7)); } return arr; }
@@ -92,7 +111,32 @@ function periodMonths(p) {
 function cardMonth(c) { return c.billing_month || (c.created_at || '').slice(0, 7); }
 function monthOf(d) { return (d || '').slice(0, 7); }
 
+// Todos los vendedores que aparecen en algún lado (lead, cotización o venta):
+// si alguien dejó la empresa, su historial sigue siendo consultable.
+function listaVendedores() {
+  return [...new Set([
+    ...leads.map(l => l.vendor), ...quotes.map(q => q.vendedor),
+    ...sales.map(s => s.vendedor), ...cards.map(c => c.vendor),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+}
+function poblarVendedores() {
+  const vs = listaVendedores();
+  $('#vendSel').innerHTML = '<option value="">Global (todo el equipo)</option>' +
+    vs.map(v => `<option value="${esc(v)}">${esc(v)}${v === miNombre ? ' (yo)' : ''}</option>`).join('');
+  // Un comercial entra a ver SU panel: es lo que va a mirar el 90% de las veces.
+  // Dirección y administración entran al global, que es lo que ellos miran.
+  if (miNombre && vs.includes(miNombre)) {
+    vendedorSel = miNombre;
+    $('#vendSel').value = miNombre;
+  }
+}
+
 function render() {
+  if (vendedorSel) renderVendedor();
+  else renderGlobal();
+}
+
+function renderGlobal() {
  try {
   const months = periodMonths(period);
   const inP = m => months === null || months.includes(m);
@@ -167,11 +211,12 @@ function render() {
         <div class="card"><h2>Estadísticas por vendedor</h2>
           <table class="grid"><thead><tr><th>Vendedor</th><th class="num">Leads</th><th class="num">Cotiz.</th>
             <th class="num">Ganados</th><th class="num">Conv.</th><th class="num">Vendido</th><th class="num">Ticket</th></tr></thead>
-          <tbody>${statsVend.map(s => `<tr><td><b>${esc(s.v)}</b></td>
+          <tbody>${statsVend.map(s => `<tr data-v="${esc(s.v)}" style="cursor:pointer"><td><b>${esc(s.v)}</b></td>
             <td class="num">${s.leads}</td><td class="num">${s.cot}</td><td class="num">${s.ganados}</td>
             <td class="num">${pct(s.conv)}</td><td class="num">${money(s.monto)}</td><td class="num">${money(s.ticket)}</td>
           </tr>`).join('') || '<tr><td colspan="7" class="muted">Sin datos en el período.</td></tr>'}</tbody></table>
-          <p class="muted" style="margin-top:8px">La conversión compara los leads del período con las ventas confirmadas del mismo vendedor.</p>
+          <p class="muted" style="margin-top:8px">La conversión compara los leads del período con las ventas confirmadas del mismo vendedor.
+            Tocá una fila para abrir el panel de ese vendedor.</p>
         </div>
         <div class="card"><h2>Ventas por vendedor (facturación de trabajos)</h2>${barList(vendArr, money)}</div>
       </div>
@@ -191,7 +236,171 @@ function render() {
           <tbody>${prodArr.map(([p, q]) => `<tr><td>${esc(p)}</td><td class="num">${q}</td></tr>`).join('') || '<tr><td class="muted">Sin datos.</td></tr>'}</tbody></table></div>
       </div>
     </div>`;
+  $('#dash').querySelectorAll('tr[data-v]').forEach(tr => tr.onclick = () => {
+    vendedorSel = tr.dataset.v;
+    $('#vendSel').value = vendedorSel;
+    render();
+  });
  } catch (e) { $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">Error al mostrar Ventas: ${esc(e.message || e)}</div>`; console.error(e); }
+}
+
+/* ── PANEL DE UN VENDEDOR ────────────────────────────────────────────────────
+   Las mismas cuentas que el global pero acotadas a una persona, más las dos
+   cosas que un vendedor necesita y el global no muestra: en qué está cada lead
+   suyo ahora mismo y qué cotizaciones tiene sin respuesta. El panel global es
+   para dirigir; este es para trabajar. */
+function renderVendedor() {
+ try {
+  const v = vendedorSel;
+  const months = periodMonths(period);
+  const inP = m => months === null || months.includes(m);
+
+  const misLeads = leads.filter(l => l.vendor === v);
+  const misLeadsP = misLeads.filter(l => inP(monthOf(l.created_at)));
+  const misQuotes = quotes.filter(q => q.vendedor === v);
+  const misQuotesP = misQuotes.filter(q => inP(monthOf(q.created_at)));
+  const misSales = sales.filter(s => s.vendedor === v && s.estado !== 'anulada');
+  const misSalesP = misSales.filter(s => inP(monthOf(s.fecha)));
+  const misCards = cards.filter(c => c.vendor === v);
+  const misCardsP = misCards.filter(c => inP(cardMonth(c)));
+
+  const vendido = misSalesP.reduce((s, x) => s + n(x.monto), 0);
+  const ticket = misSalesP.length ? vendido / misSalesP.length : 0;
+  const facturado = misCardsP.reduce((s, c) => s + n(c.total_venta), 0);
+  const cotizado = misQuotesP.reduce((s, q) => s + n(q.precio_venta), 0);
+  const conv = misLeadsP.length ? misSalesP.length / misLeadsP.length : 0;
+  const convCot = misQuotesP.length ? misSalesP.length / misQuotesP.length : 0;
+
+  // Cobrado de SUS trabajos: los cobros no guardan vendedor, así que se cruzan
+  // por el pedido. Sin el cruce, un vendedor no puede ver qué le queda por cobrar.
+  const misCardIds = new Set(misCards.map(c => c.id));
+  const misPagos = payments.filter(p => misCardIds.has(p.production_card_id) && inP(monthOf(p.fecha)));
+  const cobrado = misPagos.reduce((s, p) => s + n(p.monto), 0);
+
+  // Ranking del período: motiva más ver "2º de 5" que un monto suelto.
+  const rank = listaVendedores().map(x => ({
+    v: x,
+    monto: sales.filter(s => s.vendedor === x && s.estado !== 'anulada' && inP(monthOf(s.fecha)))
+      .reduce((s, y) => s + n(y.monto), 0),
+  })).sort((a, b) => b.monto - a.monto);
+  const puesto = rank.findIndex(r => r.v === v) + 1;
+
+  const m12 = lastMonths(12);
+  const serie = m12.map(m => misSales.filter(s => monthOf(s.fecha) === m).reduce((sum, s) => sum + n(s.monto), 0));
+
+  const pipe = stages.map(st => ({
+    label: st.label,
+    lista: misLeads.filter(l => l.status !== 'aceptada' && (l.stage_key || 'mensaje_entrante') === st.key),
+  })).filter(p => p.lista.length);
+  const abiertos = misLeads.filter(l => l.status !== 'aceptada' && l.stage_key !== 'perdido').length;
+
+  // Cotizaciones enviadas sin cerrar: la lista de tareas del vendedor.
+  const pendientes = misQuotes
+    .filter(q => ['enviado', 'enviada', 'pendiente'].includes(String(q.estado || '').toLowerCase()))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+
+  const prod = {};
+  misCardsP.forEach(c => lista(c.product_lines).forEach(l => {
+    if (!l.producto) return;
+    prod[l.producto] = (prod[l.producto] || 0) + (n(l.cantidad) || 1);
+  }));
+  const prodArr = Object.entries(prod).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  const clavesPeriodo = [...new Set(misSalesP.map(s => s.client_id || ('n:' + (s.cliente_nombre || '—'))))];
+  const ventasPorCliente = {};
+  sales.filter(s => s.estado !== 'anulada').forEach(s => {
+    const k = s.client_id || ('n:' + (s.cliente_nombre || '—'));
+    ventasPorCliente[k] = (ventasPorCliente[k] || 0) + 1;
+  });
+  const nuevos = clavesPeriodo.filter(k => ventasPorCliente[k] === 1).length;
+
+  $('#dash').innerHTML = `
+    <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div>
+        <h2 style="font-size:19px;font-family:'Raleway'">Panel de ${esc(v)}${v === miNombre ? ' · vos' : ''}</h2>
+        <p class="muted">Solo lo tuyo: leads, cotizaciones, ventas y cobros del período elegido.</p>
+      </div>
+      <div class="rank" style="margin-left:auto">
+        <b>${puesto || '—'}º</b><span class="muted">de ${rank.length} en ventas del período</span>
+      </div>
+      <button class="chip" id="verGlobal" style="border:none;cursor:pointer;padding:7px 14px">Ver el panel global</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi dark"><span>Vendido</span><b>${money(vendido)}</b></div>
+      <div class="kpi"><span>Ventas confirmadas</span><b>${misSalesP.length}</b></div>
+      <div class="kpi"><span>Ticket promedio</span><b>${money(ticket)}</b></div>
+      <div class="kpi"><span>Cobrado de tus trabajos</span><b>${money(cobrado)}</b></div>
+      <div class="kpi"><span>Por cobrar</span><b>${money(Math.max(0, facturado - cobrado))}</b></div>
+      <div class="kpi"><span>Leads del período</span><b>${misLeadsP.length}</b></div>
+      <div class="kpi"><span>Cotizaciones</span><b>${misQuotesP.length}</b></div>
+      <div class="kpi"><span>Conversión lead → venta</span><b>${pct(conv)}</b></div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="card"><h2>Tus ventas mes a mes (12 meses)</h2>${lineChart(m12, serie)}</div>
+
+        <div class="card"><h2>Cotizaciones esperando respuesta (${pendientes.length})</h2>
+          ${pendientes.length ? `<table class="grid"><thead><tr><th>Cotización</th><th>Cliente</th>
+            <th class="num">Monto</th><th>Enviada</th></tr></thead>
+            <tbody>${pendientes.slice(0, 20).map(q => `<tr>
+              <td><a href="/index.html?quote=${encodeURIComponent(q.id)}">${esc(q.id)}</a></td>
+              <td>${esc(q.cliente_nombre || '—')}</td>
+              <td class="num">${money(q.precio_venta)}</td>
+              <td>${esc((q.created_at || '').slice(0, 10))}</td></tr>`).join('')}</tbody></table>`
+            : '<p class="muted">No tenés cotizaciones pendientes. Todo cerrado.</p>'}
+        </div>
+
+        <div class="card"><h2>Tus últimas ventas</h2>
+          ${misSalesP.length ? `<table class="grid"><thead><tr><th>Fecha</th><th>Cliente</th>
+            <th class="num">Monto</th><th>Estado</th></tr></thead>
+            <tbody>${misSalesP.slice(0, 20).map(s => `<tr>
+              <td>${esc((s.fecha || '').slice(0, 10))}</td>
+              <td><b>${esc(s.cliente_nombre || '—')}</b></td>
+              <td class="num">${money(s.monto)}</td>
+              <td><span class="chip ${s.estado === 'entregada' ? 'ok' : ''}">${esc(s.estado || '')}</span></td>
+            </tr>`).join('')}</tbody></table>` : '<p class="muted">Sin ventas en el período.</p>'}
+        </div>
+      </div>
+
+      <div>
+        <div class="card"><h2>Tu embudo ahora mismo (${abiertos} leads abiertos)</h2>
+          <p class="muted" style="margin-bottom:10px">No depende del período: es en qué está parado cada lead tuyo hoy.</p>
+          ${pipe.length ? pipe.map(p => `<div style="margin-bottom:11px">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;margin-bottom:3px">
+              <span>${esc(p.label)}</span><span>${p.lista.length}</span></div>
+            <div class="bar" style="width:${Math.max(4, (p.lista.length / abiertos) * 100)}%"></div>
+            <div class="muted" style="margin-top:3px">${p.lista.slice(0, 4).map(l => esc(l.client_query || '—')).join(' · ')}${p.lista.length > 4 ? ` +${p.lista.length - 4}` : ''}</div>
+          </div>`).join('') : '<p class="muted">No tenés leads abiertos.</p>'}
+          <a href="/intake.html" class="chip" style="margin-top:6px">Abrir el CRM</a>
+        </div>
+
+        <div class="card"><h2>Tus números finos</h2>
+          <table class="grid"><tbody>
+            <tr><td>Monto cotizado</td><td class="num"><b>${money(cotizado)}</b></td></tr>
+            <tr><td>Conversión cotización → venta</td><td class="num">${pct(convCot)}</td></tr>
+            <tr><td>Clientes con venta</td><td class="num">${clavesPeriodo.length}</td></tr>
+            <tr><td>De ellos, primera compra</td><td class="num">${nuevos}</td></tr>
+            <tr><td>Trabajos facturados</td><td class="num">${money(facturado)}</td></tr>
+            <tr><td>Cobros registrados</td><td class="num">${misPagos.length}</td></tr>
+          </tbody></table>
+          ${payments.length ? '' : `<p class="muted" style="margin-top:8px">Los cobros los ve administración:
+            si tu usuario no es admin, las dos filas de cobros quedan en cero. El resto de los números es completo.</p>`}
+        </div>
+
+        <div class="card"><h2>Lo que más vendés</h2>
+          <table class="grid"><thead><tr><th>Producto</th><th class="num">Unid.</th></tr></thead>
+          <tbody>${prodArr.map(([p, q]) => `<tr><td>${esc(p)}</td><td class="num">${q}</td></tr>`).join('')
+            || '<tr><td colspan="2" class="muted">Sin datos en el período.</td></tr>'}</tbody></table></div>
+      </div>
+    </div>`;
+
+  $('#verGlobal').onclick = () => { vendedorSel = ''; $('#vendSel').value = ''; render(); };
+ } catch (e) {
+  $('#dash').innerHTML = `<div class="card" style="color:#A33A3A;padding:18px">Error al mostrar el panel del vendedor: ${esc(e.message || e)}</div>`;
+  console.error(e);
+ }
 }
 
 function lineChart(labels, vals) {

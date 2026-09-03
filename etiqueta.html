@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Etiqueta de orden</title>
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&family=Raleway:wght@700&display=swap" rel="stylesheet">
+<!-- QR opcional: si el CDN no responde, la etiqueta se imprime igual sin el
+     código (ver dibujarQR). Nunca bloquea la impresión. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  /* ── ETIQUETA PARA IMPRESORA TÉRMICA ──────────────────────────────────────
+     Rollo de 80 mm (el estándar de las térmicas de tickets) y alto libre: la
+     etiqueta mide lo que necesita el pedido. Sin márgenes de página, porque la
+     térmica no tiene área no imprimible que respetar.
+     Todo en negro sólido: la térmica no tiene grises ni colores, así que un
+     fondo gris sale como una mancha. Por eso los separadores son líneas y los
+     énfasis son negativos (blanco sobre negro), no sombreados. */
+  @page { size: 80mm auto; margin: 0; }
+
+  :root { --w: 72mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Public Sans', system-ui, sans-serif; background: #E9E9E7; color: #000;
+    font-size: 12px; line-height: 1.35; padding: 16px 10px 40px; display: flex;
+    flex-direction: column; align-items: center; gap: 12px; }
+
+  .barra { width: var(--w); max-width: 100%; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    background: #fff; border: 1px solid #CFCFCC; border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+  .barra button { padding: 8px 14px; border-radius: 8px; border: 1px solid #0A0A0A; background: #0A0A0A;
+    color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .barra button.sec { background: #fff; color: #0A0A0A; }
+  .barra label { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+  .barra input[type=number] { width: 52px; padding: 5px 6px; border: 1px solid #CFCFCC; border-radius: 6px; font: inherit; }
+
+  .etq { width: var(--w); background: #fff; padding: 4mm 3mm; }
+  .etq + .etq { margin-top: 10px; }
+
+  .cab { display: flex; align-items: center; gap: 6px; border-bottom: 2px solid #000; padding-bottom: 4px; }
+  .cab img { width: 9mm; height: 9mm; object-fit: contain; }
+  .cab .marca { font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 13px;
+    letter-spacing: .12em; text-transform: uppercase; }
+  .cab .tipo { margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+  .orden { font-family: 'Public Sans', monospace; font-size: 19px; font-weight: 800;
+    letter-spacing: .02em; margin-top: 5px; word-break: break-all; }
+  .cliente { font-size: 15px; font-weight: 700; line-height: 1.2; margin-top: 1px; }
+  .tel { font-size: 11px; }
+
+  .sep { border-top: 1px dashed #000; margin: 5px 0; }
+  .hh { font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 2px; }
+
+  .prod { margin-bottom: 4px; }
+  .prod .pn { font-size: 13px; font-weight: 700; line-height: 1.25; }
+  .prod .pd { font-size: 11px; }
+  .prod .pc { font-size: 11px; font-weight: 600; border-left: 2px solid #000; padding-left: 5px; margin-top: 2px; }
+
+  table.datos { width: 100%; font-size: 11px; border-collapse: collapse; }
+  table.datos th { text-align: left; font-weight: 600; padding: 1px 0; width: 42%;
+    font-size: 9px; text-transform: uppercase; letter-spacing: .05em; vertical-align: top; }
+  table.datos td { text-align: right; font-weight: 700; padding: 1px 0; font-size: 12px; }
+
+  .destacado { background: #000; color: #fff; padding: 3px 6px; font-weight: 800;
+    font-size: 12px; text-transform: uppercase; letter-spacing: .06em; text-align: center; margin: 4px 0; }
+
+  .qr { display: flex; gap: 7px; align-items: center; margin-top: 5px; }
+  .qr canvas, .qr img { width: 20mm; height: 20mm; display: block; }
+  .qr .txt { font-size: 9px; line-height: 1.3; }
+  .pie { font-size: 8.5px; text-align: center; margin-top: 5px; border-top: 1px solid #000; padding-top: 3px; }
+  .tildes { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .tildes span { border: 1px solid #000; padding: 1px 4px; font-size: 8.5px; font-weight: 700; text-transform: uppercase; }
+
+  .aviso { width: var(--w); background: #fff; border-left: 3px solid #A32D2D; padding: 12px 14px;
+    font-size: 13px; border-radius: 8px; }
+
+  /* Al imprimir queda SOLO la etiqueta: la barra de botones y el fondo se van. */
+  @media print {
+    body { background: #fff; padding: 0; display: block; gap: 0; }
+    .barra { display: none !important; }
+    .etq { width: 100%; padding: 3mm 2mm; page-break-after: always; }
+    .etq:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="barra" id="barra">
+  <button id="btn-print">🖨 Imprimir</button>
+  <label>Copias <input type="number" id="copias" min="1" max="6" value="1"></label>
+  <label><input type="checkbox" id="con-precio"> Incluir precio</label>
+  <button class="sec" id="btn-cerrar">Cerrar</button>
+</div>
+<div id="salida" class="aviso">Cargando la orden…</div>
+
+<script type="module">
+import { requireAuth } from './js/auth.js?v=7';
+import { getSupa } from './js/supa.js?v=7';
+import { money, n, dimsText, arr } from './js/quote-engine.js?v=7';
+import * as data from './js/cirene-data.js?v=7';
+
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let card = null, operarios = [], stages = [];
+
+// Va como `function` y no como `const`: el arranque de abajo ya las llama
+// (ver la regla 7b de CLAUDE.md).
+function fecha(d) {
+  if (!d) return '—';
+  const f = new Date(String(d).slice(0, 10) + 'T12:00:00');
+  return isNaN(f) ? String(d) : f.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function etiquetaHtml() {
+  const lineas = arr(card.product_lines);
+  const resp = (operarios.find(o => o.id === card.responsable_operator_id) || {}).nombre || '';
+  const etapa = (stages.find(s => s.key === card.stage_key) || {}).label || card.stage_key || '';
+  const conPrecio = $('#con-precio').checked;
+  const urgente = card.priority === 'urgente';
+
+  return `<div class="etq">
+    <div class="cab">
+      <img src="/assets/logo-mark.png" alt="">
+      <span class="marca">De C&#x0268;rene</span>
+      <span class="tipo">Orden de taller</span>
+    </div>
+
+    <div class="orden">${esc(card.id)}</div>
+    <div class="cliente">${esc(card.client_name || 'Sin cliente')}</div>
+    ${card.client_phone_e164 ? `<div class="tel">${esc(card.client_phone_e164)}</div>` : ''}
+
+    ${urgente ? '<div class="destacado">★ Urgente ★</div>' : ''}
+
+    <div class="sep"></div>
+    <div class="hh">Qué se fabrica</div>
+    ${lineas.length ? lineas.map(l => {
+      const dims = dimsText(l.dimensiones || l);
+      const ficha = [dims, l.tamano || '', l.terminacion ? 'Terminación: ' + l.terminacion : ''].filter(Boolean).join(' · ');
+      return `<div class="prod">
+        <div class="pn">${(n(l.cantidad) || 1) > 1 ? (n(l.cantidad) + '× ') : ''}${esc(l.producto || 'Ítem')}</div>
+        ${ficha ? `<div class="pd">${esc(ficha)}</div>` : ''}
+        ${l.comentarios_produccion ? `<div class="pc">${esc(l.comentarios_produccion)}</div>` : ''}
+      </div>`;
+    }).join('') : `<div class="prod"><div class="pd">${esc((card.description || 'Sin detalle').slice(0, 220))}</div></div>`}
+
+    <div class="sep"></div>
+    <table class="datos">
+      <tr><th>Día de fabricación</th><td>${card.production_date ? esc(data.etiquetaDiaCorta(card.production_date)) : '—'}</td></tr>
+      <tr><th>Entrega comprometida</th><td>${esc(fecha(card.due_date))}</td></tr>
+      <tr><th>Horas estimadas</th><td>${n(card.horas_estimadas) || '—'} h</td></tr>
+      ${resp ? `<tr><th>Responsable</th><td>${esc(resp)}</td></tr>` : ''}
+      ${card.entrega ? `<tr><th>Cómo se entrega</th><td>${esc(card.entrega)}</td></tr>` : ''}
+      <tr><th>Etapa al imprimir</th><td>${esc(etapa)}</td></tr>
+      ${conPrecio ? `<tr><th>Total del trabajo</th><td>${esc(money(card.total_venta))}</td></tr>` : ''}
+    </table>
+
+    ${card.direccion ? `<div class="sep"></div><div class="hh">Dirección</div><div class="pd">${esc(card.direccion)}</div>` : ''}
+
+    <div class="sep"></div>
+    <div class="hh">Marcar al terminar</div>
+    <div class="tildes">
+      <span>☐ Fabricado</span><span>☐ Terminado/pintado</span><span>☐ Controlado</span><span>☐ Entregado</span>
+    </div>
+
+    <div class="qr">
+      <div id="qr-box"></div>
+      <div class="txt"><b>Escaneá para abrir la orden.</b><br>Ahí se ven los comentarios, las fotos y las tareas.</div>
+    </div>
+    <div class="pie">Emprendimientos De Cirene · impreso ${new Date().toLocaleDateString('es-UY')} ${new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}</div>
+  </div>`;
+}
+
+// El QR abre /production.html?card=<id> en el teléfono del encargado. Si la
+// librería no cargó, se saca el bloque y la etiqueta sale igual.
+function dibujarQR() {
+  const url = location.origin + '/production.html?card=' + encodeURIComponent(card.id);
+  document.querySelectorAll('.qr').forEach((bloque, i) => {
+    const box = bloque.querySelector('#qr-box') || bloque.querySelector('.qrb');
+    if (!box) return;
+    box.className = 'qrb';
+    box.removeAttribute('id');
+    if (typeof QRCode === 'undefined') { bloque.remove(); return; }
+    try {
+      box.innerHTML = '';
+      new QRCode(box, { text: url, width: 76, height: 76, correctLevel: QRCode.CorrectLevel.M });
+    } catch { bloque.remove(); }
+  });
+}
+
+function pintar() {
+  const copias = Math.max(1, Math.min(6, parseInt($('#copias').value, 10) || 1));
+  const salida = $('#salida');
+  salida.className = '';
+  salida.innerHTML = Array.from({ length: copias }, etiquetaHtml).join('');
+  dibujarQR();
+}
+
+(async () => {
+  await requireAuth();
+  const id = new URLSearchParams(location.search).get('card');
+  if (!id) {
+    $('#salida').innerHTML = 'Falta el número de orden en el enlace (<code>?card=…</code>).';
+    return;
+  }
+  try {
+    const sb = getSupa();
+    const [{ data: c, error }, { data: ops }, { data: sts }] = await Promise.all([
+      sb.from('production_cards').select('*').eq('id', id).single(),
+      sb.from('operators').select('*'),
+      sb.from('kanban_stages').select('*'),
+    ]);
+    if (error || !c) throw new Error(error?.message || 'No se encontró la orden ' + id);
+    card = c; operarios = ops || []; stages = sts || [];
+  } catch (e) {
+    $('#salida').innerHTML = 'No se pudo cargar la orden: ' + esc(e.message || e);
+    return;
+  }
+  pintar();
+  $('#copias').onchange = pintar;
+  $('#con-precio').onchange = pintar;
+  $('#btn-print').onclick = () => window.print();
+  $('#btn-cerrar').onclick = () => window.close();
+  // Se imprime sola al abrir desde Producción: el flujo real es "clic en 🖨 y
+  // agarrar el papel". El diálogo se puede cancelar y la etiqueta queda en
+  // pantalla para reimprimirla o cambiar las copias.
+  setTimeout(() => { try { window.print(); } catch {} }, 700);
+})();
+</script>
+</body>
+</html>

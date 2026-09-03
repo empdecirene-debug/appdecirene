@@ -92,3 +92,33 @@ export function cookieSesion(token) {
 }
 
 export const cookieBorrar = () => `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+
+// ── Sesión de taller (operarios sin usuario de la app) ───────────────────────
+// El operario no tiene email ni contraseña: entra a /taller.html y escribe su PIN
+// de 4 dígitos. Con eso queda una cookie firmada aparte, que SOLO habilita los
+// endpoints /api/taller/* (fichar inicio y fin). No sirve para /api/q ni para
+// nada más: es una credencial de reloj de fichadas, no una sesión de la app.
+export const COOKIE_TALLER = 'cirene_taller';
+export const DIAS_TALLER = 30;
+
+export function crearTokenTaller(operatorId) {
+  const cuerpo = b64u(JSON.stringify({ op: operatorId, tal: 1, exp: Date.now() + DIAS_TALLER * 864e5 }));
+  return cuerpo + '.' + firmar(cuerpo);
+}
+
+export function leerTokenTaller(token) {
+  const p = leerToken(token);
+  return p && p.tal === 1 && p.op ? p : null;
+}
+
+export function cookieTaller(token) {
+  const attrs = [
+    `${COOKIE_TALLER}=${encodeURIComponent(token)}`,
+    'Path=/', 'HttpOnly', 'SameSite=Lax',
+    `Max-Age=${DIAS_TALLER * 86400}`,
+  ];
+  if (process.env.NODE_ENV !== 'development') attrs.push('Secure');
+  return attrs.join('; ');
+}
+
+export const cookieTallerBorrar = () => `${COOKIE_TALLER}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;

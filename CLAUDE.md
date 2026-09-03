@@ -49,8 +49,9 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 | `api/db.js` | Pool de `pg` + **migración al arrancar**: aplica `db/schema.sql` (idempotente), siembra plantillas si faltan y crea el admin inicial. La base nunca queda atrás del código |
 | `api/registry.js` | Autorización por rol y tabla (réplica de `008_rls.sql`). **Las columnas se leen del catálogo de Postgres al arrancar**, no se listan a mano → el registro no puede desfasarse |
 | `api/query.js` | Descriptor → SQL. **Valores siempre parametrizados, identificadores siempre validados** contra el catálogo. UPDATE/DELETE sin filtros bloqueados |
-| `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas |
-| `api/router.js` | `/api/auth/{login,logout,me,password,usuarios}`, `/api/q`, `/api/upload`, `/api/health` |
+| `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas. Además la **cookie de taller** (`cirene_taller`), firmada igual pero que solo abre `/api/taller/*` |
+| `api/taller.js` | **Fichadas de los operarios**. PIN → operario, estado recortado de la pantalla del taller, `iniciar` y `terminar` en una transacción. La bitácora `subtask_time_logs` es la verdad: los acumulados de subtarea y pedido se **recalculan** de ella |
+| `api/router.js` | `/api/auth/{login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset}`, `/api/health` |
 | `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
 
 **Variables en Railway**: `DATABASE_URL` (referencia a `${{Postgres.DATABASE_URL}}`),
@@ -73,7 +74,7 @@ push = deploy. URL: https://appdecirene-production.up.railway.app
 > El `?v=N` tiene que coincidir con el del repo y `tablas` tiene que subir cuando `db/schema.sql`
 > agrega tablas. Si no coincide, **el push no se desplegó**: tocá una variable en *Variables*
 > (o *Deployments → Redeploy*); si aun así no sale, reconectá el repo en *Settings → Source*.
-> Estado al 2026-08-20 después de desplegar: `?v=5`, 41 tablas.
+> Estado al 2026-09-03 después de desplegar: `?v=7`, 44 tablas.
 
 **Aplicar SQL**: ya no hace falta herramienta externa — editá `db/schema.sql` y el próximo
 deploy lo aplica. Como es idempotente, agregá `create ... if not exists` / `alter ... if not exists`.
@@ -83,15 +84,22 @@ haría Postgres (comentarios, literales, dollar quoting) y avisa de paréntesis 
 comillas sin cerrar. El primer deploy a Railway murió con *mismatched parentheses* y el error solo
 se vio en los logs; el esquema se aplica entero en una sola query, así que un error de sintaxis en
 cualquier línea deja **toda** la migración sin aplicar (la app levanta igual, pero sin las tablas
-nuevas). Estado esperado hoy: 237 sentencias, 41 tablas, 0 desbalanceadas.
+nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 
 ## Stack y entorno
-- **Auth**: propia (`api/session.js`). Roles en `user_profiles.role`: `comercial`,
-  `produccion`, `admin`, `director`. Admin = admin|director. Usuario admin: `admin@decirene.uy`.
+- **Auth**: propia (`api/session.js`). El rol vive en `user_profiles.role` y **ya no es una lista
+  fija**: los roles se crean desde Administración (tabla `app_roles`). Cada rol declara un
+  **`perfil_base`** (`admin` | `comercial` | `produccion` | `operario`) del que hereda los permisos
+  de tabla, y una lista de **`modulos`** que decide qué ve en el menú. Admin = perfil base `admin`.
+  Usuario admin: `admin@decirene.uy`.
 - **Alta de usuarios**: `POST /api/auth/usuarios` (solo admin) → devuelve la contraseña generada.
-- **Entorno local**: la máquina de desarrollo **no tiene `node`, `python`, `psql` ni Docker**. No se
-  puede levantar la app ni la base localmente: la verificación end-to-end se hace **contra el deploy
-  de Railway**. Sí hay `git` y `perl` (útil para el bump de `?v=N`).
+  El rol se valida contra `app_roles` (`rolExiste`), no contra una lista en el código.
+- **Taller**: los operarios **no tienen usuario**. Entran a `/taller.html` con un **PIN de 4 dígitos**
+  (`operators.pin`, índice único parcial) y solo pueden fichar.
+- **Entorno local**: la máquina de desarrollo **no tiene `python`, `psql` ni Docker**, y no se puede
+  levantar la base: la verificación end-to-end se hace **contra el deploy de Railway**. Sí hay `git`,
+  `perl` (para el bump de `?v=N` y los verificadores) y **`node` (v24)**, que sirve para
+  `node --check` de cada `.js` y de los `<script>` de los HTML antes de pushear.
 - **Storage**: volumen del servicio en `/data/adjuntos`, servido en `/adjuntos/*` (`api/router.js`).
   Los adjuntos de cada trabajo se guardan en `production_cards.attachments jsonb`.
 - **Caché (importante)**: todos los imports de JS llevan `?v=N` (ej. `./js/cirene-data.js?v=2`) y hay
@@ -110,23 +118,30 @@ nuevas). Estado esperado hoy: 237 sentencias, 41 tablas, 0 desbalanceadas.
 | `catalog.html` | **Catálogo**: Materiales (con stock y última actualización) / Plantillas (BOM) / **Terminaciones-pintado** / Mano de obra |
 | `intake.html` | **CRM**: kanban comercial con columna **Lead ganado**, teléfono obligatorio, aviso de cliente duplicado en vivo, cotización asociada visible en la tarjeta, botón "Lead ganado" que dispara venta + producción + cuenta a cobrar |
 | `clientes.html` | **Clientes**: cartera con clasificación **Nuevo / Recurrente / Interno (CIRENEOS)**; el teléfono E.164 impide fichas duplicadas |
-| `production.html` | **Producción**: tablero superior (productos a producir, horas estimadas, atrasados, valor en producción, **semáforo semanal**) + vistas **Kanban / Lista / Semana / Calendario / Listos para producir**. Modal: planificación (semana, horas, prioridad, responsable, 3 fechas), **subtareas con Iniciar/Pausar/Finalizar y cronómetro**, materiales del pedido y descuento de stock, trazabilidad, adjuntos y comentarios. Deep-link `?card=<id>` |
+| `production.html` | **Producción**: tablero superior (productos a producir, horas estimadas, atrasados, valor en producción, **semáforo DIARIO** con selector de día) + vistas **Kanban / Lista / Día / Calendario / Listos para producir**. Modal: planificación (**día de fabricación**, horas, prioridad, responsable, fechas), **subtareas con Iniciar/Pausar/Finalizar y cronómetro**, materiales del pedido y descuento de stock, trazabilidad, adjuntos, comentarios y **🖨 etiqueta térmica**. Deep-link `?card=<id>` |
+| `taller.html` | **Pantalla del taller** (operarios, sin usuario): PIN de 4 dígitos → elegir trabajo → elegir tarea → **INICIO / FIN**. Botones de 96 px, un paso por pantalla, verde=empezar / rojo=parar. Habla solo con `/api/taller/*` |
+| `metricas.html` | **Métricas de producción**: horas por día, **tiempo por producto** (horas por unidad = el número para cotizar), **tiempo por proceso** con desvío contra lo estimado, **plazo de los pedidos** partido en espera / taller / entrega, puntualidad y horas por operario |
+| `etiqueta.html` | **Etiqueta térmica** de una orden (`?card=<id>`): 80 mm, se imprime sola, copias configurables, precio opcional (por defecto NO), casillas para tildar y **QR** a `/production.html?card=…` |
 | `compras.html` | **Compras** (admin): proveedores con estadísticas (OC, monto comprado, última compra, cuenta corriente) y **órdenes de compra** con recepción que suma stock, actualiza el costo del catálogo y deja el gasto |
 | `stock.html` | **Stock**: existencias con comprometido / disponible / pendiente de OC / necesidad de compra, alertas de mínimo, ajustes manuales e historial de movimientos |
-| `ventas.html` | **Ventas**: KPIs, ticket promedio, evolución 12 meses, **estadísticas por vendedor** (leads, cotizaciones, ganados, conversión, monto, ticket), clientes del período, pipeline, productos top |
+| `ventas.html` | **Ventas**, dos paneles con el selector de arriba: **global** (KPIs, ticket, evolución 12 meses, tabla comparativa por vendedor — cada fila abre su panel) y **panel del vendedor** (sus KPIs, ranking del período, su embudo lead por lead, **sus cotizaciones esperando respuesta**, sus ventas, sus productos). Un comercial entra directo al suyo |
 | `nps.html` | **NPS**: dashboard (NPS, tasa de respuesta, distribución, aspectos, canales, evolución) y listado de encuestas con formulario de respuesta |
 | `contabilidad.html` | **Contabilidad** (admin): Cuentas a cobrar · Calendario de cobros · Cobros por trabajo · Gastos · Reintegros · Cuenta corriente de proveedores · Activos y amortización · Caja · Movimientos · Balance |
 | `dashboard.html` | **Dashboard general** (admin): período configurable, **estado de resultados** mensual, presupuestado vs. real, horas y productividad, clientes, **impacto social**, resumen NPS |
-| `admin.html` | **Administración**: Operarios · Cargas sociales · Impacto social · Etapas · Campos · Usuarios (alta por API con contraseña generada) |
+| `admin.html` | **Administración**: Operarios (**con su PIN de taller**, botón 🎲 para generar uno libre) · Usuarios (alta por API con contraseña generada, rol desde `app_roles`) · **Roles y permisos** (crear rol, perfil base, casillas de módulos) · **Sugerencias** (bandeja con respuesta y estado) · Cargas sociales · Impacto social · Etapas · Campos · Datos de prueba |
+| `manual.html` | **Manual de uso** en tres pestañas: A · la app, B · producción, C · operarios. Índice automático de los `<h2>`, imprimible. El texto vive en el HTML (se puede leer con el backend caído) |
+| `manual-taller.html` | **Manual del operario**, público (sin login): 5 pasos, letra grande, un dibujo por paso, los botones reproducidos igual que en la pantalla real. Pensado para imprimir en A4 y pegarlo al lado del tablet |
+| `diagrama.html` | **Diagrama de flujo del ERP** de la consulta al cobro y el NPS. SVG generado a partir de dos listas (`NODOS` / `FLECHAS`) con carriles por responsable; imprime en A3 apaisado |
 
 ## Módulos `js/`
 | Archivo | Qué hace |
 |---|---|
 | `supa.js` | Cliente de datos: misma interfaz encadenable que supabase-js, pero contra `POST /api/q` |
 | `auth.js` | `requireAuth`, `isAdmin` (admin\|director), `signIn/Out`, `getProfile` |
-| `navbar.js` | Navbar compartida (logo + tabs por rol). Clase `.cirene-nav` |
+| `navbar.js` | Navbar compartida. **Las tabs las decide el rol** (`modulosDelRol`), no una regla en el código. También **monta el botón de sugerencias** en todas las páginas. Clase `.cirene-nav` |
+| `sugerencias.js` | Botón 💡 fijo abajo a la derecha + modal (categoría, texto, fotos adjuntas). Se monta desde `navbar.js`: así aparece en toda la app sin repetir el import en trece HTML |
 | `quote-engine.js` | Motor de cálculo: `calcLine` (materiales + MO + terminación → × multiplicador), `calcServices` (transporte y viáticos **sin** markup, MO de colocación **con** markup), `calcQuoteTotals`, `dimsText`, `UNIDADES_DIM`, `money`, `pct`, `n` |
-| `cirene-data.js` | **Capa de datos única**. Catálogo (materiales, `finishes`, tarifas, plantillas) · cotizaciones (`saveQuote` idempotente, `rowALinea`) · clientes (`ensureClient` anti-duplicados) · CRM (`ensureDraftQuote`, **`winLead`**) · producción (operarios, subtareas con `startSubtask`/`pauseSubtask`/`finishSubtask`, `semaforoSemana`, semanas ISO) · abastecimiento (`suppliers`, OC, `receivePurchaseOrder`, `stockReport`, `consumirMaterialesDePedido`) · finanzas (`ensureReceivable`, gastos, cuenta corriente, `calcAsset`) · NPS (`ensureNpsSurvey`, `npsMetrics`) · notificaciones · `trazabilidad`, `presupuestadoVsReal`, `productividad` · `auditar`. **Toda página de datos pasa por acá** |
+| `cirene-data.js` | **Capa de datos única**. Catálogo (materiales, `finishes`, tarifas, plantillas) · cotizaciones (`saveQuote` idempotente, `rowALinea`) · clientes (`ensureClient` anti-duplicados) · CRM (`ensureDraftQuote`, **`winLead`**) · producción (operarios, subtareas con `startSubtask`/`pauseSubtask`/`finishSubtask`, `semaforoDia` y capacidad diaria, `semaforoSemana` y semanas ISO para los agregados, `listTimeLogs`) · métricas (`tiempoPorProducto`, `tiempoPorProceso`, `plazoDePedidos`, `horasPorOperario`, `horasPorDia`) · sugerencias (`createSuggestion`, `listSuggestions`) · roles y módulos (`MODULOS`, `listRoles`, `upsertRole`, `modulosDelRol`) · abastecimiento (`suppliers`, OC, `receivePurchaseOrder`, `stockReport`, `consumirMaterialesDePedido`) · finanzas (`ensureReceivable`, gastos, cuenta corriente, `calcAsset`) · NPS (`ensureNpsSurvey`, `npsMetrics`) · notificaciones · `trazabilidad`, `presupuestadoVsReal`, `productividad` · `auditar`. **Toda página de datos pasa por acá** |
 | `icons.js` | Iconos SVG inline |
 | `phone-normalizer.js` | `normalizePhoneUY` / `formatPhoneUY` a E.164. Base del anti-duplicados de clientes |
 | `ids.js`, `audit.js` | Ids legibles y `logAudit` sobre `audit_log` (helpers sueltos; `cirene-data.auditar` es el que usan las páginas) |
@@ -180,23 +195,50 @@ Entrega → Cobro → NPS`. Cada salto busca antes de crear:
 | Consumir materiales | `consumirMaterialesDePedido` verifica si ya hay movimientos `produccion` de esa tarjeta |
 | Entregar | `moveProductionStage('entregado')` → `ensureNpsSurvey` UNIQUE por pedido |
 
+## Ampliación 2026-09 — Fase 8 (semáforo diario · taller · sugerencias · roles)
+Tercer bloque al final de `db/schema.sql` (`AMPLIACIÓN 2026-09 · FASE 8`), también idempotente.
+
+| Qué | Dónde | Por qué |
+|---|---|---|
+| **Semáforo POR DÍA** | `production_days` + `semaforoDia()` + vista **Día** de `production.html` | La semana promediaba y escondía el problema: un lunes con tres faltas y un viernes completo daban "semana verde" mientras el lunes se caían las entregas. `production_weeks` **se conserva** para el histórico y los agregados |
+| El día del pedido es `production_date` | `production.html`, `planificarEnDia()` | Ya existía como "fecha de fabricación". La **semana se deriva** del día al guardar: cargar la misma cosa dos veces era la forma segura de que no coincidieran |
+| Horas reales del día | `subtask_time_logs.started_at` | La tarjeta acumula todo su historial y no sabe de qué día es cada hora. Solo la bitácora lo sabe |
+| **Interfaz de taller** | `taller.html` + `api/taller.js` + `operators.pin` | El operario no tiene usuario ni email. PIN de 4 dígitos → cookie `cirene_taller` que **solo** abre `/api/taller/*`, con la respuesta recortada del lado del servidor (nunca viajan montos) y freno de fuerza bruta por IP en `api/router.js` |
+| `subtask_time_logs.fuente` | `db/schema.sql` | `'taller'` (lo marcó el operario) o `'app'` (lo marcó el gerente). Sin eso no se puede auditar un tiempo raro |
+| **Métricas** | `metricas.html` + `tiempoPorProducto`/`tiempoPorProceso`/`plazoDePedidos`/`horasPorOperario` | Es el retorno de todo el fichaje: **horas por unidad** es el número que vuelve al cotizador |
+| **Etiqueta térmica** | `etiqueta.html` | Página aparte porque su CSS de impresión (80 mm, sin márgenes, sin navbar) es incompatible con el de la app |
+| **Sugerencias** | `suggestions` + `js/sugerencias.js` (montado desde `navbar.js`) | Que lo que hoy se dice de palabra quede escrito, con foto |
+| **Roles configurables** | `app_roles` + `cargarRoles()`/`perfilDe()` en `api/registry.js` | Antes los roles eran cuatro constantes. Ahora se crean por pantalla, pero **los permisos de tabla no**: cada rol declara un `perfil_base` y hereda los suyos. Los módulos deciden qué se VE, el perfil base qué se PUEDE |
+| Se quitó el CHECK de `user_profiles.role` | `db/schema.sql`, bloque `do $$` | Con roles creados por pantalla, el CHECK de cuatro valores hacía fallar toda alta con un rol nuevo. Se busca por catálogo porque el nombre autogenerado puede variar. **Quitar un CHECK no borra datos** |
+| Perfil `operario` | `api/registry.js` (`CON_OPERARIO`) | Solo lectura de producción y escritura de subtareas y tiempos. Sin precios, sin clientes, sin contabilidad |
+
+> ⚠ **El semáforo es por día, no por semana.** Si aparece código nuevo que planifica por
+> `semana_produccion`, está yendo para atrás: el compromiso operativo es `production_date` y la
+> semana se calcula sola. `semaforoSemana()` sigue exportada solo para agregados semanales.
+
 ## Tablas (esquema completo en `db/schema.sql`; el histórico Supabase queda en `supabase/migrations/`)
-**Base**: `app_users`, `user_profiles`, `kanban_stages`, `custom_fields`, `audit_log`, `notifications`.
+**Base**: `app_users`, `user_profiles`, `app_roles`, `kanban_stages`, `custom_fields`, `audit_log`,
+`notifications`, `suggestions`.
 **Comercial**: `clients`, `intake_cards`, `quotes` + `quote_lines`, `sales`.
 **Catálogo**: `materials`, `finishes`, `labor_rates`, `product_templates` + `template_material_lines`
 + `template_labor_lines`.
-**Producción**: `production_cards`, `production_subtasks`, `subtask_time_logs`, `production_weeks`,
-`operators`, `card_stories`, `production_card_transitions`, `card_comment_reads`.
+**Producción**: `production_cards`, `production_subtasks`, `subtask_time_logs`, **`production_days`**
+(capacidad y semáforo diarios), `production_weeks` (histórico y agregados), `operators` (con `pin`),
+`card_stories`, `production_card_transitions`, `card_comment_reads`.
 **Abastecimiento**: `suppliers`, `purchase_orders` + `purchase_order_lines`, `stock_movements`.
 **Finanzas**: `receivables`, `job_payments`, `cash_sessions`, `cash_movements`, `expenses`,
 `payroll_charges`, `supplier_ledger`, `assets`.
 **Gestión**: `social_impact`. **NPS**: `nps_surveys`, `nps_options`.
 
-**Permisos** (`api/registry.js`, no hay RLS): catálogo y maestros (tarifas, plantillas, stages,
-terminaciones, operarios, proveedores, cargas, opciones NPS) lectura auth / escritura admin;
+**Permisos** (`api/registry.js`, no hay RLS): el rol se resuelve primero a su **perfil base** con
+`perfilDe()` (mapa cargado de `app_roles` al arrancar y recargado cuando `/api/q` escribe esa tabla),
+y el perfil es lo que se compara contra el registro. Catálogo y maestros (tarifas, plantillas,
+stages, terminaciones, operarios, proveedores, cargas, opciones NPS) lectura auth / escritura admin;
 `materials` escritura admin **+ comercial** (alta desde el cotizador); operativo (CRM, cotizaciones,
-producción, subtareas, tiempos, stock, ventas, cuentas a cobrar, NPS, notificaciones) auth full;
-órdenes de compra y contabilidad (caja, cobros, gastos, cuenta corriente, activos) solo admin.
+producción, subtareas, tiempos, días, stock, ventas, cuentas a cobrar, NPS, notificaciones) auth full;
+órdenes de compra y contabilidad (caja, cobros, gastos, cuenta corriente, activos) solo admin;
+`app_roles` lectura todos (la navbar necesita los módulos) / escritura admin; `suggestions` todos.
+El perfil **`operario`** solo agrega lectura de producción y escritura de subtareas y tiempos.
 **Seed**: 90 materiales + 6 plantillas estándar del Excel (Leñero $7.109 = exacto) + la terminación
 inicial `Pintado en aerosol` (costo 0, a definir desde Catálogo).
 **Storage**: volumen `/data/adjuntos`; los adjuntos de cada trabajo se guardan en
@@ -237,7 +279,7 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
    `on conflict do nothing`). Nunca `drop`/`delete` de datos operativos.
 6. **Caché**: al cambiar un `.js`, subir el `?v=N` de los imports en todos los HTML **y en los
    imports entre módulos `js/`** (si no, el navegador usa la versión vieja y la página queda
-   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=5`.**
+   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=7`.**
 7. Páginas de datos: indicador "Cargando…" inmediato + `try/catch` con mensaje visible
    (que nunca quede colgado sin avisar).
 7b. **Los helpers de nivel superior van como `function`, no como `const … =>`.** Las páginas
@@ -259,16 +301,27 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
     de ARRAY.** `api/query.js` las serializa según el tipo de columna (`esJson`); del lado del
     cliente, todo lo que salga de un jsonb pasa por `arr()` de `quote-engine.js`, porque las filas
     viejas pueden volver como `{}`.
+13. **La planificación de producción es POR DÍA** (`production_date` + `production_days`). La semana
+    se deriva, no se carga. Ver la advertencia de la Fase 8.
+14. **Las horas reales nunca se escriben a mano.** Se recalculan de `subtask_time_logs`, que es la
+    única fuente. Si un número está mal, se arregla el tramo, no el acumulado.
+15. **Los permisos de tabla no se editan por pantalla.** Un rol nuevo elige uno de los cuatro
+    perfiles base y hereda los suyos. Si algún día una pantalla puede otorgar permisos de tabla,
+    cualquiera que la abra puede darse la contabilidad.
 
 ## Verificaciones antes de pushear
-Sin `node` en la máquina de desarrollo no se puede ejecutar nada localmente, así que hay tres
-verificadores estáticos. Los tres tienen que dar OK:
+No se puede levantar la base localmente, así que hay tres verificadores estáticos más `node --check`.
+Todos tienen que dar OK:
 
 | Comando | Qué evita |
 |---|---|
 | `perl tools/check-sql.pl db/schema.sql` | Paréntesis o comillas sin cerrar en el esquema. Un error de sintaxis deja **toda** la migración sin aplicar |
 | `perl tools/check-tdz.pl *.html` | Helpers `const … =>` declarados debajo del arranque. Rompen la página entera y la dejan en "Cargando…" **sin ningún mensaje** |
 | `perl tools/check-columns.pl db/schema.sql js/*.js *.html` | Columnas que se escriben y no existen. La API las descarta en silencio: el registro se guarda **sin ese dato** |
+| `for f in api/*.js js/*.js server.js; do node --check "$f" \|\| echo "FAIL $f"; done` | Errores de sintaxis en los módulos. En el backend, uno solo deja el servicio en crash-loop |
+
+Los `<script>` de los HTML también se pueden chequear extrayéndolos a un `.mjs` temporal y pasándoles
+`node --check` (el `.mjs` acepta `import` y el `await` de nivel superior).
 
 Nada de eso reemplaza probar contra el deploy: el bug de las listas `jsonb` y el del seed destructivo
 solo aparecieron ejecutando de verdad contra Railway y leyendo los logs del arranque.

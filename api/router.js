@@ -13,12 +13,35 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { q, pool } from './db.js';
 import { construir, ErrorConsulta } from './query.js';
-import { puede, ES_ADMIN } from './registry.js';
+import { puede, ES_ADMIN, cargarRoles, rolExiste } from './registry.js';
 import { generarDemo, reiniciar } from './demo.js';
+import {
+  operarioPorPin, estadoTaller,
+  iniciar as iniciarTaller, terminar as terminarTaller,
+} from './taller.js';
 import {
   hashPassword, verifyPassword, crearToken, leerToken,
   leerCookies, cookieSesion, cookieBorrar, COOKIE,
+  crearTokenTaller, leerTokenTaller, cookieTaller, cookieTallerBorrar, COOKIE_TALLER,
 } from './session.js';
+
+/* Freno de fuerza bruta del PIN del taller. Un PIN de 4 dígitos son 10.000
+   combinaciones: sin esto, probarlas todas es cuestión de minutos. En memoria y
+   por IP alcanza — es un taller, no un banco, y un reinicio del servicio que
+   limpie el contador no regala nada (la ventana vuelve a empezar). */
+const intentos = new Map();
+const MAX_INTENTOS = 12, VENTANA_MS = 10 * 60 * 1000;
+
+function intentoPermitido(ip) {
+  const ahora = Date.now();
+  const previos = (intentos.get(ip) || []).filter((t) => ahora - t < VENTANA_MS);
+  if (previos.length >= MAX_INTENTOS) { intentos.set(ip, previos); return false; }
+  previos.push(ahora);
+  intentos.set(ip, previos);
+  if (intentos.size > 500) for (const [k, v] of intentos) if (!v.some((t) => ahora - t < VENTANA_MS)) intentos.delete(k);
+  return true;
+}
+const limpiarIntentos = (ip) => intentos.delete(ip);
 
 export const DIR_ADJUNTOS = process.env.ADJUNTOS_DIR || '/data/adjuntos';
 
@@ -107,6 +130,57 @@ export async function manejar(req, res, pathname) {
     return json(res, 200, { ok: true }, { 'Set-Cookie': cookieBorrar() });
   }
 
+  // ── TALLER: fichadas de los operarios ──────────────────────────────────────
+  // Credencial propia (PIN → cookie de taller) y respuesta recortada: ver
+  // api/taller.js. No pasa por la sesión de la app a propósito, porque el
+  // operario no tiene usuario.
+  if (pathname.startsWith('/api/taller/')) {
+    if (pathname === '/api/taller/login' && req.method === 'POST') {
+      let body;
+      try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
+      catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+      const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '?').split(',')[0].trim();
+      if (!intentoPermitido(ip)) {
+        return json(res, 429, { error: 'Demasiados intentos. Esperá unos minutos y volvé a probar.' });
+      }
+      const op = await operarioPorPin(body.pin);
+      if (!op) return json(res, 401, { error: 'Ese número no es correcto. Pedile tu número al encargado.' });
+      limpiarIntentos(ip);
+      return json(res, 200, { operario: op }, { 'Set-Cookie': cookieTaller(crearTokenTaller(op.id)) });
+    }
+
+    if (pathname === '/api/taller/logout') {
+      return json(res, 200, { ok: true }, { 'Set-Cookie': cookieTallerBorrar() });
+    }
+
+    const tok = leerTokenTaller(leerCookies(req)[COOKIE_TALLER]);
+    if (!tok) return json(res, 401, { error: 'Escribí tu número para entrar.' });
+
+    if (pathname === '/api/taller/estado') {
+      const estado = await estadoTaller(tok.op);
+      // El operario pudo quedar inactivo mientras la cookie seguía viva.
+      if (!estado) return json(res, 401, { error: 'Tu usuario de taller ya no está activo.' }, { 'Set-Cookie': cookieTallerBorrar() });
+      return json(res, 200, estado);
+    }
+
+    if (pathname === '/api/taller/inicio' && req.method === 'POST') {
+      let body;
+      try { body = JSON.parse((await leerCuerpo(req, 8192)).toString('utf8')); }
+      catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+      try { return json(res, 200, await iniciarTaller(tok.op, body)); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
+    if (pathname === '/api/taller/fin' && req.method === 'POST') {
+      let body = {};
+      try { body = JSON.parse((await leerCuerpo(req, 8192)).toString('utf8')); } catch {}
+      try { return json(res, 200, await terminarTaller(tok.op, body)); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
+    return json(res, 404, { error: 'Ruta de taller desconocida' });
+  }
+
   const ses = await sesion(req);
 
   if (pathname === '/api/auth/me') {
@@ -140,7 +214,9 @@ export async function manejar(req, res, pathname) {
     try { body = JSON.parse((await leerCuerpo(req, 8192)).toString('utf8')); }
     catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
     const email = String(body.email || '').toLowerCase().trim();
-    const rol = ['admin', 'director', 'comercial', 'produccion'].includes(body.role) ? body.role : 'comercial';
+    // Los roles ya no son cuatro constantes: se crean desde Administración, así
+    // que la validación va contra `app_roles` (ver api/registry.js).
+    const rol = rolExiste(body.role) ? body.role : 'comercial';
     const pw = String(body.password || '') || ('cirene-' + Math.random().toString(36).slice(2, 10));
     if (!email) return json(res, 400, { error: 'Falta el email' });
     const cliente = await pool.connect();
@@ -211,6 +287,11 @@ export async function manejar(req, res, pathname) {
     try {
       const { sql, params } = construir(desc);
       const { rows } = await q(sql, params);
+      // Los permisos de tabla se resuelven por el `perfil_base` del rol, que vive
+      // en `app_roles`. Si acaban de tocar esa tabla, el mapa en memoria quedó
+      // viejo: recargarlo acá evita tener que redesplegar para que el rol nuevo
+      // funcione.
+      if (desc.tabla === 'app_roles' && accion !== 'select') await cargarRoles(pool);
       if (desc.single) {
         if (rows.length !== 1) {
           return json(res, 200, {

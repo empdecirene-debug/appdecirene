@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>De Cirene · Manual de uso</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Raleway:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/cirene-theme.css">
+<style>
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 90px; }
+  .hd { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .seg { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+  .seg button { border: none; background: transparent; padding: 8px 15px; border-radius: 6px; font: inherit;
+    font-size: 13px; font-weight: 600; color: var(--tinta-2); cursor: pointer; }
+  .seg button.active { background: #0A0A0A; color: #fff; }
+  .cols { display: grid; grid-template-columns: 218px 1fr; gap: 26px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } .indice { position: static !important; } }
+  .indice { position: sticky; top: 74px; background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .indice b { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tinta-3); margin-bottom: 7px; }
+  .indice a { display: block; padding: 4px 0; color: var(--tinta-2); text-decoration: none; line-height: 1.35; }
+  .indice a:hover { color: var(--tinta); text-decoration: none; }
+  .doc { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 26px 30px; }
+  @media (max-width: 640px) { .doc { padding: 20px 18px; } }
+  .doc h2 { font-family: 'Raleway'; font-size: 21px; margin: 30px 0 10px; padding-top: 8px;
+    border-top: 2px solid #0A0A0A; }
+  .doc h2:first-of-type { margin-top: 4px; border-top: none; padding-top: 0; }
+  .doc h3 { font-size: 15.5px; margin: 20px 0 7px; }
+  .doc h4 { font-size: 13.5px; margin: 14px 0 5px; color: var(--tinta-2); text-transform: uppercase; letter-spacing: .04em; }
+  .doc p, .doc li { font-size: 14.5px; line-height: 1.65; color: var(--tinta); }
+  .doc p { margin-bottom: 11px; }
+  .doc ul, .doc ol { margin: 0 0 13px 22px; }
+  .doc li { margin-bottom: 5px; }
+  .doc code { font-size: 12.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
+  .doc table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 6px 0 16px; }
+  .doc th { text-align: left; padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-2); }
+  .doc td { padding: 8px 10px; border-bottom: 1px solid var(--surface-3); vertical-align: top; }
+  .nota { border-left: 3px solid #0A0A0A; background: var(--surface-2); padding: 12px 15px;
+    border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px; line-height: 1.6; }
+  .nota.ojo { border-color: #A32D2D; background: var(--err-bg); color: var(--err-text); }
+  .nota.tip { border-color: #0F6E56; background: var(--ok-bg); color: var(--ok-text); }
+  .pasos { counter-reset: p; list-style: none; margin-left: 0; }
+  .pasos > li { counter-increment: p; position: relative; padding: 0 0 12px 40px; margin: 0; }
+  .pasos > li::before { content: counter(p); position: absolute; left: 0; top: 0; width: 27px; height: 27px;
+    border-radius: 50%; background: #0A0A0A; color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; }
+  .pasos > li b { display: block; }
+  .flechas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0 18px; font-size: 12.5px; }
+  .flechas span { background: #0A0A0A; color: #fff; padding: 4px 11px; border-radius: 999px; font-weight: 700; }
+  .flechas i { color: var(--tinta-3); font-style: normal; }
+  .tarjeton { display: flex; gap: 14px; align-items: center; border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; margin: 16px 0; background: var(--surface-2); }
+  .tarjeton .ico { font-size: 34px; }
+  .tarjeton a { font-weight: 700; }
+  @media print {
+    body { background: #fff; }
+    .cirene-nav, .indice, .seg, .cirene-sug-btn { display: none !important; }
+    .cols { grid-template-columns: 1fr; } .doc { border: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<div class="wrap">
+  <div class="hd">
+    <div>
+      <h1 style="font-family:'Raleway'">Manual de uso</h1>
+      <p class="cirene-subtitle">Cómo se usa el sistema de De Cirene, escrito para leerlo en pantalla o imprimirlo.</p>
+    </div>
+    <div class="seg" id="tabs">
+      <button data-t="app" class="active">A · La app</button>
+      <button data-t="prod">B · Producción</button>
+      <button data-t="oper">C · Operarios</button>
+    </div>
+  </div>
+  <div class="cols">
+    <div class="indice" id="indice"></div>
+    <div class="doc" id="doc"></div>
+  </div>
+</div>
+
+<script type="module">
+import { renderNavbar } from './js/navbar.js?v=7';
+import { requireAuth } from './js/auth.js?v=7';
+
+const $ = s => document.querySelector(s);
+let tab = 'app';
+
+await requireAuth();
+renderNavbar('manual');
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+  tab = b.dataset.t; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+if (['app', 'prod', 'oper'].includes(location.hash.slice(1))) {
+  tab = location.hash.slice(1);
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x.dataset.t === tab));
+}
+render();
+
+// `function` y no `const`: render() ya corrió (regla 7b de CLAUDE.md).
+function render() {
+  $('#doc').innerHTML = ({ app: MANUAL_APP, prod: MANUAL_PROD, oper: MANUAL_OPER })[tab] || MANUAL_APP;
+  // El índice se arma de los <h2> del documento: nunca queda desfasado del texto.
+  const hs = [...$('#doc').querySelectorAll('h2')];
+  hs.forEach((h, i) => { if (!h.id) h.id = 'sec' + i; });
+  $('#indice').innerHTML = '<b>En esta página</b>' +
+    hs.map(h => `<a href="#${h.id}">${h.textContent}</a>`).join('');
+}
+</script>
+
+<!-- Los tres manuales viven acá como texto, en un script clásico (no módulo): así
+     son globales, no dependen de la base de datos y se pueden leer incluso con el
+     backend caído, que es justo cuando alguien necesita el manual. Los módulos son
+     `defer` por definición, así que este script ya corrió cuando render() los usa. -->
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   A · MANUAL DE LA APP
+   ══════════════════════════════════════════════════════════════════════════ */
+var MANUAL_APP = `
+<h2>Qué es esto</h2>
+<p>Este sistema es la <b>memoria y el orden de De Cirene</b>. Antes cada cosa vivía en un lugar
+distinto: los presupuestos en un Excel, los pedidos en papelitos, los cobros en un cuaderno.
+Ahora todo eso es un solo camino, y cada paso deja registro de quién lo hizo y cuándo.</p>
+
+<p>Se usa desde el navegador, en la computadora o en el celular. No hay que instalar nada.</p>
+
+<h3>El camino completo, de punta a punta</h3>
+<div class="flechas">
+  <span>Consulta</span><i>→</i><span>Cotización</span><i>→</i><span>Venta</span><i>→</i>
+  <span>Producción</span><i>→</i><span>Entrega</span><i>→</i><span>Cobro</span><i>→</i><span>Encuesta</span>
+</div>
+<p>Cada flecha es un botón. Nunca hay que copiar datos de una pantalla a otra: cuando un lead se
+gana, la venta, el pedido de producción y la cuenta a cobrar se crean solas con los datos que ya
+estaban cargados.</p>
+
+<div class="nota tip"><b>Si apretás dos veces, no pasa nada malo.</b> Todos los pasos del camino
+están hechos para que repetirlos no duplique nada. Guardar una cotización dos veces no crea dos
+cotizaciones; marcar un lead como ganado dos veces no crea dos ventas. Podés recargar la página
+sin miedo.</div>
+
+<h2>Entrar y salir</h2>
+<ol class="pasos">
+  <li><b>Abrí la dirección del sistema</b> en el navegador. Aparece la pantalla negra con el logo.</li>
+  <li><b>Escribí tu email y tu contraseña.</b> Te las da administración.</li>
+  <li><b>La primera vez, cambiá la contraseña.</b> Se hace en Inicio, abajo, en "Cambiar mi contraseña".</li>
+</ol>
+<p>Para salir, el botón <b>Salir</b> arriba a la derecha. Si usás una computadora compartida, salí siempre.</p>
+<div class="nota"><b>Perdiste la contraseña.</b> No se puede recuperar (están guardadas de forma que
+nadie, ni el sistema, puede leerlas). Administración te genera una nueva.</div>
+
+<h2>La pantalla de Inicio</h2>
+<p>Es el tablero de entrada. Tiene dos cosas:</p>
+<ul>
+  <li><b>Centro de actividad:</b> los avisos de lo que pasó mientras no estabas. Si alguien comentó
+    en un pedido tuyo, te aparece acá. Se marcan como leídos con un clic.</li>
+  <li><b>Los accesos a cada módulo:</b> los cuadrados grandes. Solo ves los módulos que tu rol tiene
+    habilitados, así que si un compañero ve más botones que vos, es por eso y no es un error.</li>
+</ul>
+
+<h2>Módulo por módulo</h2>
+
+<h3>CRM / Leads · las consultas que llegan</h3>
+<p>Toda consulta entra acá, sin excepción: la que llega por WhatsApp, por teléfono, por Instagram o
+la que golpea la puerta del taller. Es un tablero de columnas y cada consulta es una tarjeta que se
+arrastra de una columna a la otra según cómo va.</p>
+<ul>
+  <li><b>El teléfono es obligatorio</b> y es la identidad del cliente. Si el número ya existe, el
+    sistema te avisa en el momento y no se crea una ficha repetida.</li>
+  <li>Desde la tarjeta se abre <b>la cotización del lead</b>, que ya viene con los datos del cliente.</li>
+  <li>Cuando el cliente acepta, se aprieta <b>Lead ganado</b>. Ese botón dispara todo lo demás.</li>
+</ul>
+
+<h3>Clientes · la cartera</h3>
+<p>Todas las fichas, con su clasificación: <b>Nuevo</b> (primera compra), <b>Recurrente</b> (más de
+una) e <b>Interno</b> (los trabajos de los propios Cireneos). El teléfono normalizado impide fichas
+duplicadas: "099 123 456", "+59899123456" y "099-123-456" son el mismo cliente.</p>
+
+<h3>Cotizar · el cotizador</h3>
+<p>Es el corazón comercial. Se arma producto por producto:</p>
+<ol class="pasos">
+  <li><b>Elegí el cliente</b> (o cargalo, con teléfono).</li>
+  <li><b>Agregá un producto.</b> Podés partir de una plantilla del catálogo, que ya trae sus
+    materiales y sus horas, y después ajustarla.</li>
+  <li><b>Cargá los materiales y las horas de mano de obra.</b> Si falta un material, se crea desde
+    ahí mismo sin salir de la cotización: va al catálogo de verdad, no a una copia.</li>
+  <li><b>Poné las medidas</b> (ancho, alto, largo, diámetro). Las medidas <b>no cambian el precio</b>:
+    son la información con la que después se fabrica, y viajan solas hasta el taller.</li>
+  <li><b>Escribí los comentarios para producción.</b> Todo lo que el taller necesita saber y no se
+    deduce de las medidas. Esto aparece en la tarjeta del pedido y en la etiqueta impresa.</li>
+  <li><b>Agregá los servicios</b> si hay: transporte y colocación.</li>
+  <li><b>Guardá</b> y, si querés, <b>generá el PDF</b> para mandarle al cliente.</li>
+</ol>
+
+<h4>Cómo se calcula el precio</h4>
+<table>
+  <tr><th>Concepto</th><th>Cuenta</th></tr>
+  <tr><td>Costo del producto</td><td>materiales + mano de obra + terminación</td></tr>
+  <tr><td>Precio del producto</td><td>ese costo × <b>multiplicador</b> (1,5 por defecto)</td></tr>
+  <tr><td>Transporte</td><td>sin multiplicador: se cobra lo que cuesta</td></tr>
+  <tr><td>Colocación · mano de obra</td><td>horas × costo/hora × operarios, <b>con</b> multiplicador</td></tr>
+  <tr><td>Colocación · viáticos</td><td>sin multiplicador</td></tr>
+</table>
+<div class="nota"><b>De Cirene no discrimina IVA.</b> Es una asociación civil sin fines de lucro y
+trabaja con importes finales. No busques el campo de IVA: no existe en ninguna pantalla, y es a propósito.</div>
+<div class="nota"><b>La cotización es una foto del momento.</b> Los costos quedan congelados dentro
+de ella. Si mañana sube el hierro y actualizás el catálogo, <b>los presupuestos ya hechos no cambian</b>.
+Eso es lo correcto: lo que le prometiste al cliente sigue diciendo lo mismo.</div>
+
+<h3>Catálogo · materiales, terminaciones, tarifas y plantillas</h3>
+<p>Es la base de todos los cálculos. Cuatro pestañas:</p>
+<ul>
+  <li><b>Materiales:</b> costo por unidad, stock y cuándo se actualizó por última vez.</li>
+  <li><b>Plantillas:</b> productos estándar con su lista de materiales y horas. Cotizar con plantilla
+    es más rápido y más parejo entre vendedores.</li>
+  <li><b>Terminaciones / pintado:</b> las opciones con su costo.</li>
+  <li><b>Mano de obra:</b> el costo por hora de cada rol.</li>
+</ul>
+<div class="nota ojo"><b>Mantener el catálogo al día es lo más importante del sistema.</b> Un costo
+viejo acá se convierte en cotizaciones que pierden plata, y no hay forma de que el sistema lo note.
+Cuando llega una factura de proveedor con precios nuevos, se actualiza el catálogo.</div>
+
+<h3>Producción</h3>
+<p>Tiene su propio manual: mirá la pestaña <b>B · Producción</b> de arriba.</p>
+
+<h3>Métricas</h3>
+<p>Cuánto lleva de verdad cada producto, cada proceso y cada pedido. Sale de los INICIO y FIN que
+marcan los operarios. Se explica en la pestaña B.</p>
+
+<h3>Stock</h3>
+<p>Para cada material muestra cuatro números que hay que leer juntos:</p>
+<table>
+  <tr><th>Número</th><th>Qué quiere decir</th></tr>
+  <tr><td>Existencia</td><td>lo que hay físicamente en el depósito</td></tr>
+  <tr><td>Comprometido</td><td>lo que ya está prometido a pedidos en curso</td></tr>
+  <tr><td>Disponible</td><td>existencia − comprometido: lo que se puede usar sin dejar a nadie sin material</td></tr>
+  <tr><td>Pendiente de OC</td><td>lo que está comprado pero todavía no llegó</td></tr>
+</table>
+<p>Cuando el disponible baja del mínimo, salta la alerta de compra. Los ajustes a mano (roturas,
+sobras, conteos) quedan en el historial con quién los hizo.</p>
+
+<h3>Compras · solo administración</h3>
+<p>Proveedores y órdenes de compra. Al <b>recibir</b> una orden pasan tres cosas de una sola vez:
+suma el stock, actualiza el costo del material en el catálogo y deja el gasto registrado.
+Por eso conviene recibir en el sistema en el momento en que llega el material.</p>
+
+<h3>Ventas</h3>
+<p>Dos paneles, y el selector de arriba cambia de uno al otro:</p>
+<ul>
+  <li><b>Global:</b> lo del equipo. Facturado, cobrado, por cobrar, ticket promedio, conversión,
+    evolución de 12 meses y la tabla comparativa por vendedor.</li>
+  <li><b>Panel del vendedor:</b> lo de una sola persona. Si sos comercial, entrás directo al tuyo.
+    Además de tus números tiene las dos cosas que sirven para trabajar: <b>en qué está parado cada
+    lead tuyo hoy</b> y <b>qué cotizaciones tuyas están esperando respuesta</b>.</li>
+</ul>
+<p>Desde el panel global, tocando una fila de la tabla de vendedores se abre el panel de esa persona.</p>
+
+<h3>NPS · satisfacción</h3>
+<p>Al entregar un pedido queda lista una encuesta. El NPS va de −100 a +100: se calcula como el
+porcentaje de clientes que te recomendarían (9 y 10) menos el de los que no (0 a 6). El valor del
+módulo no está tanto en el número como en <b>los comentarios</b>: ahí aparece lo que hay que arreglar.</p>
+
+<h3>Contabilidad · solo administración</h3>
+<p>Cuentas a cobrar, calendario de cobros, cobros por trabajo, gastos, reintegros, cuenta corriente
+de proveedores, activos con su amortización, caja y balance. Cada pedido genera <b>una</b> cuenta a
+cobrar, y los cobros se registran contra ella, así que el saldo de un cliente nunca hay que sacarlo a mano.</p>
+
+<h3>Dashboard · solo administración</h3>
+<p>La vista de dirección: estado de resultados mes a mes, presupuestado contra real, horas y
+productividad, clientes, <b>impacto social</b> y resumen de NPS.</p>
+
+<h3>Administración</h3>
+<ul>
+  <li><b>Operarios:</b> quiénes trabajan en el taller, su costo por hora y <b>su PIN de taller</b>.</li>
+  <li><b>Usuarios:</b> alta de usuarios de la app. Al crear uno, el sistema muestra la contraseña
+    inicial <b>una sola vez</b>: hay que anotarla y entregarla en ese momento.</li>
+  <li><b>Roles y permisos:</b> se crean roles y se elige qué módulos ve cada uno.</li>
+  <li><b>Sugerencias:</b> lo que manda el equipo con el botón 💡.</li>
+  <li><b>Cargas sociales, impacto social, etapas del kanban, campos personalizados.</b></li>
+  <li><b>Datos de prueba:</b> para practicar sin miedo. Genera un juego de datos falsos que recorre
+    todos los módulos, y después se borran sin tocar nada real.</li>
+</ul>
+
+<h2>Roles: por qué cada uno ve cosas distintas</h2>
+<p>Un rol define dos cosas separadas:</p>
+<table>
+  <tr><th>Parte</th><th>Qué controla</th><th>Quién la cambia</th></tr>
+  <tr><td><b>Módulos</b></td><td>qué pantallas aparecen en el menú</td><td>administración, desde Roles y permisos</td></tr>
+  <tr><td><b>Permisos de base</b></td><td>qué datos puede leer y escribir de verdad</td><td>nadie desde la pantalla: están en el servidor</td></tr>
+</table>
+<p>Es a propósito que la segunda parte no se pueda cambiar desde la pantalla: si se pudiera,
+cualquiera que entrara a Administración podría darse acceso a la contabilidad. Los módulos deciden
+<b>qué se ve</b>; los permisos deciden <b>qué se puede</b>.</p>
+
+<h2>El botón de sugerencias 💡</h2>
+<p>Abajo a la derecha, en todas las pantallas. Sirve para lo que hoy se dice de palabra y se pierde:
+"esta pantalla no me deja hacer tal cosa", "acá falta un dato", "no entiendo este botón".</p>
+<ol class="pasos">
+  <li><b>Apretá el botón 💡.</b></li>
+  <li><b>Elegí de qué se trata:</b> una idea, algo que no funciona, una duda.</li>
+  <li><b>Escribilo con tus palabras.</b> No hace falta que sea formal.</li>
+  <li><b>Si ayuda, adjuntá una foto o una captura de pantalla.</b></li>
+  <li><b>Enviar.</b> Queda anotado con tu nombre y la pantalla en la que estabas.</li>
+</ol>
+<p>Administración las lee, las responde y las va cerrando desde su pestaña de Sugerencias.</p>
+
+<h2>Cuando algo no funciona</h2>
+<table>
+  <tr><th>Qué ves</th><th>Qué hacer</th></tr>
+  <tr><td>La pantalla queda en "Cargando…" y no pasa nada</td>
+      <td>Recargá con <code>Ctrl</code>+<code>F5</code> (fuerza a bajar la versión nueva). Si sigue, avisá con el botón 💡.</td></tr>
+  <tr><td>"Sin sesión" o te devuelve al login</td><td>Se venció la sesión. Volvé a entrar.</td></tr>
+  <tr><td>"Tu rol no puede leer/modificar…"</td><td>Tu rol no tiene ese permiso. Pedíselo a administración.</td></tr>
+  <tr><td>No aparece un módulo que antes veías</td><td>Cambió la configuración de tu rol. Preguntá en administración.</td></tr>
+  <tr><td>Guardaste y el dato no quedó</td><td>Fijate si salió un mensaje rojo abajo. Si no, avisá con el 💡 contando exactamente qué campo era.</td></tr>
+</table>
+<div class="nota tip"><b>Regla de oro:</b> si algo no te cierra, no lo arregles "a mano" en otra
+pantalla. Avisá. Los números están conectados entre módulos, y un arreglo por afuera descuadra otra cosa.</div>
+`;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   B · MANUAL DE PRODUCCIÓN
+   ══════════════════════════════════════════════════════════════════════════ */
+var MANUAL_PROD = `
+<h2>Para quién es este manual</h2>
+<p>Para quien <b>planifica y dirige el taller</b>: el gerente o encargado de producción. Los operarios
+tienen su propio manual, mucho más simple: es la pestaña <b>C · Operarios</b>.</p>
+
+<div class="tarjeton"><span class="ico">📋</span><div>
+  <b>Tu trabajo en el sistema, en una línea:</b> decidir <b>qué se hace cada día</b>, con
+  <b>cuánta gente</b>, y que el taller <b>fiche sus horas</b>. Todo lo demás sale de ahí solo.
+</div></div>
+
+<h2>El pedido llega solo</h2>
+<p>No se cargan pedidos a mano. Cuando el comercial marca <b>Lead ganado</b>, el pedido aparece en el
+tablero de Producción con todo adentro: cliente, productos, cantidades, <b>medidas</b>, terminación,
+los <b>comentarios que dejó el comercial</b> y la lista de materiales de la cotización.</p>
+<div class="nota">Si un pedido llega con datos que no alcanzan para fabricar, <b>no lo adivines</b>:
+escribí un comentario en la tarjeta. El comercial recibe el aviso en su Inicio y contesta ahí mismo.
+Así la pregunta y la respuesta quedan pegadas al pedido, y el que fabrica dentro de tres semanas
+las va a poder leer.</div>
+
+<h2>Las cinco vistas del tablero</h2>
+<table>
+  <tr><th>Vista</th><th>Para qué</th></tr>
+  <tr><td><b>Kanban</b></td><td>ver el estado general y mover pedidos de etapa arrastrando la tarjeta</td></tr>
+  <tr><td><b>Lista</b></td><td>ver todo junto en tabla, con totales, y <b>imprimir etiquetas</b></td></tr>
+  <tr><td><b>Día</b></td><td><b>la vista de trabajo diaria</b>: capacidad, semáforo y qué se hace hoy</td></tr>
+  <tr><td><b>Calendario</b></td><td>las entregas del mes, con colores por cercanía</td></tr>
+  <tr><td><b>Listos para producir</b></td><td>la cola: pedidos aprobados y con materiales, sin día asignado</td></tr>
+</table>
+
+<h2>El semáforo es POR DÍA</h2>
+<p>Antes la capacidad se cargaba por semana. Se cambió a día por un motivo concreto: <b>la semana
+promediaba y escondía el problema</b>. Un lunes con tres faltas y un viernes completo daban "semana
+verde" mientras el lunes se caían las entregas.</p>
+
+<h3>Qué compara el semáforo</h3>
+<p>Compara <b>las horas planificadas para ese día</b> (la suma de las horas estimadas de los pedidos
+con ese día de fabricación) contra <b>la capacidad real de ese día</b> (las horas de trabajo que hay
+de verdad, con la gente que vino).</p>
+<table>
+  <tr><th>Color</th><th>Qué significa</th><th>Qué hacer</th></tr>
+  <tr><td>🟢 Verde</td><td>la capacidad alcanza</td><td>seguir el plan</td></tr>
+  <tr><td>🟡 Amarillo</td><td>está ajustado</td><td>priorizar: primero lo urgente y lo que tiene fecha</td></tr>
+  <tr><td>🔴 Rojo</td><td>no da</td><td>mover pedidos a otro día y, si afecta una entrega, avisar al comercial <b>hoy</b></td></tr>
+</table>
+<div class="nota ojo"><b>Un cumplimiento bajo no es lo mismo que bajo rendimiento.</b> El sistema
+devuelve las dos cosas separadas justamente para eso. Si un día se hizo poco pero vinieron tres
+personas menos, el problema fue la asistencia, no el equipo. Mirar solo el cumplimiento lleva a
+retar a quien sí vino a trabajar.</div>
+
+<h3>Tu rutina de la mañana (3 minutos)</h3>
+<ol class="pasos">
+  <li><b>Abrí Producción → Día.</b> Se abre en el día de hoy.</li>
+  <li><b>Cargá cuántos operarios vinieron y cuántas horas hay.</b> Si es un día normal, el botón
+    <b>Copiar la capacidad de ayer</b> lo llena solo: revisás y guardás.</li>
+  <li><b>Mirá el semáforo.</b> Si está rojo o amarillo, decidí qué se corre de día <b>antes</b> de
+    empezar, no a las cinco de la tarde.</li>
+  <li><b>Repartí las tareas.</b> Si un pedido no tiene subtareas, cargale las etapas del taller de una
+    sola vez con el botón que las crea todas.</li>
+  <li><b>Imprimí las etiquetas</b> de los pedidos del día y pegalas en las órdenes.</li>
+</ol>
+<p>Al final del día, si la capacidad real terminó siendo otra (alguien se fue temprano, cortó la luz),
+corregila y escribí el motivo en <b>Notas del día</b>. Ese texto es lo que en tres meses explica por
+qué esa semana rindió distinto.</p>
+
+<h3>Planificar un pedido</h3>
+<p>Planificar es <b>ponerle día de fabricación</b>. Se hace de tres lugares: en la vista Día con
+"Poner en este día", en la cola con "Planificar el …", o abriendo la tarjeta y cargando la fecha.</p>
+<p>La <b>semana</b> se calcula sola a partir del día: no hay que cargarla aparte. Cargar la misma
+cosa dos veces es la forma más segura de que las dos no coincidan.</p>
+
+<h3>Las tres fechas de un pedido (y por qué son tres)</h3>
+<table>
+  <tr><th>Fecha</th><th>Qué es</th></tr>
+  <tr><td>Solicitada por el cliente</td><td>cuándo lo necesita. Es un dato del cliente, no una promesa nuestra.</td></tr>
+  <tr><td>Objetivo interna</td><td>cuándo calculás terminarlo. Es tu número de trabajo.</td></tr>
+  <tr><td>Comprometida de entrega</td><td>lo que se le prometió. Es la que mide si llegamos tarde.</td></tr>
+  <tr><td>Real de finalización</td><td>cuándo se terminó de verdad. La pone el sistema al entregar.</td></tr>
+</table>
+<p>Tenerlas separadas es lo que permite después saber si el problema fue prometer mal o producir tarde.</p>
+
+<h2>Subtareas: de dónde salen las horas</h2>
+<p>Un pedido se parte en subtareas (corte, preparación, soldadura, pulido, pintura, armado,
+colocación). Cada subtarea tiene responsable, horas estimadas y un cronómetro.</p>
+<p>Las <b>horas reales</b> del pedido <b>nunca</b> se escriben a mano: son la suma de los tiempos
+fichados. Por eso el campo aparece bloqueado. Si el número está mal, se arregla el fichaje, no el campo.</p>
+<div class="nota tip"><b>Las horas estimadas son la única forma de que el semáforo sirva.</b> Un
+pedido sin horas estimadas pesa cero en el plan del día: el semáforo va a decir verde mientras el
+taller está desbordado. Estimar rápido y mal es mejor que no estimar.</div>
+
+<h2>La pantalla del taller y los PIN</h2>
+<p>Los operarios fichan en <b>/taller.html</b>, una pantalla aparte hecha con botones enormes.
+No necesitan usuario ni contraseña: entran con un <b>PIN de 4 números</b> que se les carga en
+Administración → Operarios.</p>
+<ul>
+  <li>El PIN se genera con el botón 🎲 (busca uno libre) o se escribe a mano.</li>
+  <li>Con el PIN, el operario <b>solo puede fichar</b>. No ve precios, ni cotizaciones, ni contabilidad.</li>
+  <li>Un operario sin PIN no puede entrar: sus tiempos los tiene que marcar el encargado.</li>
+  <li>Lo práctico es un tablet colgado en el taller con esa página abierta. La sesión dura 30 días.</li>
+</ul>
+<p>Si alguien se equivocó y fichó de más, el encargado corrige desde la subtarea en Producción.</p>
+
+<h2>Materiales y stock</h2>
+<p>La tarjeta del pedido trae la lista de materiales de la cotización y el botón
+<b>Descontar del stock</b>. Se aprieta <b>cuando el material sale del depósito</b>, no antes ni
+después: eso es lo que hace que el stock del sistema se parezca al del estante.</p>
+<p>Se puede apretar una sola vez por pedido; si ya se descontó, el sistema lo dice y no lo repite.</p>
+
+<h2>La etiqueta térmica</h2>
+<p>Cada pedido imprime una etiqueta para pegar en la orden de trabajo, pensada para impresora térmica
+de 80 mm.</p>
+<ol class="pasos">
+  <li><b>Abrí la tarjeta</b> y apretá <b>🖨 Etiqueta para la orden</b> (o el 🖨 de la vista Lista).</li>
+  <li><b>Se abre una ventana chica y sale el diálogo de impresión.</b> Si lo cancelás, la etiqueta
+    queda en pantalla y podés volver a imprimirla.</li>
+  <li><b>Podés elegir cuántas copias</b> y si <b>incluir el precio</b> (por defecto no lo incluye:
+    la orden circula por el taller).</li>
+</ol>
+<p>La etiqueta trae el número de orden, el cliente, qué se fabrica con medidas y terminación, los
+comentarios del comercial, el día de fabricación, la entrega, las horas estimadas, el responsable,
+casillas para tildar y un <b>código QR</b>. Escaneando el QR con el celular se abre la orden completa
+en el sistema, con los comentarios y las fotos.</p>
+
+<h2>Métricas: para qué sirvió tanto fichar</h2>
+<p>El módulo <b>Métricas</b> contesta con datos las preguntas que antes se contestaban de memoria:</p>
+<table>
+  <tr><th>Pregunta</th><th>Dónde está</th></tr>
+  <tr><td>¿Cuánto lleva de verdad fabricar un portón?</td><td>Cuánto lleva cada producto → <b>horas por unidad</b></td></tr>
+  <tr><td>¿Qué proceso se come las horas?</td><td>Cuánto lleva cada proceso, con el desvío contra lo estimado</td></tr>
+  <tr><td>¿Por qué un trabajo de 6 horas tardó 20 días?</td><td>Cuántos días lleva un pedido: espera / taller / entrega</td></tr>
+  <tr><td>¿Entregamos a tiempo?</td><td>Puntualidad</td></tr>
+  <tr><td>¿En qué se especializa cada uno?</td><td>Horas por operario</td></tr>
+</table>
+<div class="nota"><b>Horas de trabajo y días de plazo son cosas distintas.</b> Un pedido de 6 horas
+puede tardar 20 días porque esperó materiales. El plazo se parte en tres tramos —<b>espera</b>
+(antes del primer INICIO), <b>taller</b> (del primer INICIO al último FIN) y <b>entrega</b>—
+porque cada uno se arregla de manera diferente. Si el problema está en "espera", no se arregla
+apurando al taller: se arregla comprando antes.</div>
+<p>El número de <b>horas por unidad</b> es el que hay que llevarle al comercial: es lo que de verdad
+cuesta fabricar, y sirve para cotizar mejor la próxima vez.</p>
+
+<h2>Entregar</h2>
+<p>Al mover el pedido a <b>Entregado</b> pasan tres cosas solas: se marca la fecha real de
+finalización, la venta pasa a "entregada" y queda lista la <b>encuesta NPS</b> del cliente.
+Por eso conviene mover la tarjeta el día que se entrega y no acumular.</p>
+
+<h2>Errores que conviene no cometer</h2>
+<ul>
+  <li><b>No cargar la capacidad del día.</b> Sin eso el semáforo no puede decir nada útil.</li>
+  <li><b>No poner horas estimadas.</b> El pedido pesa cero en el plan y el semáforo miente.</li>
+  <li><b>Descontar el stock "para no olvidarse".</b> Si el material no salió del depósito, el número queda mal.</li>
+  <li><b>Preguntarle al comercial por WhatsApp.</b> La respuesta se pierde; en la tarjeta queda para siempre.</li>
+  <li><b>Dejar pedidos sin día.</b> Lo que no tiene día no existe para el semáforo.</li>
+</ul>
+`;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   C · MANUAL DE OPERARIOS (el simple vive en manual-taller.html)
+   ══════════════════════════════════════════════════════════════════════════ */
+var MANUAL_OPER = `
+<h2>El manual del taller está en su propia página</h2>
+<div class="tarjeton"><span class="ico">🔨</span><div>
+  <b><a href="/manual-taller.html" target="_blank">Abrir el manual del taller →</a></b><br>
+  Letra grande, dibujos y una cosa por paso. Está hecho para imprimir en A4 y pegarlo
+  al lado del tablet, y se puede abrir <b>sin estar logueado</b>.
+</div></div>
+<p>Se separó a propósito de este manual: quien lo va a leer está de pie, con las manos sucias, y
+puede no leer con facilidad. Un manual con párrafos como estos no le sirve.</p>
+
+<h3>Qué le decimos al operario, en resumen</h3>
+<ol class="pasos">
+  <li><b>Escribí tu número</b> (los 4 números que le dio el encargado).</li>
+  <li><b>Apretá el botón verde EMPEZAR A TRABAJAR.</b></li>
+  <li><b>Elegí el trabajo</b> (el nombre del cliente).</li>
+  <li><b>Elegí la tarea</b> (cortar, soldar, pintar…).</li>
+  <li><b>Cuando pares, apretá el botón rojo TERMINÉ POR AHORA.</b></li>
+</ol>
+<p>Y una sola regla que hay que repetirle: <b>no importa si el trabajo quedó terminado o no</b>.
+Aprieta INICIO cuando empieza y FIN cuando para. Mañana vuelve a apretar INICIO en la misma tarea
+y los tiempos se van sumando solos.</p>
+
+<h3>Lo que hay que dejar preparado para que funcione</h3>
+<ul>
+  <li><b>Un tablet o computadora en el taller</b> con <code>/taller.html</code> abierto. La sesión
+    dura 30 días, así que no hay que estar entrando todos los días.</li>
+  <li><b>Un PIN por persona</b>, cargado en Administración → Operarios. Que no se compartan: si dos
+    personas usan el mismo, las horas quedan todas a nombre de una.</li>
+  <li><b>El cartel con el manual impreso</b> al lado del tablet.</li>
+  <li><b>Los pedidos del día con su día de fabricación puesto</b>, así el operario los encuentra.</li>
+</ul>
+
+<h3>Preguntas que van a hacer</h3>
+<table>
+  <tr><th>Pregunta</th><th>Respuesta</th></tr>
+  <tr><td>"Me olvidé de apretar INICIO"</td><td>Que lo apriete cuando se acuerde y avise al encargado, que corrige el tiempo desde Producción.</td></tr>
+  <tr><td>"Me olvidé de apretar FIN y quedó toda la noche"</td><td>Igual: el encargado corrige. Por eso Métricas marca los tramos sin cerrar.</td></tr>
+  <tr><td>"Empecé otra cosa sin apretar FIN"</td><td>No pasa nada: al empezar una tarea nueva, la anterior se cierra sola. Nunca se acumulan dos a la vez.</td></tr>
+  <tr><td>"¿Esto me controla?"</td><td>Sirve para saber cuánto lleva cada trabajo y cotizar bien. Es la herramienta que permite dejar de prometer fechas al azar.</td></tr>
+  <tr><td>"No encuentro mi trabajo en la lista"</td><td>Le falta el día de fabricación, o ya está entregado. Lo pone el encargado.</td></tr>
+</table>
+`;
+</script>
+</body>
+</html>

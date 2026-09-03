@@ -15,8 +15,18 @@
 // y cualquier identificador que llegue del cliente se valida contra columnas reales
 // antes de tocar el SQL.
 
+// PERFILES BASE. Son cuatro y están en el código a propósito: los roles se crean
+// desde Administración (tabla `app_roles`), pero cada uno se APOYA en uno de estos
+// perfiles y hereda sus permisos de tabla. Así la pantalla decide qué se VE y el
+// perfil base decide qué se PUEDE tocar en la base — una pantalla no puede
+// regalarse permisos de contabilidad.
 const ADMIN = ['admin', 'director'];
 const TODOS = ['admin', 'director', 'comercial', 'produccion'];
+// El operario solo ficha su trabajo: ve el pedido y mueve sus tiempos. Precios,
+// cotizaciones, clientes y contabilidad los tiene vedados. Lo normal es que entre
+// por /taller.html con PIN (sin usuario de la app), pero si además tiene login,
+// estos son los únicos permisos que hereda.
+const CON_OPERARIO = [...TODOS, 'operario'];
 // El cotizador tiene que poder dar de alta un material sin salir del flujo, y ese
 // material va a la MISMA tabla del catálogo (una sola fuente de datos, sin copias).
 // Por eso comercial escribe `materials`; el resto del catálogo sigue siendo de admin.
@@ -31,14 +41,14 @@ const TABLAS = {
   product_templates:       { leer: TODOS, escribir: ADMIN },
   template_material_lines: { leer: TODOS, escribir: ADMIN },
   template_labor_lines:    { leer: TODOS, escribir: ADMIN },
-  kanban_stages:           { leer: TODOS, escribir: ADMIN },
+  kanban_stages:           { leer: CON_OPERARIO, escribir: ADMIN },
   custom_fields:           { leer: TODOS, escribir: ADMIN },
   // Talleres: lo administra admin.html (es su pestaña por defecto).
   workshops:               { leer: TODOS, escribir: ADMIN },
 
   // ── Operativo ─────────────────────────────────────────────────
   intake_cards:                { leer: TODOS, escribir: TODOS },
-  production_cards:            { leer: TODOS, escribir: TODOS },
+  production_cards:            { leer: CON_OPERARIO, escribir: TODOS },
   card_stories:                { leer: TODOS, escribir: TODOS },
   production_card_transitions: { leer: TODOS, escribir: TODOS },
   card_comment_reads:          { leer: TODOS, escribir: TODOS },
@@ -48,9 +58,11 @@ const TABLAS = {
   // Ventas confirmadas: las crea el pase a Producción desde el CRM.
   sales:                       { leer: TODOS, escribir: TODOS },
   // Producción: el taller trabaja sobre esto (subtareas, tiempos, planificación).
-  production_subtasks:         { leer: TODOS, escribir: TODOS },
-  subtask_time_logs:           { leer: TODOS, escribir: TODOS },
+  production_subtasks:         { leer: CON_OPERARIO, escribir: CON_OPERARIO },
+  subtask_time_logs:           { leer: CON_OPERARIO, escribir: CON_OPERARIO },
   production_weeks:            { leer: TODOS, escribir: TODOS },
+  // Capacidad y semáforo DIARIOS: el método operativo del taller.
+  production_days:             { leer: CON_OPERARIO, escribir: TODOS },
   // Consumo de materiales y recepción de compras: producción y compras escriben.
   stock_movements:             { leer: TODOS, escribir: TODOS },
   notifications:               { leer: TODOS, escribir: TODOS },
@@ -58,7 +70,7 @@ const TABLAS = {
   nps_surveys:                 { leer: TODOS, escribir: TODOS },
 
   // ── Catálogo extendido (escribe admin) ────────────────────────
-  operators:      { leer: TODOS, escribir: ADMIN },
+  operators:      { leer: CON_OPERARIO, escribir: ADMIN },
   suppliers:      { leer: TODOS, escribir: ADMIN },
   nps_options:    { leer: TODOS, escribir: ADMIN },
   payroll_charges:{ leer: TODOS, escribir: ADMIN },
@@ -79,9 +91,18 @@ const TABLAS = {
   assets:         { leer: ADMIN, escribir: ADMIN },
   social_impact:  { leer: TODOS, escribir: ADMIN },
 
-  // ── Perfiles y auditoría ──────────────────────────────────────
+  // ── Sugerencias del equipo ────────────────────────────────────
+  // Cualquiera escribe la suya (botón fijo en toda la app) y las lee para no
+  // repetir una que ya está. Cambiar el estado o responder es cosa de admin,
+  // y eso lo controla la pantalla de Administración.
+  suggestions:   { leer: CON_OPERARIO, escribir: CON_OPERARIO },
+
+  // ── Perfiles y roles ──────────────────────────────────────────
   // Los perfiles los lee cualquiera (la navbar muestra nombres); escribe solo admin.
-  user_profiles: { leer: TODOS, escribir: ADMIN },
+  user_profiles: { leer: CON_OPERARIO, escribir: ADMIN },
+  // Los roles los lee cualquiera (la navbar necesita saber qué módulos ve);
+  // crearlos y editarlos es solo de admin.
+  app_roles:     { leer: CON_OPERARIO, escribir: ADMIN },
   // La auditoría se escribe sola desde la API; nadie la borra ni la edita.
   audit_log:     { leer: ADMIN, escribir: TODOS, soloInsert: true },
 };
@@ -136,6 +157,39 @@ export function esJson(tabla, col) {
   return t === 'jsonb' || t === 'json';
 }
 
+/* ── Roles configurables (tabla app_roles) ───────────────────────────────────
+   Los roles se crean desde Administración, pero los PERMISOS DE TABLA no se
+   editan desde ahí: cada rol declara un `perfil_base` (admin | comercial |
+   produccion | operario) y hereda sus permisos. Lo único configurable por
+   pantalla es qué MÓDULOS ve (`modulos`), que es cosa de la navegación.
+
+   Se cargan al arrancar y se recargan cuando la API escribe sobre `app_roles`
+   (ver api/router.js). Si la tabla todavía no existe —primer deploy con este
+   código— el mapa queda vacío y los cuatro roles originales siguen funcionando
+   porque son sus propios perfiles base. */
+const perfiles = new Map();   // key del rol → perfil base
+
+export async function cargarRoles(pool) {
+  try {
+    const { rows } = await pool.query(`select key, perfil_base, activo from app_roles`);
+    perfiles.clear();
+    for (const r of rows) if (r.activo !== false) perfiles.set(r.key, r.perfil_base || 'comercial');
+    return perfiles.size;
+  } catch (e) {
+    console.warn('[registry] no pude leer app_roles (¿esquema viejo?):', e.message);
+    return 0;
+  }
+}
+
+// Rol del usuario → perfil base con el que se evalúan los permisos.
+// Un rol desconocido cae en el perfil más restrictivo, nunca en admin.
+export function perfilDe(rol) {
+  if (!rol) return 'operario';
+  if (perfiles.has(rol)) return perfiles.get(rol);
+  if (['admin', 'director', 'comercial', 'produccion', 'operario'].includes(rol)) return rol;
+  return 'operario';
+}
+
 // Devuelve null si puede, o el motivo del rechazo.
 export function puede(tabla, accion, rol) {
   const reglas = TABLAS[tabla];
@@ -143,8 +197,9 @@ export function puede(tabla, accion, rol) {
   if (reglas.soloInsert && accion !== 'select' && accion !== 'insert') {
     return `Sobre ${tabla} solo se puede insertar o leer`;
   }
+  const perfil = perfilDe(rol);
   const permitidos = accion === 'select' ? reglas.leer : reglas.escribir;
-  if (!permitidos.includes(rol)) {
+  if (!permitidos.includes(perfil)) {
     return accion === 'select'
       ? `Tu rol (${rol}) no puede leer ${tabla}`
       : `Tu rol (${rol}) no puede modificar ${tabla}`;
@@ -152,5 +207,10 @@ export function puede(tabla, accion, rol) {
   return null;
 }
 
-export const ES_ADMIN = (rol) => ADMIN.includes(rol);
+export const ES_ADMIN = (rol) => ADMIN.includes(perfilDe(rol));
 export const ROLES = TODOS;
+export const PERFILES_BASE = ['admin', 'comercial', 'produccion', 'operario'];
+// ¿Existe ese rol? La usa el alta de usuarios para no crear roles fantasma.
+export function rolExiste(rol) {
+  return perfiles.has(rol) || ['admin', 'director', 'comercial', 'produccion', 'operario'].includes(rol);
+}

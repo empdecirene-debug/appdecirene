@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cómo marcar tu trabajo · De Cirene</title>
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&family=Raleway:wght@700&display=swap" rel="stylesheet">
+<style>
+  /* ── MANUAL DEL TALLER ─────────────────────────────────────────────────────
+     Lo lee gente que puede tener dificultad con la lectura, de pie, en el
+     taller. Reglas que se siguieron en toda la página:
+       · Una idea por bloque, con un dibujo grande al lado.
+       · Frases cortas, en presente, tuteando. Nada de "deberá", "el sistema".
+       · Cero palabras técnicas: no aparecen "subtarea", "registro", "sesión".
+       · Los botones se muestran EXACTAMENTE como se ven en la pantalla real,
+         con el mismo color y el mismo texto, para poder compararlos con el dedo.
+       · Pensado para imprimir en A4 y pegarlo al lado del tablet. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Public Sans', system-ui, sans-serif; background: #EDEDEB; color: #14161A;
+    font-size: 19px; line-height: 1.5; padding: 20px 14px 60px; }
+  .hoja { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 18px;
+    padding: 34px 38px 44px; box-shadow: 0 6px 26px rgba(0,0,0,.10); }
+  @media (max-width: 640px) { .hoja { padding: 22px 18px 32px; } body { font-size: 18px; } }
+
+  .marca { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .marca img { width: 42px; height: 42px; }
+  .marca span { font-family: 'Raleway', sans-serif; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; font-size: 17px; }
+
+  h1 { font-family: 'Raleway', sans-serif; font-size: 34px; line-height: 1.15; margin-bottom: 8px; }
+  .bajada { font-size: 21px; color: #3D4148; margin-bottom: 28px; }
+
+  h2 { font-family: 'Raleway', sans-serif; font-size: 25px; margin: 34px 0 14px;
+    border-top: 3px solid #0A0A0A; padding-top: 14px; }
+
+  .paso { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
+  .num { flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; background: #0A0A0A; color: #fff;
+    font-size: 26px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .paso .txt { flex: 1; }
+  .paso .txt b { display: block; font-size: 22px; line-height: 1.25; margin-bottom: 3px; }
+  .paso .dib { font-size: 46px; line-height: 1; flex: 0 0 auto; }
+
+  /* Reproducción de los botones reales de la pantalla del taller. */
+  .boton { display: inline-flex; align-items: center; gap: 11px; padding: 15px 20px; border-radius: 15px;
+    font-size: 20px; font-weight: 800; color: #fff; background: #23262B; margin: 8px 0; line-height: 1.15; }
+  .boton .i { font-size: 27px; }
+  .boton.verde { background: #1E7A44; }
+  .boton.roja { background: #A32D2D; }
+
+  .aviso { border-left: 6px solid #0A0A0A; background: #F5F5F4; padding: 16px 20px;
+    border-radius: 0 12px 12px 0; margin: 20px 0; font-size: 20px; }
+  .aviso.ok { border-color: #1E7A44; background: #E1F5EE; }
+  .aviso.ojo { border-color: #A32D2D; background: #FDECEE; }
+  .aviso b { font-size: 21px; }
+
+  .grande { font-size: 23px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 18px; margin: 10px 0 18px; }
+  td { padding: 11px 8px; border-bottom: 2px solid #EDEDEB; vertical-align: top; }
+  td.q { width: 46%; font-weight: 700; }
+  ul { margin: 0 0 16px 26px; } li { margin-bottom: 8px; }
+
+  .pin { display: flex; gap: 10px; margin: 12px 0 18px; }
+  .pin i { width: 54px; height: 66px; border: 3px solid #0A0A0A; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 30px;
+    font-weight: 800; font-style: normal; }
+
+  .imprimir { max-width: 760px; margin: 0 auto 14px; text-align: right; }
+  .imprimir button { padding: 11px 18px; border-radius: 10px; border: none; background: #0A0A0A;
+    color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .pie { margin-top: 34px; padding-top: 16px; border-top: 3px solid #0A0A0A; font-size: 17px; color: #3D4148; }
+
+  @media print {
+    body { background: #fff; padding: 0; font-size: 13.5pt; }
+    .hoja { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
+    .imprimir { display: none; }
+    h2 { page-break-after: avoid; } .paso, .aviso { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="imprimir"><button onclick="window.print()">🖨 Imprimir para pegar en la pared</button></div>
+
+<div class="hoja">
+  <div class="marca"><img src="/assets/logo-mark.png" alt=""><span>De C&#x0268;rene</span></div>
+
+  <h1>Cómo marcar tu trabajo</h1>
+  <p class="bajada">Son 5 pasos. Se hace en el tablet del taller.<br>
+    Sirve para saber cuánto tiempo lleva cada trabajo.</p>
+
+  <div class="aviso ok">
+    <b>Lo más importante de todo:</b><br>
+    Apretás <b>EMPEZAR</b> cuando arrancás.<br>
+    Apretás <b>TERMINÉ</b> cuando parás.<br>
+    <b>No importa si el trabajo quedó pronto o no.</b>
+  </div>
+
+  <h2>Paso 1 · Poné tu número</h2>
+  <div class="paso">
+    <div class="num">1</div>
+    <div class="txt">
+      <b>Escribí tus 4 números.</b>
+      Son los números que te dio el encargado. Son solo tuyos.
+      <div class="pin"><i>•</i><i>•</i><i>•</i><i>•</i></div>
+      Cuando pongas el cuarto número, entra solo. No hay que apretar nada más.
+    </div>
+    <div class="dib">🔢</div>
+  </div>
+  <div class="aviso ojo"><b>No le des tu número a nadie.</b> Si otro lo usa, tus horas se anotan en él.</div>
+
+  <h2>Paso 2 · Apretá el botón verde</h2>
+  <div class="paso">
+    <div class="num">2</div>
+    <div class="txt">
+      <b>Apretá este botón:</b>
+      <div class="boton verde"><span class="i">▶</span> EMPEZAR A TRABAJAR</div>
+      Es el <b>verde</b>. Verde es empezar. Siempre.
+    </div>
+    <div class="dib">👆</div>
+  </div>
+
+  <h2>Paso 3 · Elegí en qué trabajo estás</h2>
+  <div class="paso">
+    <div class="num">3</div>
+    <div class="txt">
+      <b>Apretá el nombre del cliente.</b>
+      Van a aparecer varios nombres, uno debajo del otro.
+      Apretá el del trabajo que vas a hacer ahora.
+      <br><br>Si dice <b>URGENTE</b> en rojo, ese trabajo va primero.
+    </div>
+    <div class="dib">📋</div>
+  </div>
+  <div class="aviso">¿No ves tu trabajo en la lista? Avisale al encargado. Él lo pone.</div>
+
+  <h2>Paso 4 · Elegí qué vas a hacer</h2>
+  <div class="paso">
+    <div class="num">4</div>
+    <div class="txt">
+      <b>Apretá la tarea.</b>
+      Cada tarea tiene su dibujo:
+      <ul>
+        <li>✂️ Corte</li>
+        <li>📐 Preparación</li>
+        <li>🔥 Soldadura</li>
+        <li>🧽 Pulido</li>
+        <li>🎨 Pintura</li>
+        <li>🔧 Armado</li>
+        <li>🚚 Colocación</li>
+      </ul>
+      Listo. <b>El reloj arrancó.</b> Ya podés ir a trabajar.
+    </div>
+    <div class="dib">🔨</div>
+  </div>
+
+  <h2>Paso 5 · Cuando parás, apretá el rojo</h2>
+  <div class="paso">
+    <div class="num">5</div>
+    <div class="txt">
+      <b>Apretá este botón:</b>
+      <div class="boton roja"><span class="i">✋</span> TERMINÉ POR AHORA</div>
+      Es el <b>rojo</b>. Rojo es parar. Siempre.
+      <br><br>Apretalo cuando:
+      <ul>
+        <li>Te vas a tomar el almuerzo.</li>
+        <li>Te vas a casa.</li>
+        <li>Vas a hacer otra cosa.</li>
+      </ul>
+    </div>
+    <div class="dib">✋</div>
+  </div>
+
+  <div class="aviso ok">
+    <b>¿El trabajo no quedó terminado?</b><br>
+    No importa. Apretá el rojo igual.<br>
+    Mañana volvés a apretar el verde en la misma tarea.<br>
+    <b>El tiempo se suma solo.</b>
+  </div>
+
+  <h2>¿La tarea ya está pronta?</h2>
+  <div class="paso">
+    <div class="dib">✅</div>
+    <div class="txt">
+      <b>Solo si de verdad terminaste esa tarea</b>, apretá:
+      <div class="boton"><span class="i">✅</span> ESTA TAREA YA ESTÁ LISTA</div>
+      Si no estás seguro, apretá el rojo normal. No pasa nada.
+    </div>
+  </div>
+
+  <h2>Si te equivocaste</h2>
+  <p class="grande">Tranquilo. Nada se rompe. El encargado lo arregla.</p>
+  <table>
+    <tr><td class="q">Me olvidé de apretar EMPEZAR</td>
+        <td>Apretalo ahora y avisale al encargado.</td></tr>
+    <tr><td class="q">Me olvidé de apretar TERMINÉ y quedó toda la noche</td>
+        <td>Avisale al encargado. Él borra las horas de más.</td></tr>
+    <tr><td class="q">Empecé otra cosa sin apretar TERMINÉ</td>
+        <td>No pasa nada. La otra se cierra sola.</td></tr>
+    <tr><td class="q">Elegí el trabajo equivocado</td>
+        <td>Apretá el rojo y empezá de nuevo con el correcto. Avisale al encargado.</td></tr>
+    <tr><td class="q">El tablet no anda</td>
+        <td>Avisale al encargado. Trabajá igual: después él anota tus horas.</td></tr>
+    <tr><td class="q">Me olvidé mi número</td>
+        <td>Pedíselo al encargado.</td></tr>
+  </table>
+
+  <h2>¿Para qué sirve todo esto?</h2>
+  <p>Para saber <b>cuánto tiempo lleva cada trabajo de verdad</b>.</p>
+  <p>Con eso De Cirene puede cobrar bien, prometerle al cliente una fecha que se pueda cumplir,
+    y pedir los materiales a tiempo.</p>
+  <p class="grande">No es para controlarte. Es para que el taller trabaje mejor.</p>
+
+  <div class="pie">
+    Emprendimientos De Cirene · Si algo no se entiende, preguntale al encargado.<br>
+    La pantalla para marcar está en <b>/taller.html</b>
+  </div>
+</div>
+</body>
+</html>

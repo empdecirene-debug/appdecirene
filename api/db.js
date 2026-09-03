@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hashPassword } from './session.js';
-import { cargarColumnas } from './registry.js';
+import { cargarColumnas, cargarRoles } from './registry.js';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -152,10 +152,11 @@ export async function migrar() {
   }
 
   const n = await cargarColumnas(pool);
+  const nr = await cargarRoles(pool);
   const resumen = {};
   for (const t of ['materials', 'labor_rates', 'product_templates', 'kanban_stages', 'app_users', 'user_profiles']) {
     resumen[t] = await contar(t);
   }
-  console.log('[db] listo ·', n, 'tablas ·', JSON.stringify(resumen));
+  console.log('[db] listo ·', n, 'tablas ·', nr, 'roles ·', JSON.stringify(resumen));
   return resumen;
 }
