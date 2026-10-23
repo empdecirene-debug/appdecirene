@@ -381,8 +381,11 @@ previa de la pantalla. Sin `confirmacion: 'REINICIAR'` no borra.
   de varios renglones, celdas finales que faltan. Cada fila prueba combinaciones y gana la que pone números donde
   van números. Precio = unitario × Cantidad, salvo que la cantidad sea una medida ("8 mts"): ahí es el total.
   Las líneas de cantidad > 1 y $50.000 o más se avisan para revisar (no se sabe si era unitario o total).
-- **No se importa**: la sección *Stock* (productos terminados; el stock del ERP es de materiales), cotizaciones
-  ni cobros (Asana no tiene las líneas de costo ni los montos cobrados).
+- **Cobros**: cuenta a cobrar por trabajo con precio; PAGO = SI → un cobro por el total (+ movimiento de caja).
+  Entregados SIN marca de pago (los viejos, de antes de esa columna) → cobrados "asumidos", anotado en el cobro.
+  NO y SEÑA quedan a cobrar (la seña sin monto, con nota).
+- **No se importa**: la sección *Stock* (productos terminados; el stock del ERP es de materiales) ni cotizaciones
+  (Asana no tiene las líneas de costo del cotizador).
 - **Respaldo**: JSON de todas las tablas que se vacían, en `/data/respaldos/` (mismo volumen, FUERA de
   `/data/adjuntos`, que se sirve público). Para restaurar hay que hacerlo a mano desde ese archivo.
 - Con los CSV del 2026-10-23: 122 clientes, 182 consultas, 131 trabajos, 113 ventas.

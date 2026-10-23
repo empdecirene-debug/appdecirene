@@ -17,10 +17,9 @@
 // Lo que NO se importa, a propósito:
 //   · la sección "Stock" de Operativa: son productos terminados, y el stock del
 //     ERP es de materiales. Se devuelve la lista para mostrarla.
-//   · cotizaciones, cobros y cuentas a cobrar: Asana tiene el precio pero no las
-//     líneas de costo de un presupuesto del cotizador ni los montos cobrados.
-//     Inventarlos ensuciaría Contabilidad. El estado de pago (SI/NO/SEÑA) sí
-//     queda en la tarjeta.
+//   · cotizaciones: Asana tiene el precio pero no las líneas de costo que arma el
+//     cotizador. Los cobros SÍ: uno por el total en cada trabajo con PAGO = SI (y
+//     en los entregados viejos sin marca de pago, ver más abajo).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -491,6 +490,36 @@ export async function importarAsana(textos, { soloVer = false, uid = null } = {}
         await c.query(`update production_cards set sale_id = $1 where id = $2`, [v.rows[0].id, t.id]);
         if (lead) await c.query(`update intake_cards set sale_id = $1 where id = $2`, [v.rows[0].id, lead.id]);
         sumar('ventas');
+
+        // Cuenta a cobrar y, si está pago, su cobro: si no, Ventas mostraría todo
+        // lo facturado como "por cobrar". PAGO = SI es cobrado. Los entregados SIN
+        // marca de pago son los viejos, de antes de que Asana tuviera esa columna:
+        // se toman como cobrados y queda anotado en el cobro.
+        const asumido = !t.estado_pago && t.etapa === 'entregado';
+        const pagado = t.estado_pago === 'SI' || asumido;
+        const nota = asumido ? 'Importado de Asana: entregado sin marca de pago, se tomó como cobrado.'
+          : t.estado_pago === 'SEÑA' ? 'Importado de Asana: figuraba con seña, sin el monto. Registrala acá.' : null;
+        const rec = await c.query(
+          `insert into receivables (production_card_id, sale_id, client_id, cliente_nombre, monto, fecha, forma_cobro,
+             fecha_esperada_cobro, cobrado, saldo, estado, notas)
+           values ($1,$2,$3,$4,$5,$6,'credito_entrega',$7,$8,$9,$10,$11) returning id`,
+          [t.id, v.rows[0].id, cid, t.clienteNombre, t.total, t.creado || new Date().toISOString().slice(0, 10),
+           t.due_date, pagado ? t.total : 0, pagado ? 0 : t.total, pagado ? 'cobrado' : 'a_cobrar', nota]);
+        sumar('cuentas_a_cobrar');
+        if (pagado) {
+          const fecha = t.completado || t.modificado || t.creado;
+          const pay = await c.query(
+            `insert into job_payments (production_card_id, tipo, monto, metodo, fecha, registrado_por, receivable_id, notas)
+             values ($1,'total',$2,$3,$4,$5,$6,$7) returning id`,
+            [t.id, t.total, t.metodo_pago, fecha, uid, rec.rows[0].id,
+             asumido ? 'Importado de Asana (sin marca de pago; se asumió cobrado)' : 'Importado de Asana (PAGO = SI)']);
+          await c.query(
+            `insert into cash_movements (tipo, categoria, monto, metodo, fecha, production_card_id, job_payment_id, descripcion, registrado_por)
+             values ('ingreso','venta',$1,$2,$3,$4,$5,$6,$7)`,
+            [t.total, t.metodo_pago, fecha, t.id, pay.rows[0].id, 'Cobro ' + (t.clienteNombre || t.id) + ' (Asana)', uid]);
+          await c.query(`update production_cards set estado_pago = 'SI' where id = $1`, [t.id]);
+          sumar(asumido ? 'cobros_asumidos' : 'cobros');
+        }
       }
       if (lead) await c.query(`update intake_cards set resulting_production_card_id = $1 where id = $2`, [t.id, lead.id]);
     }
