@@ -2,9 +2,9 @@
 // Materiales, terminaciones, tarifas de mano de obra, plantillas de producto (BOM)
 // y cotizaciones. TODA página de datos pasa por acá.
 
-import { getSupa } from './supa.js?v=7';
-import { normalizePhoneUY } from './phone-normalizer.js?v=7';
-import { arr } from './quote-engine.js?v=7';
+import { getSupa } from './supa.js?v=8';
+import { normalizePhoneUY } from './phone-normalizer.js?v=8';
+import { arr } from './quote-engine.js?v=8';
 
 const db = () => getSupa();
 

@@ -89,11 +89,11 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=7';
-import { requireAdmin } from './js/auth.js?v=7';
-import { getSupa, api } from './js/supa.js?v=7';
-import * as data from './js/cirene-data.js?v=7';
-import { money, n } from './js/quote-engine.js?v=7';
+import { renderNavbar } from './js/navbar.js?v=8';
+import { requireAdmin } from './js/auth.js?v=8';
+import { getSupa, api } from './js/supa.js?v=8';
+import * as data from './js/cirene-data.js?v=8';
+import { money, n } from './js/quote-engine.js?v=8';
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -365,6 +365,19 @@ function renderFields() {
 function renderUsers() {
   return `
     <div class="card">
+      <h2>PIN de entrada al sistema</h2>
+      <p class="subtitle" style="margin-bottom:10px">La pantalla de entrada pide un PIN de 4 números y abre la app
+        como administrador. Al cambiarlo, quien haya entrado con el PIN anterior tiene que volver a entrar.
+        Las personas con usuario propio pueden seguir entrando con su email y contraseña.</p>
+      <div class="row3">
+        <div class="fg"><label class="label">PIN nuevo</label>
+          <input id="pin-nuevo" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 números"></div>
+        <div class="fg"><label class="label">Repetilo</label>
+          <input id="pin-repe" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
+        <div class="fg" style="display:flex;align-items:flex-end"><button class="btn primary" id="btnPin">Cambiar PIN</button></div>
+      </div>
+    </div>
+    <div class="card">
       <h2>Nuevo usuario</h2>
       <div class="row3">
         <div class="fg"><label class="label">Email</label><input id="u-email" type="email" placeholder="nombre@decirene.uy"></div>
@@ -413,6 +426,19 @@ function opcionesDeRol(actual) {
     .map(r => `<option value="${esc(r.key)}" ${r.key === actual ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
 }
 function bindUsers() {
+  $('btnPin').onclick = async () => {
+    const nuevo = $('pin-nuevo').value.trim();
+    if (!/^\d{4}$/.test(nuevo)) { showError('El PIN tiene que ser de 4 números'); return; }
+    if (nuevo !== $('pin-repe').value.trim()) { showError('Los dos PIN no coinciden'); return; }
+    const btn = $('btnPin'); btn.disabled = true;
+    try {
+      const r = await api.pedir('/auth/pin/cambiar', { method: 'POST', body: JSON.stringify({ nuevo }) });
+      if (r.error) throw new Error(typeof r.error === 'string' ? r.error : r.error.message);
+      $('pin-nuevo').value = ''; $('pin-repe').value = '';
+      showOk('PIN cambiado. Desde ahora se entra con el nuevo.');
+    } catch (e) { showError('No se pudo cambiar el PIN: ' + e.message); }
+    finally { btn.disabled = false; }
+  };
   $('btnNewUser').onclick = async () => {
     const email = $('u-email').value.trim().toLowerCase();
     if (!email) { showError('Falta el email'); return; }

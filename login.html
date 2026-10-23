@@ -47,6 +47,35 @@ button.primary:disabled { opacity: 0.5; cursor: wait; }
 .alert.ok { background: var(--ok-bg); color: var(--ok-text); border-left: 3px solid #0F6E56; }
 .hint { font-size: 11px; color: var(--tinta-2); text-align: center; margin-top: 16px; line-height: 1.5; }
 .hint a { color: var(--azul); }
+
+/* Teclado del PIN */
+.ayuda { text-align: center; font-size: 13px; color: var(--tinta-2); margin: -8px 0 16px; }
+.puntos { display: flex; gap: 14px; justify-content: center; margin: 4px 0 22px; }
+.puntos i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--tinta); display: block;
+  transition: background .1s; }
+.puntos i.on { background: var(--tinta); }
+.puntos.mal { animation: sacudir .35s; }
+.puntos.mal i { border-color: #A32D2D; }
+@keyframes sacudir { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.teclado button { min-height: 60px; border: 1px solid var(--border); border-radius: 12px; background: #F6F6F4;
+  color: var(--tinta); font: inherit; font-size: 24px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.teclado button:hover { background: #EDEDEA; }
+.teclado button:active { background: #E2E2E0; }
+.teclado button.aux { font-size: 14px; color: var(--tinta-2); background: transparent; border-color: transparent; }
+.teclado button:disabled { opacity: .5; cursor: wait; }
+.otro { display: block; margin: 18px auto 0; background: none; border: none; color: var(--tinta-2);
+  font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.otro:hover { color: var(--tinta); }
+[hidden] { display: none !important; }
+/* Laptops de pantalla baja: que el teclado entero entre sin scroll. */
+@media (max-height: 860px) and (min-width: 600px) {
+  body { gap: 10px; }
+  .brandlogo { width: 170px; }
+  .card { padding: 24px 30px; }
+  .teclado button { min-height: 52px; }
+}
 </style>
 </head>
 <body>
@@ -60,7 +89,21 @@ button.primary:disabled { opacity: 0.5; cursor: wait; }
 
   <div id="msg"></div>
 
-  <form id="loginForm">
+  <!-- Entrada con PIN: es la de todos los días. -->
+  <div id="conPin">
+    <p class="ayuda">Escribí el PIN de 4 números</p>
+    <div class="puntos" id="puntos" aria-live="polite"><i></i><i></i><i></i><i></i></div>
+    <div class="teclado" id="teclado">
+      <button type="button" data-t="1">1</button><button type="button" data-t="2">2</button><button type="button" data-t="3">3</button>
+      <button type="button" data-t="4">4</button><button type="button" data-t="5">5</button><button type="button" data-t="6">6</button>
+      <button type="button" data-t="7">7</button><button type="button" data-t="8">8</button><button type="button" data-t="9">9</button>
+      <span></span><button type="button" data-t="0">0</button><button type="button" class="aux" data-t="borrar" aria-label="Borrar">← Borrar</button>
+    </div>
+    <button type="button" class="otro" id="aEmail">Entrar con email y contraseña</button>
+  </div>
+
+  <!-- Email y contraseña: para entrar con un usuario propio, o si el PIN quedó frenado. -->
+  <form id="loginForm" hidden>
     <div class="fg">
       <label class="label" for="email">Email</label>
       <input id="email" type="email" required autocomplete="email" />
@@ -70,31 +113,91 @@ button.primary:disabled { opacity: 0.5; cursor: wait; }
       <input id="password" type="password" required autocomplete="current-password" />
     </div>
     <button type="submit" class="primary" id="btnLogin">Iniciar sesión</button>
+    <button type="button" class="otro" id="aPin">Volver al PIN</button>
   </form>
-
-  <p class="hint">
-    ¿No tenés cuenta? Pedile al admin que te cree una. Las cuentas se administran desde el panel de Supabase.
-  </p>
 </div>
 
 <script type="module">
-import { signIn, getCurrentUser } from './js/auth.js?v=7';
+import { signIn, signInWithPin, getCurrentUser } from './js/auth.js?v=8';
 
 const $ = id => document.getElementById(id);
 const msg = $('msg');
 
 function showMsg(text, kind = 'err') {
-  msg.innerHTML = `<div class="alert ${kind}">${text}</div>`;
+  msg.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'alert ' + kind;
+  d.textContent = text;
+  msg.appendChild(d);
 }
 
-// Si ya hay sesión, redirigir al destino (next= en query) o al cotizador
+// Solo rutas de esta misma app: un ?next=https://otro-sitio no tiene que redirigir afuera.
+function destino() {
+  const next = new URLSearchParams(location.search).get('next') || '';
+  return /^\/(?!\/)/.test(next) ? next : '/home.html';
+}
+
+// Si ya hay sesión, ir directo al destino.
 (async () => {
   const user = await getCurrentUser().catch(() => null);
-  if (user) {
-    const next = new URLSearchParams(location.search).get('next') || '/home.html';
-    location.href = next;
-  }
+  if (user) location.href = destino();
 })();
+
+/* ── PIN ── */
+let pin = '';
+let enviando = false;
+
+function pintarPuntos() {
+  $('puntos').querySelectorAll('i').forEach((el, i) => el.classList.toggle('on', i < pin.length));
+}
+
+function tecla(t) {
+  if (enviando) return;
+  if (t === 'borrar') { pin = pin.slice(0, -1); pintarPuntos(); return; }
+  if (pin.length >= 4) return;
+  pin += t;
+  $('puntos').classList.remove('mal');
+  msg.innerHTML = '';
+  pintarPuntos();
+  // Con el cuarto número entra solo: no hay botón de "Entrar".
+  if (pin.length === 4) entrar();
+}
+
+async function entrar() {
+  enviando = true;
+  $('teclado').querySelectorAll('button').forEach(b => b.disabled = true);
+  try {
+    await signInWithPin(pin);
+    location.href = destino();
+  } catch (err) {
+    pin = '';
+    pintarPuntos();
+    const p = $('puntos');
+    p.classList.remove('mal'); void p.offsetWidth; p.classList.add('mal');
+    showMsg(err.message || 'No se pudo entrar');
+    enviando = false;
+    $('teclado').querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+}
+
+$('teclado').querySelectorAll('[data-t]').forEach(b => b.onclick = () => tecla(b.dataset.t));
+
+// En la computadora también se puede escribir con el teclado.
+document.addEventListener('keydown', (e) => {
+  if ($('conPin').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); tecla(e.key); }
+  else if (e.key === 'Backspace') { e.preventDefault(); tecla('borrar'); }
+});
+
+/* ── Email y contraseña ── */
+$('aEmail').onclick = () => {
+  $('conPin').hidden = true; $('loginForm').hidden = false; msg.innerHTML = '';
+  $('email').focus();
+};
+$('aPin').onclick = () => {
+  $('loginForm').hidden = true; $('conPin').hidden = false; msg.innerHTML = '';
+  pin = ''; pintarPuntos();
+};
 
 $('loginForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -104,8 +207,7 @@ $('loginForm').onsubmit = async (e) => {
   msg.innerHTML = '';
   try {
     await signIn(email, password);
-    const next = new URLSearchParams(location.search).get('next') || '/home.html';
-    location.href = next;
+    location.href = destino();
   } catch (err) {
     showMsg(`No se pudo iniciar sesión: ${err.message || err}`);
     $('btnLogin').disabled = false;

@@ -51,7 +51,7 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 | `api/query.js` | Descriptor → SQL. **Valores siempre parametrizados, identificadores siempre validados** contra el catálogo. UPDATE/DELETE sin filtros bloqueados |
 | `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas. Además la **cookie de taller** (`cirene_taller`), firmada igual pero que solo abre `/api/taller/*` |
 | `api/taller.js` | **Fichadas de los operarios**. PIN → operario, estado recortado de la pantalla del taller, `iniciar` y `terminar` en una transacción. La bitácora `subtask_time_logs` es la verdad: los acumulados de subtarea y pedido se **recalculan** de ella |
-| `api/router.js` | `/api/auth/{login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset}`, `/api/health` |
+| `api/router.js` | `/api/auth/{pin,pin/cambiar,login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset}`, `/api/health` |
 | `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
 
 **Variables en Railway**: `DATABASE_URL` (referencia a `${{Postgres.DATABASE_URL}}`),
@@ -92,6 +92,15 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
   **`perfil_base`** (`admin` | `comercial` | `produccion` | `operario`) del que hereda los permisos
   de tabla, y una lista de **`modulos`** que decide qué ve en el menú. Admin = perfil base `admin`.
   Usuario admin: `admin@decirene.uy`.
+- **Entrada con PIN (2026-10-23)**: `login.html` pide un **PIN de 4 números, uno solo para toda la app**,
+  que abre la sesión del **administrador** (`ADMIN_EMAIL`, o el primer admin activo). El hash vive en
+  `app_settings` (`clave = 'login_pin'`), que **no** está en `api/registry.js`: `/api/q` no la ve. Lo siembra
+  `api/db.js` (`sembrarPin`; el PIN que pidió De Cirene va como hash porque el repo es público) y se
+  cambia en Administración → Usuarios (`POST /api/auth/pin/cambiar`, solo admin; rechaza un número que use
+  un operario). La cookie lleva una **huella del PIN**: al cambiarlo, las sesiones abiertas con el viejo se
+  caen. **Freno**: 5 intentos/15 min por IP + 20 fallos/hora y 60/día **globales** (`frenoPin` en
+  `api/router.js`); trabado el global, se entra con email y contraseña, que sigue abajo del teclado.
+  Recuperación sin entrar: variable `LOGIN_PIN_RESET=<4 números>` en Railway, deploy, y **borrarla**.
 - **Alta de usuarios**: `POST /api/auth/usuarios` (solo admin) → devuelve la contraseña generada.
   El rol se valida contra `app_roles` (`rolExiste`), no contra una lista en el código.
 - **Taller**: los operarios **no tienen usuario**. Entran a `/taller.html` con un **PIN de 4 dígitos**
@@ -112,7 +121,7 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 ## Páginas (raíz)
 | Página | Propósito |
 |---|---|
-| `login.html` | Login (fondo negro + logo + patrón de rejas) |
+| `login.html` | Login (fondo negro + logo + patrón de rejas): **teclado de PIN** (entra solo al cuarto número, acepta el teclado físico) y, abajo, "Entrar con email y contraseña" |
 | `home.html` | Landing: **centro de actividad** (notificaciones de comentarios y respuestas, marcar leídas) + grid de tiles |
 | `index.html` | **Cotizador**: builder por producto (materiales + mano de obra + terminación, × multiplicador), **dimensiones** de fabricación, **comentarios para producción**, plantillas, alta/edición de materiales sin salir del flujo, sección **Servicios** (transporte + colocación), cliente, ítems, estado, guarda en `quotes` y genera **PDF molde De Cirene** (sin IVA). `?intake=<id>` y `?quote=<id>` |
 | `catalog.html` | **Catálogo**: Materiales (con stock y última actualización) / Plantillas (BOM) / **Terminaciones-pintado** / Mano de obra |
@@ -128,7 +137,7 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 | `nps.html` | **NPS**: dashboard (NPS, tasa de respuesta, distribución, aspectos, canales, evolución) y listado de encuestas con formulario de respuesta |
 | `contabilidad.html` | **Contabilidad** (admin): Cuentas a cobrar · Calendario de cobros · Cobros por trabajo · Gastos · Reintegros · Cuenta corriente de proveedores · Activos y amortización · Caja · Movimientos · Balance |
 | `dashboard.html` | **Dashboard general** (admin): período configurable, **estado de resultados** mensual, presupuestado vs. real, horas y productividad, clientes, **impacto social**, resumen NPS |
-| `admin.html` | **Administración**: Operarios (**con su PIN de taller**, botón 🎲 para generar uno libre) · Usuarios (alta por API con contraseña generada, rol desde `app_roles`) · **Roles y permisos** (crear rol, perfil base, casillas de módulos) · **Sugerencias** (bandeja con respuesta y estado) · Cargas sociales · Impacto social · Etapas · Campos · Datos de prueba |
+| `admin.html` | **Administración**: Operarios (**con su PIN de taller**, botón 🎲 para generar uno libre) · Usuarios (**PIN de entrada al sistema**, alta por API con contraseña generada, rol desde `app_roles`) · **Roles y permisos** (crear rol, perfil base, casillas de módulos) · **Sugerencias** (bandeja con respuesta y estado) · Cargas sociales · Impacto social · Etapas · Campos · Datos de prueba |
 | `manual.html` | **Manual de uso** en tres pestañas: A · la app, B · producción, C · operarios. Índice automático de los `<h2>`, imprimible. El texto vive en el HTML (se puede leer con el backend caído) |
 | `manual-taller.html` | **Manual del operario**, público (sin login): 5 pasos, letra grande, un dibujo por paso, los botones reproducidos igual que en la pantalla real. Pensado para imprimir en A4 y pegarlo al lado del tablet |
 | `diagrama.html` | **Diagrama de flujo del ERP** de la consulta al cobro y el NPS. SVG generado a partir de dos listas (`NODOS` / `FLECHAS`) con carriles por responsable; imprime en A3 apaisado |
@@ -217,7 +226,7 @@ Tercer bloque al final de `db/schema.sql` (`AMPLIACIÓN 2026-09 · FASE 8`), tam
 > semana se calcula sola. `semaforoSemana()` sigue exportada solo para agregados semanales.
 
 ## Tablas (esquema completo en `db/schema.sql`; el histórico Supabase queda en `supabase/migrations/`)
-**Base**: `app_users`, `user_profiles`, `app_roles`, `kanban_stages`, `custom_fields`, `audit_log`,
+**Base**: `app_users`, `user_profiles`, `app_roles`, `app_settings`, `kanban_stages`, `custom_fields`, `audit_log`,
 `notifications`, `suggestions`.
 **Comercial**: `clients`, `intake_cards`, `quotes` + `quote_lines`, `sales`.
 **Catálogo**: `materials`, `finishes`, `labor_rates`, `product_templates` + `template_material_lines`
@@ -279,7 +288,7 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
    `on conflict do nothing`). Nunca `drop`/`delete` de datos operativos.
 6. **Caché**: al cambiar un `.js`, subir el `?v=N` de los imports en todos los HTML **y en los
    imports entre módulos `js/`** (si no, el navegador usa la versión vieja y la página queda
-   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=7`.**
+   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=8`.**
 7. Páginas de datos: indicador "Cargando…" inmediato + `try/catch` con mensaje visible
    (que nunca quede colgado sin avisar).
 7b. **Los helpers de nivel superior van como `function`, no como `const … =>`.** Las páginas

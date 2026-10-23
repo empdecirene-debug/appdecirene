@@ -1,11 +1,11 @@
 // Auth wrapper sobre Supabase Auth. Manejo de login/logout, sesión actual y rol.
 //
 // Uso:
-//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=7';
+//   import { getCurrentUser, requireAuth, signIn, signOut, isAdmin } from './auth.js?v=8';
 //   const user = await requireAuth();   // redirige a /login.html si no hay sesión
 //   if (await isAdmin()) { ... }
 
-import { getSupa } from './supa.js?v=7';
+import { getSupa } from './supa.js?v=8';
 
 const LOGIN_URL = '/login.html';
 
@@ -19,6 +19,15 @@ export async function signIn(email, password) {
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
   if (error) throw error;
   _profileCache = null;
+  return data;
+}
+
+// Entrada con el PIN de la app (4 números). Abre la sesión del administrador.
+export async function signInWithPin(pin) {
+  const { data, error } = await getSupa().auth.signInWithPin({ pin });
+  if (error) throw error;
+  _profileCache = null;
+  _perfilCache = null;
   return data;
 }
 

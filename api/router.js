@@ -1,6 +1,8 @@
 // Rutas de la API. Todo lo que antes hacía Supabase pasa por acá.
 //
+//   POST /api/auth/pin      { pin }              → cookie de sesión del admin
 //   POST /api/auth/login    { email, password }  → cookie de sesión
+//   POST /api/auth/pin/cambiar { nuevo }         (solo admin)
 //   POST /api/auth/logout
 //   GET  /api/auth/me
 //   POST /api/auth/password { actual, nueva }
@@ -43,6 +45,65 @@ function intentoPermitido(ip) {
 }
 const limpiarIntentos = (ip) => intentos.delete(ip);
 
+const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '?').split(',')[0].trim();
+
+/* Freno de fuerza bruta del PIN de ENTRADA a la app. Es más duro que el del
+   taller porque este PIN abre la app entera como administrador. Cada intento se
+   cuenta ANTES de verificarlo (si no, mil pedidos en paralelo pasarían todos el
+   control antes de que falle el primero) y se devuelve si el PIN era el bueno.
+   Dos capas:
+     · por IP: 5 intentos cada 15 minutos;
+     · GLOBAL: 20 fallos por hora y 60 por día, sumando todas las IPs. Es la que
+       importa: quien ataca puede cambiar de IP, el total no. A 60 por día,
+       recorrer las 10.000 combinaciones lleva meses.
+   Si la global se traba, el PIN deja de andar un rato para todos: para eso sigue
+   la entrada con email y contraseña, que no pasa por este freno. */
+const PIN_IP = { max: 5, ms: 15 * 60e3 };
+const PIN_HORA = { max: 20, ms: 60 * 60e3 };
+const PIN_DIA = { max: 60, ms: 24 * 60 * 60e3 };
+const pinPorIp = new Map();
+let pinGlobal = [];
+let avisoFrenoGlobal = 0;
+
+function frenoPin(ip) {
+  const ahora = Date.now();
+  pinGlobal = pinGlobal.filter((t) => ahora - t < PIN_DIA.ms);
+  const enLaHora = pinGlobal.filter((t) => ahora - t < PIN_HORA.ms).length;
+  if (pinGlobal.length >= PIN_DIA.max || enLaHora >= PIN_HORA.max) return { error: 'global' };
+  const propios = (pinPorIp.get(ip) || []).filter((t) => ahora - t < PIN_IP.ms);
+  if (propios.length >= PIN_IP.max) { pinPorIp.set(ip, propios); return { error: 'ip' }; }
+  propios.push(ahora);
+  pinPorIp.set(ip, propios);
+  pinGlobal.push(ahora);
+  if (pinPorIp.size > 500) for (const [k, v] of pinPorIp) if (!v.some((t) => ahora - t < PIN_IP.ms)) pinPorIp.delete(k);
+  return { t: ahora };
+}
+
+function devolverIntentoPin(ip, t) {
+  const i = pinGlobal.lastIndexOf(t);
+  if (i >= 0) pinGlobal.splice(i, 1);
+  pinPorIp.delete(ip);
+}
+
+/* El hash del PIN vive en app_settings. Se guarda en memoria porque la sesión lo
+   consulta en cada pedido: la cookie de quien entró con PIN lleva una huella del
+   PIN de ese momento, y si el admin lo cambia, esas sesiones se caen (si no,
+   quien supiera el PIN viejo seguiría adentro 30 días). Hay un solo proceso, así
+   que alcanza con actualizar la copia al cambiarlo. */
+let _pinGuardado;
+async function pinGuardado() {
+  if (_pinGuardado !== undefined) return _pinGuardado;
+  try {
+    const { rows } = await q(`select valor from app_settings where clave = 'login_pin'`);
+    _pinGuardado = rows[0]?.valor || null;
+    return _pinGuardado;
+  } catch (e) {
+    console.error('[auth] no pude leer el PIN de entrada:', e.message);
+    return null;
+  }
+}
+const huellaPin = (hash) => crypto.createHash('sha256').update(String(hash)).digest('base64url').slice(0, 16);
+
 export const DIR_ADJUNTOS = process.env.ADJUNTOS_DIR || '/data/adjuntos';
 
 const json = (res, status, obj, headers = {}) => {
@@ -68,12 +129,16 @@ function leerCuerpo(req, maxBytes = 25 * 1024 * 1024) {
 async function sesion(req) {
   const tok = leerToken(leerCookies(req)[COOKIE]);
   if (!tok?.uid) return null;
+  if (tok.pin) {
+    const actual = await pinGuardado();
+    if (!actual || tok.pin !== huellaPin(actual)) return null;
+  }
   const { rows } = await q(
     `select p.id, p.email, p.role, p.active, p.full_name
        from user_profiles p where p.id = $1`, [tok.uid]);
   const p = rows[0];
   if (!p || p.active === false) return null;
-  return { userId: p.id, email: p.email, rol: p.role || 'comercial', nombre: p.full_name };
+  return { userId: p.id, email: p.email, rol: p.role || 'comercial', nombre: p.full_name, porPin: !!tok.pin };
 }
 
 export async function manejar(req, res, pathname) {
@@ -126,6 +191,52 @@ export async function manejar(req, res, pathname) {
     }, { 'Set-Cookie': cookieSesion(token) });
   }
 
+  // ── Entrada con PIN ──
+  // Un solo PIN para toda la app (hash en app_settings) que abre la sesión del
+  // administrador: la de ADMIN_EMAIL, o si esa no está activa, el primer admin
+  // activo. Para entrar como otro usuario sigue el email y contraseña.
+  if (pathname === '/api/auth/pin' && req.method === 'POST') {
+    let body;
+    try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
+    catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+    const ip = ipDe(req);
+    const freno = frenoPin(ip);
+    if (freno.error === 'global') {
+      // Un aviso cada 10 minutos alcanza: bajo ataque, uno por pedido tapa los logs.
+      if (Date.now() - avisoFrenoGlobal > 10 * 60e3) {
+        avisoFrenoGlobal = Date.now();
+        console.warn('[auth] entrada con PIN frenada para todos: demasiados intentos fallidos');
+      }
+      return json(res, 429, { error: 'Hubo demasiados intentos con un PIN equivocado y la entrada con PIN quedó frenada por un rato. Entrá con email y contraseña.' });
+    }
+    if (freno.error) return json(res, 429, { error: 'Demasiados intentos. Esperá 15 minutos y volvé a probar.' });
+
+    const pin = String(body.pin ?? '').replace(/\D+/g, '');
+    const guardado = await pinGuardado();
+    const ok = /^\d{4}$/.test(pin) && !!guardado && await verifyPassword(pin, guardado);
+    if (!ok) {
+      console.warn('[auth] PIN de entrada incorrecto desde', ip);
+      return json(res, 401, { error: 'PIN incorrecto' });
+    }
+    devolverIntentoPin(ip, freno.t);
+
+    const emailAdmin = (process.env.ADMIN_EMAIL || 'admin@decirene.uy').toLowerCase().trim();
+    const { rows } = await q(
+      `select u.id, u.email, p.role, p.full_name
+         from app_users u join user_profiles p on p.id = u.id
+        where p.active and (lower(u.email) = $1 or p.role = 'admin')
+        order by (lower(u.email) = $1) desc, u.created_at
+        limit 1`, [emailAdmin]);
+    const u = rows[0];
+    if (!u) return json(res, 500, { error: 'No hay ningún administrador activo. Entrá con email y contraseña.' });
+
+    await q('update app_users set last_login_at = now() where id = $1', [u.id]);
+    const token = crearToken({ uid: u.id, pin: huellaPin(guardado) });
+    return json(res, 200, {
+      user: { id: u.id, email: u.email, role: u.role || 'admin', full_name: u.full_name },
+    }, { 'Set-Cookie': cookieSesion(token) });
+  }
+
   if (pathname === '/api/auth/logout') {
     return json(res, 200, { ok: true }, { 'Set-Cookie': cookieBorrar() });
   }
@@ -139,7 +250,7 @@ export async function manejar(req, res, pathname) {
       let body;
       try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
       catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
-      const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '?').split(',')[0].trim();
+      const ip = ipDe(req);
       if (!intentoPermitido(ip)) {
         return json(res, 429, { error: 'Demasiados intentos. Esperá unos minutos y volvé a probar.' });
       }
@@ -205,6 +316,31 @@ export async function manejar(req, res, pathname) {
     await q('update app_users set password_hash = $1, must_change_pw = false where id = $2',
       [await hashPassword(nueva), ses.userId]);
     return json(res, 200, { ok: true });
+  }
+
+  // ── Cambio del PIN de entrada (solo admin) ──
+  if (pathname === '/api/auth/pin/cambiar' && req.method === 'POST') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    let body;
+    try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
+    catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+    const nuevo = String(body.nuevo ?? '').trim();
+    if (!/^\d{4}$/.test(nuevo)) return json(res, 400, { error: 'El PIN tiene que ser de 4 números' });
+    // El operario escribe su número en /taller.html. Si coincidiera con el de la
+    // app, equivocarse de pantalla lo dejaría entrar como administrador.
+    const { rows: choque } = await q(`select 1 from operators where pin = $1 and activo limit 1`, [nuevo]);
+    if (choque.length) return json(res, 409, { error: 'Ese número ya lo usa un operario en el taller. Elegí otro.' });
+
+    const hash = await hashPassword(nuevo);
+    await q(
+      `insert into app_settings (clave, valor, updated_by) values ('login_pin', $1, $2)
+       on conflict (clave) do update set valor = excluded.valor, updated_at = now(), updated_by = excluded.updated_by`,
+      [hash, ses.userId]);
+    _pinGuardado = hash;
+    // Las sesiones abiertas con el PIN viejo se caen solas (ver pinGuardado). La
+    // de quien lo cambió no: si entró con PIN, se le renueva con el nuevo.
+    const headers = ses.porPin ? { 'Set-Cookie': cookieSesion(crearToken({ uid: ses.userId, pin: huellaPin(hash) })) } : {};
+    return json(res, 200, { ok: true }, headers);
   }
 
   // ── Alta de usuarios (solo admin) ──

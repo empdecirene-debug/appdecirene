@@ -7,7 +7,7 @@
 // Se pueden adjuntar fotos: en un taller, "el botón no anda" se explica mucho
 // mejor con una captura o una foto de la pantalla que con un texto.
 
-import * as data from './cirene-data.js?v=7';
+import * as data from './cirene-data.js?v=8';
 
 const ESTILO = `
 .cirene-sug-btn { position: fixed; right: 18px; bottom: 18px; z-index: 120;

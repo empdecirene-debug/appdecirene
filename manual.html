@@ -84,8 +84,8 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=7';
-import { requireAuth } from './js/auth.js?v=7';
+import { renderNavbar } from './js/navbar.js?v=8';
+import { requireAuth } from './js/auth.js?v=8';
 
 const $ = s => document.querySelector(s);
 let tab = 'app';
@@ -146,12 +146,17 @@ sin miedo.</div>
 <h2>Entrar y salir</h2>
 <ol class="pasos">
   <li><b>Abrí la dirección del sistema</b> en el navegador. Aparece la pantalla negra con el logo.</li>
-  <li><b>Escribí tu email y tu contraseña.</b> Te las da administración.</li>
-  <li><b>La primera vez, cambiá la contraseña.</b> Se hace en Inicio, abajo, en "Cambiar mi contraseña".</li>
+  <li><b>Escribí el PIN de 4 números</b> con el teclado de la pantalla (o con el de la computadora).
+    Al cuarto número entra solo. El PIN te lo da administración.</li>
 </ol>
 <p>Para salir, el botón <b>Salir</b> arriba a la derecha. Si usás una computadora compartida, salí siempre.</p>
-<div class="nota"><b>Perdiste la contraseña.</b> No se puede recuperar (están guardadas de forma que
-nadie, ni el sistema, puede leerlas). Administración te genera una nueva.</div>
+<div class="nota"><b>Si te equivocás varias veces seguidas</b>, el sistema frena la entrada con PIN unos
+minutos (es para que nadie pueda adivinarlo probando números). Esperá, o tocá <b>"Entrar con email y
+contraseña"</b> abajo del teclado.</div>
+<div class="nota"><b>Entrar con tu usuario.</b> Si tenés usuario propio, abajo del teclado está
+<b>"Entrar con email y contraseña"</b>. La primera vez cambiá la contraseña en Inicio, abajo, en
+"Cambiar mi contraseña". Si la perdiste no se puede recuperar (están guardadas de forma que nadie, ni el
+sistema, puede leerlas): administración te genera una nueva.</div>
 
 <h2>La pantalla de Inicio</h2>
 <p>Es el tablero de entrada. Tiene dos cosas:</p>
@@ -276,8 +281,10 @@ productividad, clientes, <b>impacto social</b> y resumen de NPS.</p>
 <h3>Administración</h3>
 <ul>
   <li><b>Operarios:</b> quiénes trabajan en el taller, su costo por hora y <b>su PIN de taller</b>.</li>
-  <li><b>Usuarios:</b> alta de usuarios de la app. Al crear uno, el sistema muestra la contraseña
-    inicial <b>una sola vez</b>: hay que anotarla y entregarla en ese momento.</li>
+  <li><b>Usuarios:</b> arriba, el <b>PIN de entrada al sistema</b> (se cambia escribiéndolo dos veces;
+    quien haya entrado con el anterior tiene que volver a entrar). Abajo, alta de usuarios de la app:
+    al crear uno, el sistema muestra la contraseña inicial <b>una sola vez</b>, hay que anotarla y
+    entregarla en ese momento.</li>
   <li><b>Roles y permisos:</b> se crean roles y se elige qué módulos ve cada uno.</li>
   <li><b>Sugerencias:</b> lo que manda el equipo con el botón 💡.</li>
   <li><b>Cargas sociales, impacto social, etapas del kanban, campos personalizados.</b></li>
@@ -313,7 +320,8 @@ cualquiera que entrara a Administración podría darse acceso a la contabilidad.
   <tr><th>Qué ves</th><th>Qué hacer</th></tr>
   <tr><td>La pantalla queda en "Cargando…" y no pasa nada</td>
       <td>Recargá con <code>Ctrl</code>+<code>F5</code> (fuerza a bajar la versión nueva). Si sigue, avisá con el botón 💡.</td></tr>
-  <tr><td>"Sin sesión" o te devuelve al login</td><td>Se venció la sesión. Volvé a entrar.</td></tr>
+  <tr><td>"Sin sesión" o te devuelve al login</td><td>Se venció la sesión, o cambiaron el PIN. Volvé a entrar.</td></tr>
+  <tr><td>"Demasiados intentos" al poner el PIN</td><td>Esperá unos minutos, o entrá con email y contraseña.</td></tr>
   <tr><td>"Tu rol no puede leer/modificar…"</td><td>Tu rol no tiene ese permiso. Pedíselo a administración.</td></tr>
   <tr><td>No aparece un módulo que antes veías</td><td>Cambió la configuración de tu rol. Preguntá en administración.</td></tr>
   <tr><td>Guardaste y el dato no quedó</td><td>Fijate si salió un mensaje rojo abajo. Si no, avisá con el 💡 contando exactamente qué campo era.</td></tr>

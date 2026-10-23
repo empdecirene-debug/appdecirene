@@ -1,9 +1,9 @@
 // Top navbar compartida entre las páginas de la app (intake, production, admin, etc.).
 // Llamar `renderNavbar('intake')` desde cada página al iniciar.
 
-import { getCurrentUser, getProfile, signOut } from './auth.js?v=7';
-import { modulosDelRol } from './cirene-data.js?v=7';
-import { mountSugerencias } from './sugerencias.js?v=7';
+import { getCurrentUser, getProfile, signOut } from './auth.js?v=8';
+import { modulosDelRol } from './cirene-data.js?v=8';
+import { mountSugerencias } from './sugerencias.js?v=8';
 
 // Qué tab corresponde a cada módulo. QUIÉN ve cada módulo ya no se decide acá:
 // lo declara el rol (tabla `app_roles`, pantalla Administración → Roles). El

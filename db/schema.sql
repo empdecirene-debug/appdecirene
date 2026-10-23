@@ -1652,3 +1652,17 @@ on conflict (key) do nothing;
 
 -- Marca de demo de las tablas nuevas (ver bloque anterior).
 alter table production_days add column if not exists demo boolean not null default false;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AMPLIACIÓN 2026-10 · ENTRADA CON PIN
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Ajustes del sistema que no son de ningún módulo. Hoy guarda una sola cosa:
+-- el PIN de entrada a la app (`login_pin`), como hash scrypt, nunca en claro.
+-- No está en api/registry.js A PROPÓSITO: /api/q no la puede leer ni escribir,
+-- solo el servidor (api/router.js). El valor inicial lo siembra api/db.js.
+create table if not exists app_settings (
+  clave      text primary key,
+  valor      text not null,
+  updated_at timestamptz not null default now(),
+  updated_by uuid
+);

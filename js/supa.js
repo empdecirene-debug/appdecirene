@@ -107,6 +107,13 @@ const auth = {
     _usuarioCache = r.user;
     return { data: { user: r.user, session: { user: r.user } }, error: null };
   },
+  // No existe en supabase-js: la entrada con PIN es propia de esta app.
+  async signInWithPin({ pin }) {
+    const r = await pedir('/auth/pin', { method: 'POST', body: JSON.stringify({ pin }) });
+    if (r.error || !r.user) { _usuarioCache = null; return { data: null, error: { message: normalizarError(r.error)?.message || 'No se pudo entrar' } }; }
+    _usuarioCache = r.user;
+    return { data: { user: r.user, session: { user: r.user } }, error: null };
+  },
   async signOut() {
     _usuarioCache = null;
     await pedir('/auth/logout', { method: 'POST' });

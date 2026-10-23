@@ -103,6 +103,34 @@ async function resetearAdmin() {
   console.log('└──────────────────────────────────────────────');
 }
 
+// ── PIN de entrada a la app ──────────────────────────────────────────────────
+// La pantalla de login entra con un PIN de 4 números (api/router.js, /api/auth/pin)
+// y abre la sesión del administrador. Acá solo se siembra el PIN inicial, que
+// pidió De Cirene el 2026-10-23; va como hash porque el repo es público. Una vez
+// sembrado no se vuelve a tocar: se cambia desde Administración → Usuarios.
+//
+// LOGIN_PIN_RESET (variable de Railway) lo pisa en cada arranque, igual que
+// ADMIN_RESET_PASSWORD: ponerla, entrar, y BORRARLA.
+const PIN_INICIAL = 'scrypt$16384$8$1$qrVSzZznlI+y+4u/nJw10A==$d/3AHTvpRxbsvGsk0iR+E0NMDL5IXv+0EykILEJI59k=';
+
+async function sembrarPin() {
+  const reset = String(process.env.LOGIN_PIN_RESET || '').trim();
+  if (reset) {
+    if (!/^\d{4}$/.test(reset)) {
+      console.error('[db] LOGIN_PIN_RESET tiene que ser de 4 números: no lo aplico.');
+    } else {
+      await q(
+        `insert into app_settings (clave, valor) values ('login_pin', $1)
+         on conflict (clave) do update set valor = excluded.valor, updated_at = now(), updated_by = null`,
+        [await hashPassword(reset)]);
+      console.log('[db] PIN de entrada restablecido desde LOGIN_PIN_RESET. Borrá la variable.');
+      return;
+    }
+  }
+  await q(`insert into app_settings (clave, valor) values ('login_pin', $1) on conflict (clave) do nothing`,
+    [PIN_INICIAL]);
+}
+
 export async function migrar() {
   if (!connectionString) throw new Error('Sin DATABASE_URL no puedo migrar');
 
@@ -150,6 +178,9 @@ export async function migrar() {
       console.log('└──────────────────────────────────────────────');
     }
   }
+
+  try { await sembrarPin(); }
+  catch (e) { console.error('[db] no se pudo sembrar el PIN de entrada:', e.message); }
 
   const n = await cargarColumnas(pool);
   const nr = await cargarRoles(pool);
