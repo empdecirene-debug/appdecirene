@@ -101,7 +101,7 @@ const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-UY', { day:'2-
 
 const state = {
   tab: 'operarios', operarios: [], cargas: [], impacto: [], stages: [], fields: [],
-  users: [], roles: [], sugerencias: [], filtroSug: '', msg: null,
+  users: [], pines: {}, roles: [], sugerencias: [], filtroSug: '', msg: null,
 };
 
 function showError(t) { state.msg = { kind: 'err', text: t }; pintarMsg(); }
@@ -117,7 +117,13 @@ async function load() {
     if (state.tab === 'impacto')   state.impacto = await data.listSocialImpact();
     if (state.tab === 'stages')  { const { data: d } = await supa.from('kanban_stages').select('*').order('display_order'); state.stages = d || []; }
     if (state.tab === 'fields')  { const { data: d } = await supa.from('custom_fields').select('*').order('display_order'); state.fields = d || []; }
-    if (state.tab === 'users')   { const { data: d } = await supa.from('user_profiles').select('*').order('full_name'); state.users = d || []; }
+    if (state.tab === 'users')   {
+      const { data: d } = await supa.from('user_profiles').select('*').order('full_name'); state.users = d || [];
+      // Quién tiene PIN (el PIN en sí no viaja nunca) y los números de taller, para no repetirlos.
+      const r = await api.pedir('/auth/usuarios/pines');
+      state.pines = Object.fromEntries((r.usuarios || []).map(u => [u.id, u]));
+      state.operarios = await data.listOperators({ incluirInactivos: false }).catch(() => state.operarios);
+    }
     if (state.tab === 'roles')   state.roles = await data.listRoles();
     if (state.tab === 'sugerencias') state.sugerencias = await data.listSuggestions();
   } catch (e) {
@@ -360,55 +366,59 @@ function renderFields() {
 }
 
 /* ───────── Usuarios ─────────
-   El alta va por la API (POST /api/auth/usuarios): devuelve la contraseña
-   generada una sola vez, para entregársela a la persona. */
+   Cada usuario entra con SU PIN de 4 números y ve lo que permite su rol. El
+   PIN se guarda como hash: una vez asignado no se puede volver a ver, solo
+   cambiar. El alta va por la API (POST /api/auth/usuarios); el email es
+   opcional y, si se pone, devuelve una contraseña para entrar con email. */
 function renderUsers() {
   return `
     <div class="card">
-      <h2>PIN de entrada al sistema</h2>
-      <p class="subtitle" style="margin-bottom:10px">La pantalla de entrada pide un PIN de 4 números y abre la app
-        como administrador. Al cambiarlo, quien haya entrado con el PIN anterior tiene que volver a entrar.
-        Las personas con usuario propio pueden seguir entrando con su email y contraseña.</p>
-      <div class="row3">
-        <div class="fg"><label class="label">PIN nuevo</label>
-          <input id="pin-nuevo" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 números"></div>
-        <div class="fg"><label class="label">Repetilo</label>
-          <input id="pin-repe" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>
-        <div class="fg" style="display:flex;align-items:flex-end"><button class="btn primary" id="btnPin">Cambiar PIN</button></div>
-      </div>
-    </div>
-    <div class="card">
       <h2>Nuevo usuario</h2>
-      <div class="row3">
-        <div class="fg"><label class="label">Email</label><input id="u-email" type="email" placeholder="nombre@decirene.uy"></div>
-        <div class="fg"><label class="label">Nombre completo</label><input id="u-nombre"></div>
+      <div class="row2">
+        <div class="fg"><label class="label">Nombre</label><input id="u-nombre" placeholder="Nombre y apellido"></div>
         <div class="fg"><label class="label">Rol</label><select id="u-rol">
           ${opcionesDeRol('comercial')}</select>
-          <p class="subtitle" style="margin-top:4px">El rol define qué módulos ve. Se configuran en
+          <p class="subtitle" style="margin-top:4px">El rol define qué ve y qué puede hacer. Se configuran en
             <b>Roles y permisos</b>.</p></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label class="label">PIN para entrar (4 números)</label>
+          <div style="display:flex;gap:6px"><input id="u-pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 números">
+          <button class="btn" type="button" id="u-pin-dado" title="Generar un PIN">🎲</button></div></div>
+        <div class="fg"><label class="label">Email (opcional)</label><input id="u-email" type="email" placeholder="solo si va a entrar también con email"></div>
       </div>
       <button class="btn primary" id="btnNewUser">Crear usuario</button>
       <div id="u-result"></div>
     </div>
     <div class="card" style="padding:0;">
       <table class="tbl">
-        <thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Módulos que ve</th><th style="width:70px">Activo</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Rol</th><th>Módulos que ve</th><th>PIN</th><th>Email</th><th style="width:70px">Activo</th></tr></thead>
         <tbody>${state.users.length ? state.users.map(u => {
           const rol = state.roles.find(r => r.key === u.role);
           const mods = rol && Array.isArray(rol.modulos) ? rol.modulos.length : null;
+          const pin = state.pines[u.id] || {};
           return `<tr data-uid="${u.id}" class="${u.active ? '' : 'inactive'}">
-            <td>${esc(u.email)}</td>
             <td><input data-f="full_name" value="${esc(u.full_name)}"></td>
             <td><select data-f="role">${opcionesDeRol(u.role)}</select></td>
             <td style="font-size:12px;color:var(--tinta-3)">${mods === null
               ? '<span class="badge">rol sin configurar</span>'
               : `${mods} de ${data.MODULOS.length}`}</td>
+            <td><div style="display:flex;gap:4px;align-items:center;white-space:nowrap">
+              <span class="badge" style="${pin.tiene_pin ? '' : 'opacity:.6'}">${pin.tiene_pin ? 'tiene PIN' : 'sin PIN'}</span>
+              <input data-pin inputmode="numeric" maxlength="4" autocomplete="off" placeholder="nuevo" style="width:72px">
+              <button class="btn sm" type="button" data-pin-dado title="Generar un PIN">🎲</button>
+              <button class="btn sm" type="button" data-pin-ok>${pin.tiene_pin ? 'Cambiar' : 'Asignar'}</button>
+            </div></td>
+            <td style="font-size:12px">${pin.sin_email ? '<span style="color:var(--tinta-3)">sin email</span>' : esc(u.email)}</td>
             <td style="text-align:center"><input type="checkbox" data-f="active" style="width:auto" ${u.active ? 'checked' : ''}></td>
           </tr>`;
-        }).join('') : '<tr><td colspan="5" class="empty">No hay usuarios.</td></tr>'}
+        }).join('') : '<tr><td colspan="6" class="empty">No hay usuarios.</td></tr>'}
         </tbody>
       </table>
     </div>
+    <div class="alert info">Cada persona entra con <b>su PIN</b> y ve solo lo que permite su rol. El PIN no se
+      puede volver a ver: anotalo al asignarlo y dáselo. Si alguien lo olvida, asignale uno nuevo. Al cambiar un PIN,
+      la persona tiene que volver a entrar.</div>
     <div class="alert info">Para que alguien solo ficha horas en el taller <b>no hace falta crearle usuario</b>:
       alcanza con darle de alta como operario y ponerle un PIN (pestaña Operarios).</div>`;
 }
@@ -425,37 +435,56 @@ function opcionesDeRol(actual) {
   return (hay ? rs : [...rs, { key: actual, label: actual + ' (rol que ya no existe)' }])
     .map(r => `<option value="${esc(r.key)}" ${r.key === actual ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
 }
+// Un PIN al azar que no sea el de un operario (los de usuarios no se pueden
+// leer: si justo choca con uno, el servidor lo rechaza y se tira de nuevo).
+function pinAlAzar() {
+  const usados = new Set((state.operarios || []).map(o => o.pin).filter(Boolean));
+  let p;
+  do { p = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); } while (usados.has(p));
+  return p;
+}
+function textoError(e) { return typeof e === 'string' ? e : (e?.message || 'error'); }
+
 function bindUsers() {
-  $('btnPin').onclick = async () => {
-    const nuevo = $('pin-nuevo').value.trim();
-    if (!/^\d{4}$/.test(nuevo)) { showError('El PIN tiene que ser de 4 números'); return; }
-    if (nuevo !== $('pin-repe').value.trim()) { showError('Los dos PIN no coinciden'); return; }
-    const btn = $('btnPin'); btn.disabled = true;
-    try {
-      const r = await api.pedir('/auth/pin/cambiar', { method: 'POST', body: JSON.stringify({ nuevo }) });
-      if (r.error) throw new Error(typeof r.error === 'string' ? r.error : r.error.message);
-      $('pin-nuevo').value = ''; $('pin-repe').value = '';
-      showOk('PIN cambiado. Desde ahora se entra con el nuevo.');
-    } catch (e) { showError('No se pudo cambiar el PIN: ' + e.message); }
-    finally { btn.disabled = false; }
-  };
+  $('u-pin-dado').onclick = () => { $('u-pin').value = pinAlAzar(); };
   $('btnNewUser').onclick = async () => {
+    const nombre = $('u-nombre').value.trim();
+    const pin = $('u-pin').value.trim();
     const email = $('u-email').value.trim().toLowerCase();
-    if (!email) { showError('Falta el email'); return; }
+    if (!nombre) { showError('Falta el nombre'); return; }
+    if (!/^\d{4}$/.test(pin)) { showError('El PIN tiene que ser de 4 números (o tocá 🎲)'); return; }
     const btn = $('btnNewUser'); btn.disabled = true;
     try {
       const r = await api.pedir('/auth/usuarios', {
         method: 'POST',
-        body: JSON.stringify({ email, full_name: $('u-nombre').value.trim() || null, role: $('u-rol').value }),
+        body: JSON.stringify({ email: email || null, full_name: nombre, role: $('u-rol').value, pin }),
       });
-      if (r.error) throw new Error(r.error);
-      $('u-result').innerHTML = `<div class="alert ok" style="margin-top:12px">Usuario <b>${esc(r.email)}</b> creado.
-        Contraseña inicial: <code style="font-size:14px">${esc(r.password)}</code> — anotala y pasásela ahora,
-        no se vuelve a mostrar. La va a tener que cambiar al entrar.</div>`;
+      if (r.error) throw new Error(textoError(r.error));
       await load();
+      $('u-result').innerHTML = `<div class="alert ok" style="margin-top:12px"><b>${esc(nombre)}</b> creado.
+        Su PIN es <code style="font-size:15px">${esc(pin)}</code> — anotalo y dáselo ahora, después no se puede ver.
+        ${r.password ? `<br>Para entrar con email: <b>${esc(r.email)}</b> y la contraseña
+        <code style="font-size:14px">${esc(r.password)}</code> (la cambia al entrar).` : ''}</div>`;
     } catch (e) { showError('No se pudo crear: ' + e.message); }
     finally { btn.disabled = false; }
   };
+  document.querySelectorAll('#content tbody tr[data-uid]').forEach(tr => {
+    const id = tr.dataset.uid;
+    const inp = tr.querySelector('[data-pin]');
+    tr.querySelector('[data-pin-dado]').onclick = () => { inp.value = pinAlAzar(); };
+    tr.querySelector('[data-pin-ok]').onclick = async (ev) => {
+      const pin = inp.value.trim();
+      if (!/^\d{4}$/.test(pin)) { showError('El PIN tiene que ser de 4 números (o tocá 🎲)'); return; }
+      const nombre = tr.querySelector('[data-f="full_name"]').value;
+      ev.target.disabled = true;
+      try {
+        const r = await api.pedir('/auth/usuarios/pin', { method: 'POST', body: JSON.stringify({ id, pin }) });
+        if (r.error) throw new Error(textoError(r.error));
+        await load();
+        showOk(`PIN de ${nombre}: ${pin} — anotalo y dáselo, después no se puede ver.`);
+      } catch (e) { showError('No se pudo guardar el PIN: ' + e.message); ev.target.disabled = false; }
+    };
+  });
   document.querySelectorAll('#content tbody tr[data-uid]').forEach(tr => {
     const id = tr.dataset.uid;
     tr.querySelectorAll('[data-f]').forEach(el => el.onchange = async () => {

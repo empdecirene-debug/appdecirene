@@ -52,7 +52,7 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 | `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas. Además la **cookie de taller** (`cirene_taller`), firmada igual pero que solo abre `/api/taller/*` |
 | `api/taller.js` | **Fichadas de los operarios**. PIN → operario, estado recortado de la pantalla del taller, `iniciar` y `terminar` en una transacción. La bitácora `subtask_time_logs` es la verdad: los acumulados de subtarea y pedido se **recalculan** de ella |
 | `api/asana.js` | **Importar desde Asana**: lee los dos CSV (`leerCSV`, `leerNotas`, `armar`, puros) y reemplaza el movimiento con respaldo previo (`importarAsana`). Ver la sección *Importar desde Asana* |
-| `api/router.js` | `/api/auth/{pin,pin/cambiar,login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset,importar-asana}`, `/api/health` |
+| `api/router.js` | `/api/auth/{pin,login,logout,me,password,usuarios,usuarios/pin,usuarios/pines}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset,importar-asana}`, `/api/health` |
 | `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
 
 **Variables en Railway**: `DATABASE_URL` (referencia a `${{Postgres.DATABASE_URL}}`),
@@ -98,15 +98,18 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
   **`perfil_base`** (`admin` | `comercial` | `produccion` | `operario`) del que hereda los permisos
   de tabla, y una lista de **`modulos`** que decide qué ve en el menú. Admin = perfil base `admin`.
   Usuario admin: `admin@decirene.uy`.
-- **Entrada con PIN (2026-10-23)**: `login.html` pide un **PIN de 4 números, uno solo para toda la app**,
-  que abre la sesión del **administrador** (`ADMIN_EMAIL`, o el primer admin activo). El hash vive en
-  `app_settings` (`clave = 'login_pin'`), que **no** está en `api/registry.js`: `/api/q` no la ve. Lo siembra
-  `api/db.js` (`sembrarPin`; el PIN que pidió De Cirene va como hash porque el repo es público) y se
-  cambia en Administración → Usuarios (`POST /api/auth/pin/cambiar`, solo admin; rechaza un número que use
-  un operario). La cookie lleva una **huella del PIN**: al cambiarlo, las sesiones abiertas con el viejo se
-  caen. **Freno**: 5 intentos/15 min por IP + 20 fallos/hora y 60/día **globales** (`frenoPin` en
-  `api/router.js`); trabado el global, se entra con email y contraseña, que sigue abajo del teclado.
-  Recuperación sin entrar: variable `LOGIN_PIN_RESET=<4 números>` en Railway, deploy, y **borrarla**.
+- **Entrada con PIN por usuario (2026-10-23)**: `login.html` pide un PIN de 4 números y **cada usuario tiene
+  el suyo** (`app_users.pin_hash`, scrypt): entra con SU sesión y los permisos de su rol. `/api/auth/pin` prueba
+  el PIN contra todos los hash en paralelo (`usuarioPorPin`). Los asigna administración en Usuarios
+  (`POST /api/auth/usuarios/pin`; `GET /api/auth/usuarios/pines` dice quién tiene, nunca el PIN). Un PIN no se
+  repite entre usuarios ni con el número de taller de un operario (`motivoPinOcupado`). El alta de usuario
+  acepta **sin email**: se guarda un identificador `…@sin-email.decirene` que no sirve para entrar con
+  contraseña. La cookie lleva una **huella del hash del PIN**: si se lo cambian, la sesión se cae.
+  Antes hubo un PIN único (`app_settings 'login_pin'`): al arrancar la primera vez pasó a ser el PIN del admin
+  (`sembrarPin` en `api/db.js`, marca `pin_por_usuario`). `app_users` NO está en `api/registry.js`.
+  **Freno**: 5 intentos/15 min por IP + 20 fallos/hora y 60/día **globales** (`frenoPin`); trabado el global,
+  se entra con email y contraseña. Recuperación sin entrar: variable `LOGIN_PIN_RESET=<4 números>` en Railway
+  (se lo pone al admin), deploy, y **borrarla**.
 - **Alta de usuarios**: `POST /api/auth/usuarios` (solo admin) → devuelve la contraseña generada.
   El rol se valida contra `app_roles` (`rolExiste`), no contra una lista en el código.
 - **Taller**: los operarios **no tienen usuario**. Entran a `/taller.html` con un **PIN de 4 dígitos**
@@ -143,7 +146,7 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 | `nps.html` | **NPS**: dashboard (NPS, tasa de respuesta, distribución, aspectos, canales, evolución) y listado de encuestas con formulario de respuesta |
 | `contabilidad.html` | **Contabilidad** (admin): Cuentas a cobrar · Calendario de cobros · Cobros por trabajo · Gastos · Reintegros · Cuenta corriente de proveedores · Activos y amortización · Caja · Movimientos · Balance |
 | `dashboard.html` | **Dashboard general** (admin): período configurable, **estado de resultados** mensual, presupuestado vs. real, horas y productividad, clientes, **impacto social**, resumen NPS |
-| `admin.html` | **Administración**: Operarios (**con su PIN de taller**, botón 🎲 para generar uno libre) · Usuarios (**PIN de entrada al sistema**, alta por API con contraseña generada, rol desde `app_roles`) · **Roles y permisos** (crear rol, perfil base, casillas de módulos) · **Sugerencias** (bandeja con respuesta y estado) · Cargas sociales · Impacto social · Etapas · Campos · Datos de prueba |
+| `admin.html` | **Administración**: Operarios (**con su PIN de taller**, botón 🎲 para generar uno libre) · Usuarios (alta con nombre, rol y **PIN propio**, email opcional; columna para asignar o cambiar el PIN) · **Roles y permisos** (crear rol, perfil base, casillas de módulos) · **Sugerencias** (bandeja con respuesta y estado) · Cargas sociales · Impacto social · Etapas · Campos · Datos de prueba |
 | `manual.html` | **Manual de uso** en tres pestañas: A · la app, B · producción, C · operarios. Índice automático de los `<h2>`, imprimible. El texto vive en el HTML (se puede leer con el backend caído) |
 | `manual-taller.html` | **Manual del operario**, público (sin login): 5 pasos, letra grande, un dibujo por paso, los botones reproducidos igual que en la pantalla real. Pensado para imprimir en A4 y pegarlo al lado del tablet |
 | `diagrama.html` | **Diagrama de flujo del ERP** de la consulta al cobro y el NPS. SVG generado a partir de dos listas (`NODOS` / `FLECHAS`) con carriles por responsable; imprime en A3 apaisado |

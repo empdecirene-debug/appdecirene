@@ -111,31 +111,38 @@ async function resetearAdmin() {
 }
 
 // ── PIN de entrada a la app ──────────────────────────────────────────────────
-// La pantalla de login entra con un PIN de 4 números (api/router.js, /api/auth/pin)
-// y abre la sesión del administrador. Acá solo se siembra el PIN inicial, que
-// pidió De Cirene el 2026-10-23; va como hash porque el repo es público. Una vez
-// sembrado no se vuelve a tocar: se cambia desde Administración → Usuarios.
+// Cada usuario entra con SU PIN de 4 números (app_users.pin_hash, ver
+// /api/auth/pin en api/router.js) y con los permisos de su rol. Los asigna
+// administración en Administración → Usuarios.
 //
-// LOGIN_PIN_RESET (variable de Railway) lo pisa en cada arranque, igual que
-// ADMIN_RESET_PASSWORD: ponerla, entrar, y BORRARLA.
+// Antes había un PIN único para toda la app (app_settings 'login_pin'). La
+// primera vez que arranca esta versión, ese PIN pasa a ser el del admin
+// (ADMIN_EMAIL), así quien entraba con él sigue entrando igual. Después no se
+// vuelve a tocar: la marca 'pin_por_usuario' lo deja registrado.
+//
+// LOGIN_PIN_RESET (variable de Railway) le pone ese PIN al admin en cada
+// arranque, igual que ADMIN_RESET_PASSWORD: ponerla, entrar, y BORRARLA.
 const PIN_INICIAL = 'scrypt$16384$8$1$qrVSzZznlI+y+4u/nJw10A==$d/3AHTvpRxbsvGsk0iR+E0NMDL5IXv+0EykILEJI59k=';
 
 async function sembrarPin() {
+  const email = (process.env.ADMIN_EMAIL || 'admin@decirene.uy').toLowerCase().trim();
   const reset = String(process.env.LOGIN_PIN_RESET || '').trim();
   if (reset) {
     if (!/^\d{4}$/.test(reset)) {
       console.error('[db] LOGIN_PIN_RESET tiene que ser de 4 números: no lo aplico.');
     } else {
-      await q(
-        `insert into app_settings (clave, valor) values ('login_pin', $1)
-         on conflict (clave) do update set valor = excluded.valor, updated_at = now(), updated_by = null`,
-        [await hashPassword(reset)]);
-      console.log('[db] PIN de entrada restablecido desde LOGIN_PIN_RESET. Borrá la variable.');
+      await q(`update app_users set pin_hash = $1 where lower(email) = $2`, [await hashPassword(reset), email]);
+      console.log('[db] PIN del admin restablecido desde LOGIN_PIN_RESET. Borrá la variable.');
       return;
     }
   }
-  await q(`insert into app_settings (clave, valor) values ('login_pin', $1) on conflict (clave) do nothing`,
-    [PIN_INICIAL]);
+  const { rows: ya } = await q(`select 1 from app_settings where clave = 'pin_por_usuario'`);
+  if (ya.length) return;
+  const { rows: general } = await q(`select valor from app_settings where clave = 'login_pin'`);
+  await q(`update app_users set pin_hash = $1 where lower(email) = $2 and pin_hash is null`,
+    [general[0]?.valor || PIN_INICIAL, email]);
+  await q(`insert into app_settings (clave, valor) values ('pin_por_usuario', '1') on conflict (clave) do nothing`);
+  console.log('[db] PIN por usuario: el PIN general pasó a ser el de', email);
 }
 
 export async function migrar() {

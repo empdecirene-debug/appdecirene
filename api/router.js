@@ -1,8 +1,9 @@
 // Rutas de la API. Todo lo que antes hacía Supabase pasa por acá.
 //
-//   POST /api/auth/pin      { pin }              → cookie de sesión del admin
+//   POST /api/auth/pin      { pin }              → cookie de sesión del dueño del PIN
 //   POST /api/auth/login    { email, password }  → cookie de sesión
-//   POST /api/auth/pin/cambiar { nuevo }         (solo admin)
+//   GET  /api/auth/usuarios/pines                (solo admin) quién tiene PIN
+//   POST /api/auth/usuarios/pin { id, pin }      (solo admin) asignar / sacar PIN
 //   POST /api/auth/logout
 //   GET  /api/auth/me
 //   POST /api/auth/password { actual, nueva }
@@ -86,24 +87,38 @@ function devolverIntentoPin(ip, t) {
   pinPorIp.delete(ip);
 }
 
-/* El hash del PIN vive en app_settings. Se guarda en memoria porque la sesión lo
-   consulta en cada pedido: la cookie de quien entró con PIN lleva una huella del
-   PIN de ese momento, y si el admin lo cambia, esas sesiones se caen (si no,
-   quien supiera el PIN viejo seguiría adentro 30 días). Hay un solo proceso, así
-   que alcanza con actualizar la copia al cambiarlo. */
-let _pinGuardado;
-async function pinGuardado() {
-  if (_pinGuardado !== undefined) return _pinGuardado;
-  try {
-    const { rows } = await q(`select valor from app_settings where clave = 'login_pin'`);
-    _pinGuardado = rows[0]?.valor || null;
-    return _pinGuardado;
-  } catch (e) {
-    console.error('[auth] no pude leer el PIN de entrada:', e.message);
-    return null;
-  }
-}
+/* PIN por usuario. Cada uno tiene el suyo (app_users.pin_hash, scrypt con su
+   salt), así que para saber de quién es un PIN hay que probarlo contra todos.
+   Son pocos usuarios y scrypt corre en el pool de hilos: en paralelo tarda lo
+   que tarda uno o dos.
+
+   La cookie de quien entró con PIN lleva una HUELLA del hash de su PIN: si
+   administración se lo cambia o se lo saca, esa sesión se cae (si no, quien
+   supiera el PIN viejo seguiría adentro 30 días). */
+// Dominio de los usuarios creados sin email (ver el alta de usuarios).
+const SIN_EMAIL = '@sin-email.decirene';
+const clave = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
 const huellaPin = (hash) => crypto.createHash('sha256').update(String(hash)).digest('base64url').slice(0, 16);
+
+async function usuarioPorPin(pin, salvoId = null) {
+  const { rows } = await q(
+    `select u.id, u.email, u.pin_hash, p.role, p.full_name, p.active
+       from app_users u left join user_profiles p on p.id = u.id
+      where u.pin_hash is not null and u.id is distinct from $1`, [salvoId]);
+  const ok = await Promise.all(rows.map((u) => verifyPassword(pin, u.pin_hash)));
+  return rows.find((_, i) => ok[i]) || null;
+}
+
+// Un PIN identifica a la persona: no puede repetirse entre usuarios. Tampoco
+// puede ser el número de taller de un operario, porque equivocarse de pantalla
+// lo dejaría entrar a la app con la cuenta de otro.
+async function motivoPinOcupado(pin, salvoId = null) {
+  if (await usuarioPorPin(pin, salvoId)) return 'Ese PIN ya lo tiene otra persona. Elegí otro.';
+  const { rows } = await q(`select 1 from operators where pin = $1 and activo limit 1`, [pin]);
+  if (rows.length) return 'Ese número ya lo usa un operario en el taller. Elegí otro.';
+  return null;
+}
 
 export const DIR_ADJUNTOS = process.env.ADJUNTOS_DIR || '/data/adjuntos';
 
@@ -130,15 +145,12 @@ function leerCuerpo(req, maxBytes = 25 * 1024 * 1024) {
 async function sesion(req) {
   const tok = leerToken(leerCookies(req)[COOKIE]);
   if (!tok?.uid) return null;
-  if (tok.pin) {
-    const actual = await pinGuardado();
-    if (!actual || tok.pin !== huellaPin(actual)) return null;
-  }
   const { rows } = await q(
-    `select p.id, p.email, p.role, p.active, p.full_name
-       from user_profiles p where p.id = $1`, [tok.uid]);
+    `select p.id, p.email, p.role, p.active, p.full_name, u.pin_hash
+       from user_profiles p left join app_users u on u.id = p.id where p.id = $1`, [tok.uid]);
   const p = rows[0];
   if (!p || p.active === false) return null;
+  if (tok.pin && (!p.pin_hash || tok.pin !== huellaPin(p.pin_hash))) return null;
   return { userId: p.id, email: p.email, rol: p.role || 'comercial', nombre: p.full_name, porPin: !!tok.pin };
 }
 
@@ -193,9 +205,8 @@ export async function manejar(req, res, pathname) {
   }
 
   // ── Entrada con PIN ──
-  // Un solo PIN para toda la app (hash en app_settings) que abre la sesión del
-  // administrador: la de ADMIN_EMAIL, o si esa no está activa, el primer admin
-  // activo. Para entrar como otro usuario sigue el email y contraseña.
+  // Cada usuario tiene su PIN: el que coincide abre SU sesión, con los permisos
+  // de su rol. El email y la contraseña siguen funcionando aparte.
   if (pathname === '/api/auth/pin' && req.method === 'POST') {
     let body;
     try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
@@ -213,28 +224,18 @@ export async function manejar(req, res, pathname) {
     if (freno.error) return json(res, 429, { error: 'Demasiados intentos. Esperá 15 minutos y volvé a probar.' });
 
     const pin = String(body.pin ?? '').replace(/\D+/g, '');
-    const guardado = await pinGuardado();
-    const ok = /^\d{4}$/.test(pin) && !!guardado && await verifyPassword(pin, guardado);
-    if (!ok) {
+    const u = /^\d{4}$/.test(pin) ? await usuarioPorPin(pin) : null;
+    if (!u) {
       console.warn('[auth] PIN de entrada incorrecto desde', ip);
       return json(res, 401, { error: 'PIN incorrecto' });
     }
     devolverIntentoPin(ip, freno.t);
-
-    const emailAdmin = (process.env.ADMIN_EMAIL || 'admin@decirene.uy').toLowerCase().trim();
-    const { rows } = await q(
-      `select u.id, u.email, p.role, p.full_name
-         from app_users u join user_profiles p on p.id = u.id
-        where p.active and (lower(u.email) = $1 or p.role = 'admin')
-        order by (lower(u.email) = $1) desc, u.created_at
-        limit 1`, [emailAdmin]);
-    const u = rows[0];
-    if (!u) return json(res, 500, { error: 'No hay ningún administrador activo. Entrá con email y contraseña.' });
+    if (u.active === false) return json(res, 403, { error: 'Tu usuario está desactivado. Hablá con administración.' });
 
     await q('update app_users set last_login_at = now() where id = $1', [u.id]);
-    const token = crearToken({ uid: u.id, pin: huellaPin(guardado) });
+    const token = crearToken({ uid: u.id, pin: huellaPin(u.pin_hash) });
     return json(res, 200, {
-      user: { id: u.id, email: u.email, role: u.role || 'admin', full_name: u.full_name },
+      user: { id: u.id, email: u.email, role: u.role || 'comercial', full_name: u.full_name },
     }, { 'Set-Cookie': cookieSesion(token) });
   }
 
@@ -319,29 +320,35 @@ export async function manejar(req, res, pathname) {
     return json(res, 200, { ok: true });
   }
 
-  // ── Cambio del PIN de entrada (solo admin) ──
-  if (pathname === '/api/auth/pin/cambiar' && req.method === 'POST') {
+  // ── PIN de cada usuario (solo admin) ──
+  // GET: quién tiene PIN (nunca el PIN: se guarda como hash y no se puede leer).
+  if (pathname === '/api/auth/usuarios/pines' && req.method === 'GET') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    const { rows } = await q(`select id, (pin_hash is not null) as tiene_pin, email from app_users`);
+    return json(res, 200, { usuarios: rows.map(r => ({ id: r.id, tiene_pin: r.tiene_pin, sin_email: r.email.endsWith(SIN_EMAIL) })) });
+  }
+  // POST { id, pin }: asigna o cambia el PIN; pin vacío se lo saca.
+  if (pathname === '/api/auth/usuarios/pin' && req.method === 'POST') {
     if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
     let body;
     try { body = JSON.parse((await leerCuerpo(req, 4096)).toString('utf8')); }
     catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
-    const nuevo = String(body.nuevo ?? '').trim();
-    if (!/^\d{4}$/.test(nuevo)) return json(res, 400, { error: 'El PIN tiene que ser de 4 números' });
-    // El operario escribe su número en /taller.html. Si coincidiera con el de la
-    // app, equivocarse de pantalla lo dejaría entrar como administrador.
-    const { rows: choque } = await q(`select 1 from operators where pin = $1 and activo limit 1`, [nuevo]);
-    if (choque.length) return json(res, 409, { error: 'Ese número ya lo usa un operario en el taller. Elegí otro.' });
-
-    const hash = await hashPassword(nuevo);
-    await q(
-      `insert into app_settings (clave, valor, updated_by) values ('login_pin', $1, $2)
-       on conflict (clave) do update set valor = excluded.valor, updated_at = now(), updated_by = excluded.updated_by`,
-      [hash, ses.userId]);
-    _pinGuardado = hash;
-    // Las sesiones abiertas con el PIN viejo se caen solas (ver pinGuardado). La
-    // de quien lo cambió no: si entró con PIN, se le renueva con el nuevo.
-    const headers = ses.porPin ? { 'Set-Cookie': cookieSesion(crearToken({ uid: ses.userId, pin: huellaPin(hash) })) } : {};
-    return json(res, 200, { ok: true }, headers);
+    const id = String(body.id || '');
+    const pin = String(body.pin ?? '').trim();
+    const { rows: existe } = await q(`select id from app_users where id::text = $1`, [id]);
+    if (!existe.length) return json(res, 404, { error: 'No existe ese usuario' });
+    if (pin && !/^\d{4}$/.test(pin)) return json(res, 400, { error: 'El PIN tiene que ser de 4 números' });
+    if (pin) {
+      const motivo = await motivoPinOcupado(pin, id);
+      if (motivo) return json(res, 409, { error: motivo });
+    }
+    const hash = pin ? await hashPassword(pin) : null;
+    await q(`update app_users set pin_hash = $1 where id = $2`, [hash, id]);
+    // Las sesiones abiertas con el PIN viejo se caen solas (ver huellaPin). La de
+    // quien se lo cambió a sí mismo no: si entró con PIN, se le renueva.
+    const headers = id === ses.userId && ses.porPin && hash
+      ? { 'Set-Cookie': cookieSesion(crearToken({ uid: ses.userId, pin: huellaPin(hash) })) } : {};
+    return json(res, 200, { ok: true, tiene_pin: !!hash }, headers);
   }
 
   // ── Alta de usuarios (solo admin) ──
@@ -350,24 +357,37 @@ export async function manejar(req, res, pathname) {
     let body;
     try { body = JSON.parse((await leerCuerpo(req, 8192)).toString('utf8')); }
     catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
-    const email = String(body.email || '').toLowerCase().trim();
+    const nombre = String(body.full_name || '').trim();
+    // Con PIN, el email es opcional: mucha gente del taller no usa uno. La base
+    // igual necesita uno único, así que se arma un identificador que no es un
+    // mail de verdad (SIN_EMAIL) y no sirve para entrar con contraseña.
+    const conEmail = !!String(body.email || '').trim();
+    const slug = clave(nombre).replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '') || 'usuario';
+    const email = conEmail ? String(body.email).toLowerCase().trim()
+      : `${slug}.${crypto.randomBytes(3).toString('hex')}${SIN_EMAIL}`;
     // Los roles ya no son cuatro constantes: se crean desde Administración, así
     // que la validación va contra `app_roles` (ver api/registry.js).
     const rol = rolExiste(body.role) ? body.role : 'comercial';
     const pw = String(body.password || '') || ('cirene-' + Math.random().toString(36).slice(2, 10));
-    if (!email) return json(res, 400, { error: 'Falta el email' });
+    if (!conEmail && !nombre) return json(res, 400, { error: 'Falta el nombre' });
+    const pin = String(body.pin ?? '').trim();
+    if (pin && !/^\d{4}$/.test(pin)) return json(res, 400, { error: 'El PIN tiene que ser de 4 números' });
+    if (pin) {
+      const motivo = await motivoPinOcupado(pin);
+      if (motivo) return json(res, 409, { error: motivo });
+    }
     const cliente = await pool.connect();
     try {
       await cliente.query('begin');
       const { rows } = await cliente.query(
-        `insert into app_users (email, password_hash, must_change_pw) values ($1,$2,true)
-         on conflict (email) do nothing returning id`, [email, await hashPassword(pw)]);
+        `insert into app_users (email, password_hash, must_change_pw, pin_hash) values ($1,$2,true,$3)
+         on conflict (email) do nothing returning id`, [email, await hashPassword(pw), pin ? await hashPassword(pin) : null]);
       if (!rows[0]) { await cliente.query('rollback'); return json(res, 409, { error: 'Ese email ya existe' }); }
       await cliente.query(
         `insert into user_profiles (id, email, full_name, role, active) values ($1,$2,$3,$4,true)`,
-        [rows[0].id, email, String(body.full_name || email.split('@')[0]), rol]);
+        [rows[0].id, email, nombre || email.split('@')[0], rol]);
       await cliente.query('commit');
-      return json(res, 200, { ok: true, email, password: pw, role: rol });
+      return json(res, 200, { ok: true, email: conEmail ? email : null, password: conEmail ? pw : null, role: rol, pin: !!pin });
     } catch (e) {
       await cliente.query('rollback');
       return json(res, 500, { error: e.message });

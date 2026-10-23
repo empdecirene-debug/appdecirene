@@ -1666,3 +1666,8 @@ create table if not exists app_settings (
   updated_at timestamptz not null default now(),
   updated_by uuid
 );
+
+-- PIN por usuario (2026-10-23): cada usuario entra con SU PIN de 4 números y
+-- con los permisos de su rol. Hash scrypt, igual que la contraseña. El PIN
+-- general de app_settings pasa a ser el del admin (api/db.js, sembrarPin).
+alter table app_users add column if not exists pin_hash text;
