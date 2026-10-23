@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { migrar } from './api/db.js';
+import { arrancarEnvio } from './api/tickets.js';
 import { manejar, DIR_ADJUNTOS } from './api/router.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -128,4 +129,6 @@ const server = http.createServer(async (req, res) => {
   server.listen(PORT, () => {
     console.log(`De Cirene ERP sirviendo en puerto ${PORT}`);
   });
+  // Sugerencias → tickets de customERP (api/tickets.js).
+  arrancarEnvio();
 })();

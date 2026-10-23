@@ -125,7 +125,11 @@ async function load() {
       state.operarios = await data.listOperators({ incluirInactivos: false }).catch(() => state.operarios);
     }
     if (state.tab === 'roles')   state.roles = await data.listRoles();
-    if (state.tab === 'sugerencias') state.sugerencias = await data.listSuggestions();
+    if (state.tab === 'sugerencias') {
+      state.sugerencias = await data.listSuggestions();
+      const t = await api.pedir('/admin/tickets').catch(() => ({}));
+      state.ticketsActivo = !!t.activo;
+    }
   } catch (e) {
     $('content').innerHTML = `<div class="alert err">No se pudo cargar: ${esc(e.message || e)}
       <button class="btn sm" style="margin-left:10px" onclick="location.reload()">Reintentar</button></div>`;
@@ -669,6 +673,11 @@ function renderSugerencias() {
         </div>
       </div>
       <p class="subtitle">Las escribe cualquiera desde el botón 💡 que está abajo a la derecha en toda la app.</p>
+      ${state.ticketsActivo
+        ? `<p class="subtitle" style="margin-top:6px">Cada una se envía sola como <b>ticket a customERP</b>, que mantiene esta app.
+            <button class="btn sm" id="btnTickets" style="margin-left:6px">Reintentar las pendientes</button></p>`
+        : `<p class="subtitle" style="margin-top:6px">El envío a customERP todavía no está conectado: las sugerencias quedan
+            guardadas y salen solas como tickets cuando se conecte.</p>`}
     </div>
 
     ${filtradas.length ? filtradas.map(s => {
@@ -679,6 +688,9 @@ function renderSugerencias() {
           <span class="badge">${esc(CATS[s.categoria] || s.categoria)}</span>
           ${s.pagina ? `<span class="badge">en ${esc(s.pagina)}</span>` : ''}
           <span class="badge">${esc(est.label)}</span>
+          ${s.ticket_estado === 'enviada' ? `<span class="badge" title="Ticket ${esc(s.ticket_id || '')}">✓ en customERP</span>`
+            : s.ticket_estado === 'error' ? `<span class="badge" style="color:var(--rojo)" title="${esc(s.ticket_error || '')}">sin enviar · se reintenta</span>`
+            : state.ticketsActivo ? '<span class="badge">enviando…</span>' : ''}
           <span style="font-size:12px;color:var(--tinta-3);margin-left:auto">
             ${esc(s.user_label || 'Alguien')} · ${fechaHora(s.created_at)}</span>
         </div>
@@ -704,6 +716,15 @@ function renderSugerencias() {
 }
 
 function bindSugerencias() {
+  if ($('btnTickets')) $('btnTickets').onclick = async () => {
+    const b = $('btnTickets'); b.disabled = true;
+    try {
+      const r = await api.pedir('/admin/tickets', { method: 'POST' });
+      if (r.error) throw new Error(textoError(r.error));
+      showOk(`Enviadas: ${r.enviadas} · con error: ${r.errores}`);
+      await load();
+    } catch (e) { showError('No se pudo reintentar: ' + e.message); b.disabled = false; }
+  };
   document.querySelectorAll('[data-fs]').forEach(b => b.onclick = () => {
     state.filtroSug = b.dataset.fs; render();
   });

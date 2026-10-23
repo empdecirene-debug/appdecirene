@@ -52,6 +52,7 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 | `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas. Además la **cookie de taller** (`cirene_taller`), firmada igual pero que solo abre `/api/taller/*` |
 | `api/taller.js` | **Fichadas de los operarios**. PIN → operario, estado recortado de la pantalla del taller, `iniciar` y `terminar` en una transacción. La bitácora `subtask_time_logs` es la verdad: los acumulados de subtarea y pedido se **recalculan** de ella |
 | `api/asana.js` | **Importar desde Asana**: lee los dos CSV (`leerCSV`, `leerNotas`, `armar`, puros) y reemplaza el movimiento con respaldo previo (`importarAsana`). Ver la sección *Importar desde Asana* |
+| `api/tickets.js` | **Sugerencias → tickets de customERP**: cola en `suggestions.ticket_*`, envío con reintentos (`enviarPendientes`, `arrancarEnvio`). Ver la sección *Sugerencias → tickets* |
 | `api/router.js` | `/api/auth/{pin,login,logout,me,password,usuarios,usuarios/pin,usuarios/pines}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset,importar-asana}`, `/api/health` |
 | `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
 
@@ -392,6 +393,21 @@ previa de la pantalla. Sin `confirmacion: 'REINICIAR'` no borra.
 - **Respaldo**: JSON de todas las tablas que se vacían, en `/data/respaldos/` (mismo volumen, FUERA de
   `/data/adjuntos`, que se sirve público). Para restaurar hay que hacerlo a mano desde ese archivo.
 - Con los CSV del 2026-10-23: 122 clientes, 182 consultas, 131 trabajos, 113 ventas.
+
+## Sugerencias → tickets de customERP (2026-10-23)
+Cada sugerencia del botón 💡 se reenvía como **ticket al ERP interno de customERP** (`intern.customerp.dev`),
+que mantiene esta app (`api/tickets.js`). La tabla `suggestions` es la cola: `ticket_estado` 'pendiente' →
+'enviada' (con `ticket_id`) o 'error' (con `ticket_error`, reintento solo con espera 1, 2, 4… min, tope 6 h).
+Sale al toque cuando se inserta (`/api/q` → `setImmediate(enviarPendientes)`) y cada minuto revisa la cola.
+
+- Variables de Railway: `CUSTOMERP_TICKETS_TOKEN` (sin ella NO se envía nada; las sugerencias esperan) y
+  opcional `CUSTOMERP_TICKETS_URL` (default `https://intern.customerp.dev/api/tickets/entrante`).
+  `PUBLIC_URL` (o `RAILWAY_PUBLIC_DOMAIN`) arma los links absolutos a los adjuntos.
+- Contrato: `POST` con `Authorization: Bearer <token>` y `{titulo, detalle, autor, pagina, ref}`; `ref` = id de
+  la sugerencia, para que un reintento no duplique. `origen` lo pone customERP según el token.
+- **Del lado de customERP esa entrada no existía** (sus tickets solo aceptan sesión de gerencia): va en un PR del
+  repo `erp-backend`. Hasta que esté publicado y den la clave, todo queda en cola.
+- Administración → Sugerencias muestra "✓ en customERP" / "sin enviar · se reintenta" y un botón para reintentar.
 
 ## Fechas: `date` vuelve como texto
 `api/db.js` fija `pg.types.setTypeParser(1082, v => v)`: las columnas `date` llegan como `'YYYY-MM-DD'`, igual

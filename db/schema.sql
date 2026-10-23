@@ -1671,3 +1671,15 @@ create table if not exists app_settings (
 -- con los permisos de su rol. Hash scrypt, igual que la contraseña. El PIN
 -- general de app_settings pasa a ser el del admin (api/db.js, sembrarPin).
 alter table app_users add column if not exists pin_hash text;
+
+-- Sugerencias → tickets de customERP (2026-10-23). Cada sugerencia se reenvía
+-- como ticket al ERP interno de customERP (api/tickets.js). Estas columnas son
+-- la cola: 'pendiente' hasta que llega, 'enviada' con el id del ticket, 'error'
+-- con el motivo (se reintenta sola).
+alter table suggestions add column if not exists ticket_estado  text not null default 'pendiente';
+alter table suggestions add column if not exists ticket_id      text;
+alter table suggestions add column if not exists ticket_error   text;
+alter table suggestions add column if not exists ticket_intentos int not null default 0;
+alter table suggestions add column if not exists ticket_enviado_at timestamptz;
+alter table suggestions add column if not exists ticket_ultimo_intento timestamptz;
+create index if not exists idx_suggestions_ticket on suggestions(ticket_estado) where ticket_estado <> 'enviada';

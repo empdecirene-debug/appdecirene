@@ -19,6 +19,7 @@ import { construir, ErrorConsulta } from './query.js';
 import { puede, ES_ADMIN, cargarRoles, rolExiste } from './registry.js';
 import { generarDemo, reiniciar } from './demo.js';
 import { importarAsana } from './asana.js';
+import { enviarPendientes, ticketsActivos } from './tickets.js';
 import {
   operarioPorPin, estadoTaller,
   iniciar as iniciarTaller, terminar as terminarTaller,
@@ -455,6 +456,14 @@ export async function manejar(req, res, pathname) {
     }
   }
 
+  // ── Sugerencias → tickets de customERP (solo admin) ──
+  // GET: si el envío está configurado. POST: reintenta ya lo que quedó pendiente.
+  if (pathname === '/api/admin/tickets') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    if (req.method === 'POST') return json(res, 200, await enviarPendientes({ forzar: true }));
+    return json(res, 200, { activo: ticketsActivos() });
+  }
+
   // ── Consulta genérica ──
   if (pathname === '/api/q' && req.method === 'POST') {
     let desc;
@@ -473,6 +482,8 @@ export async function manejar(req, res, pathname) {
       // viejo: recargarlo acá evita tener que redesplegar para que el rol nuevo
       // funcione.
       if (desc.tabla === 'app_roles' && accion !== 'select') await cargarRoles(pool);
+      // Una sugerencia nueva sale enseguida para customERP, sin hacer esperar a quien la mandó.
+      if (desc.tabla === 'suggestions' && accion === 'insert') setImmediate(() => enviarPendientes());
       if (desc.single) {
         if (rows.length !== 1) {
           return json(res, 200, {
