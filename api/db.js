@@ -16,6 +16,13 @@ import { cargarColumnas, cargarRoles } from './registry.js';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+// Las columnas `date` vuelven como texto 'YYYY-MM-DD', igual que con Supabase.
+// Por defecto el driver las convierte a Date y el JSON sale como
+// '2026-10-27T03:00:00.000Z': las tarjetas mostraban eso y los <input type=date>
+// quedaban vacíos, así que abrir un trabajo y guardarlo le BORRABA las fechas.
+// 1082 es el OID del tipo date en Postgres.
+pg.types.setTypeParser(1082, (v) => v);
+
 // Railway inyecta DATABASE_URL al referenciar el servicio Postgres.
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

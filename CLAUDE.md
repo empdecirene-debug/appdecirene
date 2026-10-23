@@ -51,7 +51,8 @@ separado y cruzalas en JS (es lo que hace `cirene-data.js`).
 | `api/query.js` | Descriptor → SQL. **Valores siempre parametrizados, identificadores siempre validados** contra el catálogo. UPDATE/DELETE sin filtros bloqueados |
 | `api/session.js` | scrypt (contraseñas) + HMAC (tokens), con `node:crypto`. Sin dependencias nativas. Además la **cookie de taller** (`cirene_taller`), firmada igual pero que solo abre `/api/taller/*` |
 | `api/taller.js` | **Fichadas de los operarios**. PIN → operario, estado recortado de la pantalla del taller, `iniciar` y `terminar` en una transacción. La bitácora `subtask_time_logs` es la verdad: los acumulados de subtarea y pedido se **recalculan** de ella |
-| `api/router.js` | `/api/auth/{pin,pin/cambiar,login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset}`, `/api/health` |
+| `api/asana.js` | **Importar desde Asana**: lee los dos CSV (`leerCSV`, `leerNotas`, `armar`, puros) y reemplaza el movimiento con respaldo previo (`importarAsana`). Ver la sección *Importar desde Asana* |
+| `api/router.js` | `/api/auth/{pin,pin/cambiar,login,logout,me,password,usuarios}`, `/api/taller/{login,logout,estado,inicio,fin}`, `/api/q`, `/api/upload`, `/api/admin/{demo,reset,importar-asana}`, `/api/health` |
 | `server.js` | Estáticos + fallback SPA + monta la API. ESM (`"type":"module"`) |
 
 **Variables en Railway**: `DATABASE_URL` (referencia a `${{Postgres.DATABASE_URL}}`),
@@ -60,6 +61,11 @@ Si falta `SESSION_SECRET` la app anda pero las sesiones se caen en cada reinicio
 
 **Deploy**: el servicio debería estar conectado a `empdecirene-debug/appdecirene` rama `main` →
 push = deploy. URL: https://appdecirene-production.up.railway.app
+
+**Dominio propio: `decirene.customerp.dev`** (alta en Railway el 2026-10-23, `railway domain status d76cb5d1-d6af-476e-bdbc-0c8c44683695`).
+La zona `customerp.dev` está en el Cloudflare de customERP, donde un Worker (`erp-edge`) toma `*.customerp.dev/*`.
+Por eso el registro tiene que ser **solo DNS (nube gris)**: con proxy, el Worker se queda con el pedido. Registros:
+`CNAME decirene → mcgtr1xd.up.railway.app` y `TXT _railway-verify.decirene → railway-verify=1cfdeb6a829c812cfe62af8d029c7cfecafd914e97e7ea55c5d6da0f8f863e7d`.
 
 > ⚠ **El push solo no siempre dispara el deploy.** Pasó el 10 de julio (servía un build viejo, por
 > eso faltaba `clientes.html`) y de nuevo el 2026-08-20: tres pushes seguidos no movieron el
@@ -356,9 +362,33 @@ Administración → **Datos de prueba** (`api/demo.js`, solo admin, todo en una 
 El orden de borrado está escrito a mano en `ORDEN_BORRADO` y respeta las FK: `production_cards` y
 `sales` se apuntan mutuamente, así que primero se anula `sale_id`.
 
-## Datos importados (de Asana)
-Los CSV `~/Desktop/CIRENE/{Presupuestos,Herreria_Operativa}*.csv` se migraron a `intake_cards` y
-`production_cards` (ids `in-<taskAsana>` / `pr-<taskAsana>`, idempotente). Los precios salen del
-campo Notes (tabla "Producto/Medidas/Cantidad/Precio", a veces como número pelado) + cruce por
-cliente con las notas de Presupuestos + hojas por cliente del Excel. Trabajos internos de Cireneos
-suelen no tener precio (quedan en $0, marcados "⚠ sin precio").
+## Importar desde Asana (2026-10-23)
+Administración → **Importar y datos** → *Importar desde Asana* (`api/asana.js`, `POST /api/admin/importar-asana`).
+Recibe los dos CSV que exporta Asana y **reemplaza todo el movimiento** en UNA transacción: respaldo → `vaciar`
+(lo mismo que "Reiniciar todo", `api/demo.js`) → carga. `soloVer: true` corre todo y hace rollback: es la vista
+previa de la pantalla. Sin `confirmacion: 'REINICIAR'` no borra.
+
+| CSV | Va a | Detalle |
+|---|---|---|
+| Presupuestos Herreria | `intake_cards` (`in-<TaskID>`) | Columna → etapa; "Presupuestado" se abre según *Seguimiento* (Envíado/Rechazado/Aceptado/En seguimiento) |
+| Herreria Operativa | `production_cards` (`pr-<TaskID>`) + `sales` | Columna → etapa; productos y precios de la tabla de las notas; PAGO → `estado_pago` |
+| Los dos (mismo Task ID) | la consulta queda en **Lead ganado** y apunta al trabajo y la venta, como `winLead` | |
+| Subtareas de Operativa | `production_subtasks` (por el NOMBRE del padre, es lo que trae el CSV) | |
+
+- **Clientes**: uno por teléfono E.164; sin teléfono, uno por nombre. "Cliente (PRODUCTO)" → cliente; las viejas
+  "Producto (Cliente)" se dan vuelta (`EMPIEZA_CON_PRODUCTO`). Todo lo de Cireneos es UN cliente interno, sin teléfono.
+- **La tabla de las notas** (`leerNotas`) viene aplanada y desprolija: renglones vacíos de más entre filas, celdas
+  de varios renglones, celdas finales que faltan. Cada fila prueba combinaciones y gana la que pone números donde
+  van números. Precio = unitario × Cantidad, salvo que la cantidad sea una medida ("8 mts"): ahí es el total.
+  Las líneas de cantidad > 1 y $50.000 o más se avisan para revisar (no se sabe si era unitario o total).
+- **No se importa**: la sección *Stock* (productos terminados; el stock del ERP es de materiales), cotizaciones
+  ni cobros (Asana no tiene las líneas de costo ni los montos cobrados).
+- **Respaldo**: JSON de todas las tablas que se vacían, en `/data/respaldos/` (mismo volumen, FUERA de
+  `/data/adjuntos`, que se sirve público). Para restaurar hay que hacerlo a mano desde ese archivo.
+- Con los CSV del 2026-10-23: 122 clientes, 182 consultas, 131 trabajos, 113 ventas.
+
+## Fechas: `date` vuelve como texto
+`api/db.js` fija `pg.types.setTypeParser(1082, v => v)`: las columnas `date` llegan como `'YYYY-MM-DD'`, igual
+que con Supabase. Sin eso el driver las convertía a `Date` y el JSON salía `'2026-10-27T03:00:00.000Z'`: las
+tarjetas lo mostraban así, los `<input type=date>` quedaban vacíos y **guardar un trabajo le borraba las fechas**
+(pasó desde la migración a Railway hasta el 2026-10-23).

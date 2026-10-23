@@ -45,13 +45,29 @@ const ORDEN_BORRADO = [
   'clients', 'production_weeks', 'production_days', 'assets', 'social_impact',
 ];
 
+// Las tablas que vacía "Reiniciar todo". La importación de Asana las respalda antes.
+export const TABLAS_MOVIMIENTO = ORDEN_BORRADO;
+
 export async function reiniciar(modo = 'demo') {
   if (!['demo', 'operativo'].includes(modo)) throw new Error('Modo de reinicio desconocido: ' + modo);
   const c = await pool.connect();
-  const borrados = {};
   try {
     await c.query('begin');
+    const borrados = await vaciar(c, modo);
+    await c.query('commit');
+    return { modo, borrados };
+  } catch (e) {
+    await c.query('rollback');
+    throw e;
+  } finally { c.release(); }
+}
 
+// El borrado en sí, sobre una conexión con la transacción ya abierta: así la
+// importación de Asana vacía y carga en la MISMA transacción (api/asana.js).
+export async function vaciar(c, modo) {
+  if (!['demo', 'operativo'].includes(modo)) throw new Error('Modo de reinicio desconocido: ' + modo);
+  const borrados = {};
+  {
     // Qué materiales tocó la demo. Hay que anotarlos ANTES de borrar los
     // movimientos, porque después no hay forma de saber cuáles fueron.
     let materialesDemo = [];
@@ -108,13 +124,8 @@ export async function reiniciar(modo = 'demo') {
            where m.id = any($1)`, [materialesDemo]);
       }
     }
-
-    await c.query('commit');
-    return { modo, borrados };
-  } catch (e) {
-    await c.query('rollback');
-    throw e;
-  } finally { c.release(); }
+  }
+  return borrados;
 }
 
 export async function generarDemo() {

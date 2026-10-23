@@ -17,6 +17,7 @@ import { q, pool } from './db.js';
 import { construir, ErrorConsulta } from './query.js';
 import { puede, ES_ADMIN, cargarRoles, rolExiste } from './registry.js';
 import { generarDemo, reiniciar } from './demo.js';
+import { importarAsana } from './asana.js';
 import {
   operarioPorPin, estadoTaller,
   iniciar as iniciarTaller, terminar as terminarTaller,
@@ -407,6 +408,30 @@ export async function manejar(req, res, pathname) {
     } catch (e) {
       console.error('[demo] reiniciar:', e);
       return json(res, 500, { error: 'No se pudo reiniciar: ' + e.message });
+    }
+  }
+
+  // ── Importar desde Asana (solo admin) ──
+  // Reemplaza todo el movimiento por lo de los dos CSV, con respaldo previo.
+  // `soloVer` corre todo y deshace: es la vista previa. Ver api/asana.js.
+  if (pathname === '/api/admin/importar-asana' && req.method === 'POST') {
+    if (!ES_ADMIN(ses.rol)) return json(res, 403, { error: 'Requiere permisos de administrador' });
+    let body;
+    try { body = JSON.parse((await leerCuerpo(req, 20 * 1024 * 1024)).toString('utf8')); }
+    catch { return json(res, 400, { error: 'Cuerpo inválido' }); }
+    const soloVer = body.soloVer === true;
+    if (!soloVer && String(body.confirmacion || '').trim().toUpperCase() !== 'REINICIAR') {
+      return json(res, 400, { error: 'Para borrar y cargar hay que escribir REINICIAR' });
+    }
+    try {
+      const r = await importarAsana(
+        { presupuestos: String(body.presupuestos || ''), operativa: String(body.operativa || '') },
+        { soloVer, uid: ses.userId });
+      if (!soloVer) console.log('[asana] importado por', ses.email, JSON.stringify(r.carga), 'respaldo', r.respaldo);
+      return json(res, 200, { ok: true, ...r });
+    } catch (e) {
+      console.error('[asana]', e);
+      return json(res, 500, { error: 'No se pudo importar: ' + e.message });
     }
   }
 

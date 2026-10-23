@@ -82,7 +82,7 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
     <button data-t="impacto">Impacto social</button>
     <button data-t="stages">Etapas Kanban</button>
     <button data-t="fields">Campos personalizados</button>
-    <button data-t="datos">Datos de prueba</button>
+    <button data-t="datos">Importar y datos</button>
   </div>
 
   <div id="content">Cargando…</div>
@@ -700,6 +700,30 @@ function bindSugerencias() {
    (POST /api/admin/demo y /api/admin/reset). Ver api/demo.js. */
 function renderDatos() {
   return `
+    <div class="card" style="border-color:var(--rojo)">
+      <h2>Importar desde Asana</h2>
+      <p class="subtitle">Carga los dos CSV que exporta Asana: <b>Presupuestos Herreria</b> (pasa al CRM) y
+        <b>Herreria Operativa</b> (pasa a Producción, con su venta). Arma los clientes, une la consulta con su
+        trabajo cuando es la misma tarea y lee los productos y precios de la tabla de cada tarea.</p>
+      <p class="subtitle" style="margin-top:8px"><b>Reemplaza todo el movimiento</b>, igual que "Reiniciar todo".
+        Antes de borrar se guarda un respaldo de lo que había. Primero tocá <b>Ver qué se va a cargar</b>: no
+        cambia nada y te muestra el resultado.</p>
+      <div class="row2" style="margin-top:12px">
+        <div class="fg"><label class="label">Presupuestos Herreria (.csv)</label><input type="file" id="csv-pres" accept=".csv,text/csv"></div>
+        <div class="fg"><label class="label">Herreria Operativa (.csv)</label><input type="file" id="csv-oper" accept=".csv,text/csv"></div>
+      </div>
+      <button class="btn" id="btnVerAsana">Ver qué se va a cargar</button>
+      <div id="asana-plan"></div>
+      <div id="asana-confirmar" style="display:none">
+        <div class="row2" style="align-items:end;margin-top:12px">
+          <div class="fg"><label class="label">Escribí REINICIAR para habilitar el botón</label>
+            <input id="conf-asana" placeholder="REINICIAR" autocomplete="off"></div>
+          <div class="fg"><button class="btn danger" id="btnAsana" disabled>Borrar todo y cargar</button></div>
+        </div>
+      </div>
+      <div id="asana-result"></div>
+    </div>
+
     <div class="card">
       <h2>Cargar datos de prueba</h2>
       <p class="subtitle">Genera un juego de datos ficticio pero coherente, que recorre todos los módulos:
@@ -732,7 +756,67 @@ function renderDatos() {
     </div>`;
 }
 function bindDatos() {
-  const resumen = (obj) => Object.entries(obj || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: <b>${v}</b>`).join(' · ') || 'nada';
+  const resumen = (obj) => Object.entries(obj || {}).map(([k, v]) => `${esc(k.replace(/_/g, ' '))}: <b>${v}</b>`).join(' · ') || 'nada';
+
+  /* ── Importar desde Asana (POST /api/admin/importar-asana, ver api/asana.js) ── */
+  const NOMBRES = {
+    clients: 'clientes', intake_cards: 'consultas', quotes: 'cotizaciones', quote_lines: 'líneas de cotización',
+    sales: 'ventas', production_cards: 'trabajos', production_subtasks: 'subtareas', subtask_time_logs: 'fichadas',
+    receivables: 'cuentas a cobrar', job_payments: 'cobros', cash_movements: 'movimientos de caja', cash_sessions: 'cajas',
+    expenses: 'gastos', supplier_ledger: 'cuenta corriente de proveedores', stock_movements: 'movimientos de stock',
+    purchase_orders: 'órdenes de compra', purchase_order_lines: 'líneas de órdenes de compra', card_stories: 'comentarios',
+    notifications: 'avisos', production_card_transitions: 'cambios de etapa', nps_surveys: 'encuestas NPS',
+    production_weeks: 'semanas planificadas', production_days: 'días planificados', assets: 'activos', social_impact: 'impacto social',
+  };
+  const enCastellano = (obj) => Object.fromEntries(Object.entries(obj || {}).map(([k, v]) => [NOMBRES[k] || k, v]));
+  async function leerArchivos() {
+    const fp = $('csv-pres').files[0], fo = $('csv-oper').files[0];
+    if (!fp && !fo) throw new Error('Elegí los dos archivos CSV de Asana.');
+    return { presupuestos: fp ? await fp.text() : '', operativa: fo ? await fo.text() : '' };
+  }
+  const mostrarPlan = (r, final) => `
+    <div class="alert ${final ? 'ok' : 'info'}" style="margin-top:12px">
+      <b>${final ? 'Listo, quedó cargado' : 'Esto es lo que va a pasar'}</b><br>
+      Se ${final ? 'cargaron' : 'cargan'}: ${resumen(r.carga)}<br>
+      Se ${final ? 'borraron' : 'borran'}: ${resumen(enCastellano(r.borra))}
+      ${r.respaldo ? `<br>Respaldo de lo anterior: <code>${esc(r.respaldo)}</code>` : ''}
+    </div>
+    ${r.sinPrecio ? `<p class="subtitle" style="margin-top:8px">${r.sinPrecio} trabajo(s) quedan <b>sin precio</b>
+      (en Asana no tenían): en Producción aparecen marcados para completarlo.</p>` : ''}
+    ${(r.avisos || []).length ? `<div class="alert err" style="margin-top:8px"><b>Para revisar</b><ul style="margin:6px 0 0 18px">
+      ${r.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>` : ''}
+    ${(r.stock || []).length ? `<p class="subtitle" style="margin-top:8px"><b>No se importa la sección Stock</b>
+      (${r.stock.length} productos terminados): el stock del sistema es de materiales.
+      ${r.stock.map(s => `${esc(s.producto)} (${s.actual ?? '?'})`).join(' · ')}</p>` : ''}`;
+
+  $('btnVerAsana').onclick = async () => {
+    const b = $('btnVerAsana'); b.disabled = true; b.textContent = 'Leyendo…';
+    $('asana-result').innerHTML = '';
+    try {
+      const r = await api.pedir('/admin/importar-asana', { method: 'POST', body: JSON.stringify({ ...(await leerArchivos()), soloVer: true }) });
+      if (r.error) throw new Error(r.error);
+      $('asana-plan').innerHTML = mostrarPlan(r, false);
+      $('asana-confirmar').style.display = '';
+    } catch (e) { $('asana-plan').innerHTML = `<div class="alert err" style="margin-top:12px">${esc(e.message || e)}</div>`; }
+    finally { b.disabled = false; b.textContent = 'Ver qué se va a cargar'; }
+  };
+  $('conf-asana').oninput = e => { $('btnAsana').disabled = e.target.value.trim().toUpperCase() !== 'REINICIAR'; };
+  $('btnAsana').onclick = async () => {
+    if (!confirm('Se borra todo el movimiento actual y se carga lo de Asana.\n\nQueda un respaldo de lo anterior. ¿Seguís?')) return;
+    const b = $('btnAsana'); b.disabled = true; b.textContent = 'Cargando…';
+    try {
+      const r = await api.pedir('/admin/importar-asana', {
+        method: 'POST', body: JSON.stringify({ ...(await leerArchivos()), confirmacion: $('conf-asana').value }),
+      });
+      if (r.error) throw new Error(r.error);
+      $('asana-plan').innerHTML = '';
+      $('asana-confirmar').style.display = 'none';
+      $('conf-asana').value = '';
+      $('asana-result').innerHTML = mostrarPlan(r, true);
+      showOk('Datos de Asana cargados');
+    } catch (e) { $('asana-result').innerHTML = `<div class="alert err" style="margin-top:12px">${esc(e.message || e)}</div>`; }
+    finally { b.textContent = 'Borrar todo y cargar'; }
+  };
 
   $('btnDemo').onclick = async () => {
     const b = $('btnDemo'); b.disabled = true; b.textContent = 'Generando…';
