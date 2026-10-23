@@ -84,8 +84,8 @@
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=8';
-import { requireAuth } from './js/auth.js?v=8';
+import { renderNavbar } from './js/navbar.js?v=9';
+import { requireAuth } from './js/auth.js?v=9';
 
 const $ = s => document.querySelector(s);
 let tab = 'app';
@@ -163,9 +163,21 @@ sistema, puede leerlas): administración te genera una nueva.</div>
 <ul>
   <li><b>Centro de actividad:</b> los avisos de lo que pasó mientras no estabas. Si alguien comentó
     en un pedido tuyo, te aparece acá. Se marcan como leídos con un clic.</li>
-  <li><b>Los accesos a cada módulo:</b> los cuadrados grandes. Solo ves los módulos que tu rol tiene
-    habilitados, así que si un compañero ve más botones que vos, es por eso y no es un error.</li>
+  <li><b>Los accesos a cada módulo:</b> los cuadrados grandes, agrupados por área. Solo ves los módulos
+    que tu rol tiene habilitados, así que si un compañero ve más botones que vos, es por eso y no es un error.</li>
 </ul>
+
+<h2>El menú de arriba</h2>
+<p>Está ordenado en tres áreas. Cada una es un botón: al pasar el mouse (o tocarlo en el celular) se
+despliegan sus pantallas.</p>
+<table>
+  <tr><th>Área</th><th>Qué tiene</th></tr>
+  <tr><td><b>Comercial</b></td><td>CRM, Clientes, Cotizar, Ventas, NPS</td></tr>
+  <tr><td><b>Producción</b></td><td>Tablero de producción, Métricas, Catálogo, Stock</td></tr>
+  <tr><td><b>Dirección</b></td><td>Dashboard, Contabilidad, Compras, Administración</td></tr>
+</table>
+<p><b>Inicio</b> y <b>Manual</b> están siempre a mano, sueltos. El botón del área en la que estás queda
+en blanco y dice en qué pantalla estás (por ejemplo, "Producción · Stock").</p>
 
 <h2>Módulo por módulo</h2>
 

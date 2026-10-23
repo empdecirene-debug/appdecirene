@@ -15,7 +15,7 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 .home-hdr { text-align: center; margin-bottom: 36px; }
 .home-hdr h1 { font-family: 'Raleway', sans-serif; font-size: 32px; color: var(--azul); margin: 0 0 6px; }
 .home-hdr p { color: var(--tinta-3); margin: 0; font-size: 14px; }
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
 .tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: #fff; border: 1px solid var(--border, #e6eaf0); border-radius: 14px;
@@ -33,6 +33,11 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 .tile .label { font-size: 16px; font-weight: 700; }
 .tile .desc { font-size: 11px; color: var(--tinta-3); margin-top: 4px; }
 .tile.admin-only { background: linear-gradient(135deg, #fff, #F0F0EF); border-color: var(--azul); }
+/* secciones por área */
+.area + .area { margin-top: 30px; }
+.area-h { font-family: 'Raleway', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--tinta-3, #9AA0A6); margin: 0 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border, #e6eaf0); }
 /* centro de actividad */
 .actividad { background: #fff; border: 1px solid var(--border, #e6eaf0); border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; }
 .actividad .ah { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -86,7 +91,7 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
     <p id="welcomeText">Cargando…</p>
   </div>
   <div id="actividad"></div>
-  <div class="tile-grid" id="tileGrid"></div>
+  <div id="tileGrid"></div>
 
   <div class="cuenta">
     <button class="link" id="togglePw">Cambiar mi contraseña</button>
@@ -103,32 +108,36 @@ body { background: var(--bg, #f6f9fc); font-family: 'Public Sans', system-ui, sa
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=8';
-import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=8';
-import { icon } from './js/icons.js?v=8';
-import * as data from './js/cirene-data.js?v=8';
-import { api } from './js/supa.js?v=8';
+import { renderNavbar } from './js/navbar.js?v=9';
+import { requireAuth, isAdmin, getProfile } from './js/auth.js?v=9';
+import { icon } from './js/icons.js?v=9';
+import * as data from './js/cirene-data.js?v=9';
+import { api } from './js/supa.js?v=9';
 
 // `mod` es el id del módulo en la configuración del rol (ver Administración →
 // Roles), el mismo que filtra las pestañas de la navbar: así nadie ve un cuadrado
 // que después le contesta "tu rol no puede". Dos accesos existen solo acá y no en
 // la navbar, porque no son pantallas de trabajo diario: la del taller (vive en el
 // tablet del taller) y el diagrama (es material de consulta).
+//
+// Los cuadrados se agrupan por área (Comercial / Producción / Dirección) igual que
+// la navbar: el área de cada uno sale de `data.MODULOS` por su `mod`. Los que no
+// tienen área (Manual, Diagrama) van al final, bajo "Ayuda".
 const TILES = [
   { id: 'intake',   mod: 'intake',       icon: 'inbox',      label: 'CRM / Leads',  href: '/intake.html',       desc: 'Consultas y seguimiento' },
   { id: 'clientes', mod: 'clientes',     icon: 'users',      label: 'Clientes',     href: '/clientes.html',     desc: 'Tu cartera de clientes' },
   { id: 'cot',      mod: 'cot',          icon: 'calculator', label: 'Cotizar',      href: '/index.html',        desc: 'Presupuesto + PDF' },
-  { id: 'catalog',  mod: 'catalog',      icon: 'package',    label: 'Catálogo',     href: '/catalog.html',      desc: 'Materiales, terminaciones y tarifas' },
-  { id: 'prod',     mod: 'production',   icon: 'clipboard',  label: 'Producción',   href: '/production.html',   desc: 'Kanban, día y subtareas' },
-  { id: 'metricas', mod: 'metricas',     icon: 'metrics',    label: 'Métricas',     href: '/metricas.html',     desc: 'Tiempos por producto y proceso' },
-  { id: 'taller',   mod: 'production',   icon: 'clipboard',  label: 'Taller',       href: '/taller.html',       desc: 'Pantalla de fichadas del operario' },
-  { id: 'stock',    mod: 'stock',        icon: 'stock',      label: 'Stock',        href: '/stock.html',        desc: 'Existencias y movimientos' },
-  { id: 'compras',  mod: 'compras',      icon: 'oc',         label: 'Compras',      href: '/compras.html',      desc: 'Proveedores y órdenes' },
   { id: 'ventas',   mod: 'ventas',       icon: 'chart',      label: 'Ventas',       href: '/ventas.html',       desc: 'KPIs y panel por vendedor' },
   { id: 'nps',      mod: 'nps',          icon: 'trending',   label: 'NPS',          href: '/nps.html',          desc: 'Satisfacción de clientes' },
-  { id: 'conta',    mod: 'contabilidad', icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html', desc: 'Cobros, gastos y activos' },
+  { id: 'prod',     mod: 'production',   icon: 'clipboard',  label: 'Tablero de producción', href: '/production.html', desc: 'Kanban, día y subtareas' },
+  { id: 'taller',   mod: 'production',   icon: 'clipboard',  label: 'Taller',       href: '/taller.html',       desc: 'Pantalla de fichadas del operario' },
+  { id: 'metricas', mod: 'metricas',     icon: 'metrics',    label: 'Métricas',     href: '/metricas.html',     desc: 'Tiempos por producto y proceso' },
+  { id: 'catalog',  mod: 'catalog',      icon: 'package',    label: 'Catálogo',     href: '/catalog.html',      desc: 'Materiales, terminaciones y tarifas' },
+  { id: 'stock',    mod: 'stock',        icon: 'stock',      label: 'Stock',        href: '/stock.html',        desc: 'Existencias y movimientos' },
   { id: 'dash',     mod: 'dashboard',    icon: 'metrics',    label: 'Dashboard',    href: '/dashboard.html',    desc: 'Resumen ejecutivo' },
-  { id: 'admin',    mod: 'admin',        icon: 'settings',   label: 'Admin',        href: '/admin.html',        desc: 'Usuarios, roles y configuración' },
+  { id: 'conta',    mod: 'contabilidad', icon: 'file',       label: 'Contabilidad', href: '/contabilidad.html', desc: 'Cobros, gastos y activos' },
+  { id: 'compras',  mod: 'compras',      icon: 'oc',         label: 'Compras',      href: '/compras.html',      desc: 'Proveedores y órdenes' },
+  { id: 'admin',    mod: 'admin',        icon: 'settings',   label: 'Administración', href: '/admin.html',      desc: 'Usuarios, roles y configuración' },
   { id: 'manual',   mod: 'manual',       icon: 'file',       label: 'Manual',       href: '/manual.html',       desc: 'Cómo se usa cada módulo' },
   { id: 'diagrama', mod: 'diagrama',     icon: 'metrics',    label: 'Diagrama',     href: '/diagrama.html',     desc: 'El flujo completo del ERP' },
 ];
@@ -153,15 +162,23 @@ const cuando = (iso) => {
 
   const modulos = await data.modulosDelRol(profile?.role).catch(() => ['home']);
   const grid = document.getElementById('tileGrid');
-  grid.innerHTML = TILES
-    .filter(t => modulos.includes(t.mod))
-    .map(t => `
-      <a class="tile ${admin && ['admin', 'contabilidad', 'dashboard', 'compras'].includes(t.mod) ? 'admin-only' : ''}" href="${t.href}">
-        <div class="icon">${icon(t.icon, { size: 40, stroke: 1.6 })}</div>
-        <div class="label">${t.label}</div>
-        ${t.desc ? `<div class="desc">${t.desc}</div>` : ''}
-      </a>`)
-    .join('');
+  const visibles = TILES.filter(t => modulos.includes(t.mod));
+  const areaDe = (t) => data.MODULOS.find(m => m.id === t.mod)?.area || null;
+  const secciones = [
+    ...data.AREAS.map(a => ({ label: a.label, tiles: visibles.filter(t => areaDe(t) === a.id) })),
+    { label: 'Ayuda', tiles: visibles.filter(t => !areaDe(t)) },
+  ].filter(s => s.tiles.length);
+  grid.innerHTML = secciones.map(s => `
+    <section class="area">
+      <h2 class="area-h">${s.label}</h2>
+      <div class="tile-grid">${s.tiles.map(t => `
+        <a class="tile ${admin && ['admin', 'contabilidad', 'dashboard', 'compras'].includes(t.mod) ? 'admin-only' : ''}" href="${t.href}">
+          <div class="icon">${icon(t.icon, { size: 40, stroke: 1.6 })}</div>
+          <div class="label">${t.label}</div>
+          ${t.desc ? `<div class="desc">${t.desc}</div>` : ''}
+        </a>`).join('')}
+      </div>
+    </section>`).join('');
 
   pintarActividad();
   pintarCambioPw();

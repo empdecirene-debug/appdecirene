@@ -122,7 +122,7 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 | Página | Propósito |
 |---|---|
 | `login.html` | Login (fondo negro + logo + patrón de rejas): **teclado de PIN** (entra solo al cuarto número, acepta el teclado físico) y, abajo, "Entrar con email y contraseña" |
-| `home.html` | Landing: **centro de actividad** (notificaciones de comentarios y respuestas, marcar leídas) + grid de tiles |
+| `home.html` | Landing: **centro de actividad** (notificaciones de comentarios y respuestas, marcar leídas) + cuadrados de acceso **agrupados por área** (Comercial / Producción / Dirección, y "Ayuda" para Manual y Diagrama) |
 | `index.html` | **Cotizador**: builder por producto (materiales + mano de obra + terminación, × multiplicador), **dimensiones** de fabricación, **comentarios para producción**, plantillas, alta/edición de materiales sin salir del flujo, sección **Servicios** (transporte + colocación), cliente, ítems, estado, guarda en `quotes` y genera **PDF molde De Cirene** (sin IVA). `?intake=<id>` y `?quote=<id>` |
 | `catalog.html` | **Catálogo**: Materiales (con stock y última actualización) / Plantillas (BOM) / **Terminaciones-pintado** / Mano de obra |
 | `intake.html` | **CRM**: kanban comercial con columna **Lead ganado**, teléfono obligatorio, aviso de cliente duplicado en vivo, cotización asociada visible en la tarjeta, botón "Lead ganado" que dispara venta + producción + cuenta a cobrar |
@@ -142,12 +142,19 @@ nuevas). Estado esperado hoy: 276 sentencias, 44 tablas, 0 desbalanceadas.
 | `manual-taller.html` | **Manual del operario**, público (sin login): 5 pasos, letra grande, un dibujo por paso, los botones reproducidos igual que en la pantalla real. Pensado para imprimir en A4 y pegarlo al lado del tablet |
 | `diagrama.html` | **Diagrama de flujo del ERP** de la consulta al cobro y el NPS. SVG generado a partir de dos listas (`NODOS` / `FLECHAS`) con carriles por responsable; imprime en A3 apaisado |
 
+## Menú por áreas (2026-10-23)
+El menú se ordena en **Comercial** (CRM, Clientes, Cotizar, Ventas, NPS), **Producción** (Tablero de
+producción, Métricas, Catálogo, Stock) y **Dirección** (Dashboard, Contabilidad, Compras, Administración).
+La fuente única es `area` en `MODULOS` (`js/cirene-data.js`): la usan la navbar, los cuadrados de Inicio
+y las casillas de Administración → Roles. **Para mover un módulo de área se cambia solo ahí.** El área es
+solo orden visual: qué se ve lo decide el rol, qué se puede, el perfil base.
+
 ## Módulos `js/`
 | Archivo | Qué hace |
 |---|---|
 | `supa.js` | Cliente de datos: misma interfaz encadenable que supabase-js, pero contra `POST /api/q` |
 | `auth.js` | `requireAuth`, `isAdmin` (admin\|director), `signIn/Out`, `getProfile` |
-| `navbar.js` | Navbar compartida. **Las tabs las decide el rol** (`modulosDelRol`), no una regla en el código. También **monta el botón de sugerencias** en todas las páginas. Clase `.cirene-nav` |
+| `navbar.js` | Navbar compartida. **Las tabs las decide el rol** (`modulosDelRol`), no una regla en el código. **Agrupada por área**: Inicio suelto, un desplegable por área (`AREAS` + `MODULOS[].area` de `cirene-data.js`; se abre con hover en mouse y con toque en celular; un área con una sola página va como pestaña común) y Manual suelto. También **monta el botón de sugerencias** en todas las páginas. Clase `.cirene-nav` |
 | `sugerencias.js` | Botón 💡 fijo abajo a la derecha + modal (categoría, texto, fotos adjuntas). Se monta desde `navbar.js`: así aparece en toda la app sin repetir el import en trece HTML |
 | `quote-engine.js` | Motor de cálculo: `calcLine` (materiales + MO + terminación → × multiplicador), `calcServices` (transporte y viáticos **sin** markup, MO de colocación **con** markup), `calcQuoteTotals`, `dimsText`, `UNIDADES_DIM`, `money`, `pct`, `n` |
 | `cirene-data.js` | **Capa de datos única**. Catálogo (materiales, `finishes`, tarifas, plantillas) · cotizaciones (`saveQuote` idempotente, `rowALinea`) · clientes (`ensureClient` anti-duplicados) · CRM (`ensureDraftQuote`, **`winLead`**) · producción (operarios, subtareas con `startSubtask`/`pauseSubtask`/`finishSubtask`, `semaforoDia` y capacidad diaria, `semaforoSemana` y semanas ISO para los agregados, `listTimeLogs`) · métricas (`tiempoPorProducto`, `tiempoPorProceso`, `plazoDePedidos`, `horasPorOperario`, `horasPorDia`) · sugerencias (`createSuggestion`, `listSuggestions`) · roles y módulos (`MODULOS`, `listRoles`, `upsertRole`, `modulosDelRol`) · abastecimiento (`suppliers`, OC, `receivePurchaseOrder`, `stockReport`, `consumirMaterialesDePedido`) · finanzas (`ensureReceivable`, gastos, cuenta corriente, `calcAsset`) · NPS (`ensureNpsSurvey`, `npsMetrics`) · notificaciones · `trazabilidad`, `presupuestadoVsReal`, `productividad` · `auditar`. **Toda página de datos pasa por acá** |
@@ -288,7 +295,7 @@ dos veces, recargar o reabrir **nunca** crea una cotización nueva.
    `on conflict do nothing`). Nunca `drop`/`delete` de datos operativos.
 6. **Caché**: al cambiar un `.js`, subir el `?v=N` de los imports en todos los HTML **y en los
    imports entre módulos `js/`** (si no, el navegador usa la versión vieja y la página queda
-   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=8`.**
+   "cargando"). Va bien un `perl -pi -e 's/\.js\?v=N/.js?v=N+1/g' *.html js/*.js`. **Versión actual: `v=9`.**
 7. Páginas de datos: indicador "Cargando…" inmediato + `try/catch` con mensaje visible
    (que nunca quede colgado sin avisar).
 7b. **Los helpers de nivel superior van como `function`, no como `const … =>`.** Las páginas

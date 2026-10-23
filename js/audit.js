@@ -2,8 +2,8 @@
 // Uso:
 //   await logAudit({ action: 'sale_order_create', entity_type: 'production_card', entity_id: pid, details: {...}, status: 'ok' });
 
-import { getSupa } from './supa.js?v=8';
-import { getCurrentUser, getProfile } from './auth.js?v=8';
+import { getSupa } from './supa.js?v=9';
+import { getCurrentUser, getProfile } from './auth.js?v=9';
 
 export async function logAudit({ action, entity_type, entity_id, details, status = 'ok', error_message }) {
   try {

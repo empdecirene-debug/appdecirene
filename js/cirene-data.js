@@ -2,9 +2,9 @@
 // Materiales, terminaciones, tarifas de mano de obra, plantillas de producto (BOM)
 // y cotizaciones. TODA página de datos pasa por acá.
 
-import { getSupa } from './supa.js?v=8';
-import { normalizePhoneUY } from './phone-normalizer.js?v=8';
-import { arr } from './quote-engine.js?v=8';
+import { getSupa } from './supa.js?v=9';
+import { normalizePhoneUY } from './phone-normalizer.js?v=9';
+import { arr } from './quote-engine.js?v=9';
 
 const db = () => getSupa();
 
@@ -2075,21 +2075,32 @@ export async function uploadSuggestionFile(file) {
    lista de módulos y el perfil base; los permisos de tabla siguen viviendo en
    api/registry.js, que es servidor. Una pantalla no puede regalarse acceso a la
    contabilidad. */
+
+// El menú (navbar e Inicio) se agrupa en estas tres áreas, en este orden. Cada
+// módulo declara la suya en `area`; los que no tienen (Inicio, Manual, Diagrama)
+// van sueltos. El área es solo cómo se ORDENA el menú: qué se ve lo sigue
+// decidiendo el rol, y qué se puede, el perfil base.
+export const AREAS = [
+  { id: 'comercial',  label: 'Comercial' },
+  { id: 'produccion', label: 'Producción' },
+  { id: 'direccion',  label: 'Dirección' },
+];
+
 export const MODULOS = [
   { id: 'home',         label: 'Inicio',         desc: 'Centro de actividad y accesos' },
-  { id: 'intake',       label: 'CRM / Leads',    desc: 'Consultas y pipeline comercial' },
-  { id: 'clientes',     label: 'Clientes',       desc: 'Cartera de clientes' },
-  { id: 'cot',          label: 'Cotizar',        desc: 'Cotizador y PDF' },
-  { id: 'production',   label: 'Producción',     desc: 'Tablero del taller y subtareas' },
-  { id: 'metricas',     label: 'Métricas',       desc: 'Tiempos por producto, proceso y operario' },
-  { id: 'catalog',      label: 'Catálogo',       desc: 'Materiales, terminaciones y tarifas' },
-  { id: 'compras',      label: 'Compras',        desc: 'Proveedores y órdenes de compra' },
-  { id: 'stock',        label: 'Stock',          desc: 'Existencias y movimientos' },
-  { id: 'ventas',       label: 'Ventas',         desc: 'KPIs y panel por vendedor' },
-  { id: 'nps',          label: 'NPS',            desc: 'Satisfacción de clientes' },
-  { id: 'contabilidad', label: 'Contabilidad',   desc: 'Cobros, gastos, caja y activos' },
-  { id: 'dashboard',    label: 'Dashboard',      desc: 'Resumen ejecutivo' },
-  { id: 'admin',        label: 'Administración', desc: 'Usuarios, roles y configuración' },
+  { id: 'intake',       label: 'CRM / Leads',    desc: 'Consultas y pipeline comercial',            area: 'comercial' },
+  { id: 'clientes',     label: 'Clientes',       desc: 'Cartera de clientes',                       area: 'comercial' },
+  { id: 'cot',          label: 'Cotizar',        desc: 'Cotizador y PDF',                           area: 'comercial' },
+  { id: 'ventas',       label: 'Ventas',         desc: 'KPIs y panel por vendedor',                 area: 'comercial' },
+  { id: 'nps',          label: 'NPS',            desc: 'Satisfacción de clientes',                  area: 'comercial' },
+  { id: 'production',   label: 'Tablero de producción', desc: 'Kanban, día y subtareas del taller', area: 'produccion' },
+  { id: 'metricas',     label: 'Métricas',       desc: 'Tiempos por producto, proceso y operario',  area: 'produccion' },
+  { id: 'catalog',      label: 'Catálogo',       desc: 'Materiales, terminaciones y tarifas',       area: 'produccion' },
+  { id: 'stock',        label: 'Stock',          desc: 'Existencias y movimientos',                 area: 'produccion' },
+  { id: 'dashboard',    label: 'Dashboard',      desc: 'Resumen ejecutivo',                         area: 'direccion' },
+  { id: 'contabilidad', label: 'Contabilidad',   desc: 'Cobros, gastos, caja y activos',            area: 'direccion' },
+  { id: 'compras',      label: 'Compras',        desc: 'Proveedores y órdenes de compra',           area: 'direccion' },
+  { id: 'admin',        label: 'Administración', desc: 'Usuarios, roles y configuración',           area: 'direccion' },
   { id: 'manual',       label: 'Manual',         desc: 'Manuales de uso' },
   { id: 'diagrama',     label: 'Diagrama',       desc: 'Flujo completo del ERP' },
 ];

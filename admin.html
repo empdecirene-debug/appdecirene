@@ -89,11 +89,11 @@ code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-r
 </div>
 
 <script type="module">
-import { renderNavbar } from './js/navbar.js?v=8';
-import { requireAdmin } from './js/auth.js?v=8';
-import { getSupa, api } from './js/supa.js?v=8';
-import * as data from './js/cirene-data.js?v=8';
-import { money, n } from './js/quote-engine.js?v=8';
+import { renderNavbar } from './js/navbar.js?v=9';
+import { requireAdmin } from './js/auth.js?v=9';
+import { getSupa, api } from './js/supa.js?v=9';
+import * as data from './js/cirene-data.js?v=9';
+import { money, n } from './js/quote-engine.js?v=9';
 
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -528,12 +528,15 @@ function renderRoles() {
           </div>
         </div>
         <label class="label" style="margin-top:6px">Módulos que ve este rol (${mods.length} de ${data.MODULOS.length})</label>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:6px 14px;margin-bottom:10px">
-          ${data.MODULOS.map(m => `<label style="display:flex;gap:7px;align-items:flex-start;font-size:13px;font-weight:600">
+        ${[...data.AREAS, { id: null, label: 'Generales' }].map(a => `
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tinta-3);margin:8px 0 4px">${esc(a.label)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:6px 14px;margin-bottom:6px">
+          ${data.MODULOS.filter(m => (m.area || null) === a.id).map(m => `<label style="display:flex;gap:7px;align-items:flex-start;font-size:13px;font-weight:600">
             <input type="checkbox" data-r-mod="${m.id}" style="width:auto;margin-top:3px" ${mods.includes(m.id) ? 'checked' : ''}>
             <span>${esc(m.label)}<span style="display:block;font-weight:400;font-size:11px;color:var(--tinta-3)">${esc(m.desc)}</span></span>
           </label>`).join('')}
-        </div>
+        </div>`).join('')}
+        <div style="margin-bottom:4px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary sm" data-r-save>Guardar este rol</button>
           <button class="btn sm" data-r-todos>Marcar todos</button>
